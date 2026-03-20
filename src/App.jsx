@@ -39,15 +39,12 @@ const fmt = (s) => { const m = Math.floor(s / 60), sc = s % 60; return `${String
 const fmtMins = (s) => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h > 0 ? `${h}h ${m}m` : `${m}m`; };
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-// ─── Audio builders: each returns { nodes: AudioNode[], gain: GainNode } ───
+// ─── Audio builders ───
 function buildRain(ctx, vol) {
   const gain = ctx.createGain();
   gain.gain.value = vol;
   gain.connect(ctx.destination);
-
   const sr = ctx.sampleRate;
-
-  // Layer A: deep ambient bed (very muffled brown noise, like rain through walls)
   const bedLen = sr * 4;
   const bedBuf = ctx.createBuffer(1, bedLen, sr);
   const bd = bedBuf.getChannelData(0);
@@ -62,15 +59,12 @@ function buildRain(ctx, vol) {
   bedLp.type = "lowpass"; bedLp.frequency.value = 600;
   const bedVol = ctx.createGain(); bedVol.gain.value = 0.5;
   bedSrc.connect(bedLp).connect(bedVol).connect(gain);
-
-  // Layer B: raindrop texture (sparse impulses in a buffer, bandpassed)
   const dropLen = sr * 5;
   const dropBuf = ctx.createBuffer(2, dropLen, sr);
   for (let ch = 0; ch < 2; ch++) {
     const dd = dropBuf.getChannelData(ch);
     let i = 0;
     while (i < dropLen) {
-      // Random gap between drops: 20-200 samples
       i += 20 + Math.floor(Math.random() * 180);
       if (i >= dropLen) break;
       const amp = 0.03 + Math.random() * 0.15;
@@ -86,8 +80,6 @@ function buildRain(ctx, vol) {
   dropBp.type = "bandpass"; dropBp.frequency.value = 3500; dropBp.Q.value = 0.4;
   const dropVol = ctx.createGain(); dropVol.gain.value = 0.5;
   dropSrc.connect(dropBp).connect(dropVol).connect(gain);
-
-  // Layer C: mid-frequency hiss (gives body, sits between bed and drops)
   const midLen = sr * 3;
   const midBuf = ctx.createBuffer(1, midLen, sr);
   const md = midBuf.getChannelData(0);
@@ -102,7 +94,6 @@ function buildRain(ctx, vol) {
   midBp.type = "bandpass"; midBp.frequency.value = 1600; midBp.Q.value = 0.5;
   const midVol = ctx.createGain(); midVol.gain.value = 0.3;
   midSrc.connect(midBp).connect(midVol).connect(gain);
-
   bedSrc.start(); dropSrc.start(); midSrc.start();
   return { nodes: [bedSrc, dropSrc, midSrc], gain };
 }
@@ -186,8 +177,11 @@ export default function App() {
   const [overlayData, setOverlayData] = useState({});
   const [reflectInput, setReflectInput] = useState("");
   const [showedIntention, setShowedIntention] = useState(false);
+  // ── L4: Skip break state ──────────────────────────────────────────────────
+  const [skipReason, setSkipReason] = useState("");
+  const [showSkipInput, setShowSkipInput] = useState(false);
 
-  const soundRefs = useRef({}); // { key: { nodes: AudioNode[], gain: GainNode } }
+  const soundRefs = useRef({});
   const ctxRef = useRef(null);
   const intervalRef = useRef(null);
   const distRef = useRef(null);
@@ -198,10 +192,8 @@ export default function App() {
     return ctxRef.current;
   };
 
-  // ─── Sound toggle (unified) ───
   const toggleSound = useCallback((key) => {
     if (soundRefs.current[key]) {
-      // Stop
       try {
         soundRefs.current[key].nodes.forEach(n => { try { n.stop(); } catch (_) {} });
         soundRefs.current[key].gain.disconnect();
@@ -209,7 +201,6 @@ export default function App() {
       delete soundRefs.current[key];
       setActiveSounds(s => { const n = { ...s }; delete n[key]; return n; });
     } else {
-      // Start
       const ctx = getCtx();
       const builder = BUILDERS[key];
       if (!builder) return;
@@ -218,14 +209,12 @@ export default function App() {
     }
   }, [volume]);
 
-  // Volume sync
   useEffect(() => {
     Object.values(soundRefs.current).forEach(ref => {
       if (ref.gain) ref.gain.gain.value = volume;
     });
   }, [volume]);
 
-  // Chime
   const playChime = () => {
     try {
       const ctx = getCtx();
@@ -267,6 +256,14 @@ export default function App() {
   useEffect(() => { if (loaded) window.storage.set("sage-log", JSON.stringify(sessionLog)).catch(() => {}); }, [sessionLog, loaded]);
   useEffect(() => { if (loaded && !showedIntention && !dailyIntention) { setOverlay("intention"); setShowedIntention(true); } }, [loaded, showedIntention, dailyIntention]);
 
+  // ── Reset skip state when leaving the refocus overlay ────────────────────
+  useEffect(() => {
+    if (overlay !== "refocus") {
+      setShowSkipInput(false);
+      setSkipReason("");
+    }
+  }, [overlay]);
+
   // ─── Timer ───
   useEffect(() => {
     if (running) {
@@ -302,7 +299,6 @@ export default function App() {
     });
   };
 
-  // ─── Keyboard ───
   const handleStartRef = useRef(null);
   const handleStart = useCallback(() => {
     if (running) { setRunning(false); return; }
@@ -345,6 +341,15 @@ export default function App() {
   const applyCustom = () => { const w = Math.max(1, Math.min(180, parseInt(customWork) || 25)); const b = Math.max(1, Math.min(60, parseInt(customBreak) || 5)); applyPreset(w, b); setShowSettings(false); };
   const resetTimer = () => { setRunning(false); setPhase("work"); setTimeLeft(timerSettings.work * 60); };
 
+  // ── L4: Skip the current break ───────────────────────────────────────────
+  const skipBreak = () => {
+    setPhase("work");
+    setTimeLeft(timerSettings.work * 60);
+    setOverlay(null);
+    setSkipReason("");
+    setShowSkipInput(false);
+  };
+
   const focusTask = tasks.find(t => t.id === focusId);
   const totalSec = (phase === "work" ? timerSettings.work : timerSettings.brk) * 60;
   const pct = ((totalSec - timeLeft) / totalSec) * 100;
@@ -358,8 +363,46 @@ export default function App() {
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(145deg, #1a1025 0%, #2d1b3d 40%, #1e1428 100%)", color: "#e8ddd3", fontFamily: "'Segoe UI', system-ui, sans-serif", padding: "20px 16px", boxSizing: "border-box" }}>
-      <style>{`@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}} input:focus,textarea:focus{border-color:rgba(212,165,116,0.4)!important;outline:none}`}</style>
+    // ── L2: Background removed from this div — now lives on html/body via <style> below ──
+    <div style={{ minHeight: "100vh", color: "#e8ddd3", fontFamily: "'Segoe UI', system-ui, sans-serif", padding: "20px 16px", boxSizing: "border-box", width: "100%" }}>
+
+      {/*
+        ── BATCH 1 CSS INJECTIONS ───────────────────────────────────────────
+        L1: #root text-align overridden to left (panel text left-justified)
+            Centered elements keep their inline textAlign:"center" so nothing breaks.
+        L2: Background gradient moved to html element — covers full viewport
+            regardless of horizontal scroll. body is transparent.
+        L3: .sage-panels grid — side quests get 1.5x the tasks column.
+            Stacks to 1 column below 700px.
+        ─────────────────────────────────────────────────────────────────────
+      */}
+      <style>{`
+        @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        input:focus,textarea:focus{border-color:rgba(212,165,116,0.4)!important;outline:none}
+        html{
+          min-height:100%;
+          background:linear-gradient(145deg,#1a1025 0%,#2d1b3d 40%,#1e1428 100%);
+          background-attachment:fixed;
+        }
+        body{min-height:100%;background:transparent;margin:0;}
+        #root{
+          width:100%!important;
+          max-width:100%!important;
+          background:transparent!important;
+          text-align:left!important;
+          border:none!important;
+          margin:0!important;
+        }
+        .sage-panels{
+          display:grid;
+          grid-template-columns:1fr 1.5fr;
+          gap:16px;
+          margin-bottom:24px;
+        }
+        @media(max-width:700px){
+          .sage-panels{grid-template-columns:1fr;}
+        }
+      `}</style>
 
       {/* ═══ OVERLAYS ═══ */}
       {overlay === "intention" && (
@@ -375,6 +418,7 @@ export default function App() {
           </div>
         </Overlay>
       )}
+
       {overlay === "refocus" && (
         <Overlay onClose={() => setOverlay(null)}>
           <div style={{ fontSize: 48, marginBottom: 20, opacity: 0.6 }}>✦</div>
@@ -383,9 +427,46 @@ export default function App() {
           {focusTask && phase === "work" && <div style={{ fontSize: 28, fontFamily: "Georgia, serif", color: "#d4a574", lineHeight: 1.4, marginBottom: 20 }}>{focusTask.text}</div>}
           {!focusTask && phase === "work" && <div style={{ fontSize: 22, fontFamily: "Georgia, serif", color: "#c4b8c9", marginBottom: 20, fontStyle: "italic" }}>What are you sitting down to do?</div>}
           <div style={{ fontSize: 15, color: "#8b7b8e", fontStyle: "italic", marginBottom: 28 }}>{overlayData.mantra}</div>
-          <button onClick={() => setOverlay(null)} style={btn({ padding: "12px 40px", border: "1px solid rgba(212,165,116,0.4)", background: "rgba(212,165,116,0.15)", color: "#d4a574", fontSize: 15, letterSpacing: 2 })}>{phase === "work" ? "Back to it" : "Resting"}</button>
+          <button onClick={() => setOverlay(null)} style={btn({ padding: "12px 40px", border: "1px solid rgba(212,165,116,0.4)", background: "rgba(212,165,116,0.15)", color: "#d4a574", fontSize: 15, letterSpacing: 2 })}>
+            {phase === "work" ? "Back to it" : "Resting"}
+          </button>
+
+          {/* ── L4: Skip break option — only shown during break phase ──────── */}
+          {phase === "break" && (
+            <div style={{ marginTop: 20 }}>
+              {!showSkipInput ? (
+                <button
+                  onClick={() => setShowSkipInput(true)}
+                  style={btn({ padding: "7px 18px", border: "1px solid rgba(139,123,142,0.18)", background: "transparent", color: "#6b5b6e", fontSize: 12, letterSpacing: 0.5 })}
+                >
+                  Skip this break
+                </button>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, animation: "fadeUp 0.3s ease" }}>
+                  <div style={{ fontSize: 12, color: "#8b7b8e", marginBottom: 2 }}>What's pulling you back? <span style={{ opacity: 0.5 }}>(optional)</span></div>
+                  <input
+                    value={skipReason}
+                    onChange={e => setSkipReason(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && skipBreak()}
+                    placeholder="I'm on a roll / in a call / don't need one..."
+                    autoFocus
+                    style={{ width: "80%", maxWidth: 300, padding: "8px 14px", borderRadius: 10, border: "1px solid rgba(139,123,142,0.25)", background: "rgba(255,255,255,0.04)", color: "#e8ddd3", fontSize: 13, textAlign: "center", fontFamily: "'Segoe UI', system-ui, sans-serif" }}
+                  />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={skipBreak} style={btn({ padding: "7px 22px", border: "1px solid rgba(139,123,142,0.3)", background: "rgba(139,123,142,0.1)", color: "#c4b8c9", fontSize: 12 })}>
+                      Skip break →
+                    </button>
+                    <button onClick={() => { setShowSkipInput(false); setSkipReason(""); }} style={btn({ padding: "7px 14px", border: "none", background: "transparent", color: "#6b5b6e", fontSize: 12 })}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </Overlay>
       )}
+
       {overlay === "celebrate" && (
         <Overlay onClose={() => setOverlay(null)} bg="rgba(10,6,15,0.95)">
           <div style={{ fontSize: 56, marginBottom: 16 }}>✧</div>
@@ -395,6 +476,7 @@ export default function App() {
           <button onClick={() => setOverlay(null)} style={btn({ padding: "12px 40px", border: "1px solid rgba(212,165,116,0.4)", background: "rgba(212,165,116,0.15)", color: "#d4a574", fontSize: 15, letterSpacing: 1 })}>Onward</button>
         </Overlay>
       )}
+
       {overlay === "nudge" && (
         <Overlay onClose={() => setOverlay(null)}>
           <div style={{ background: "rgba(45,27,61,0.9)", border: "1px solid rgba(212,165,116,0.2)", borderRadius: 24, padding: "36px 28px" }}>
@@ -409,6 +491,7 @@ export default function App() {
           </div>
         </Overlay>
       )}
+
       {overlay === "reflect" && (
         <Overlay onClose={() => setOverlay(null)}>
           <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.5 }}>☽</div>
@@ -480,7 +563,7 @@ export default function App() {
             </div>
           </div>
         )}
-        <div style={{ marginTop: 10, fontSize: 12, color: "#8b7b8e" }}>Sessions today: <span style={{ color: "#d4a574" }}>{todayLog?.sessions || sessions}</span></div>
+        <div style={{ marginTop: 10, fontSize: 12, color: "#8b7b8e", textAlign: "center" }}>Sessions today: <span style={{ color: "#d4a574" }}>{todayLog?.sessions || sessions}</span></div>
       </div>
 
       {/* ═══ SOUNDSCAPE ═══ */}
@@ -518,7 +601,10 @@ export default function App() {
       {/* ═══ PANELS ═══ */}
       {!zenMode && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+          {/* ── L1 + L3: className="sage-panels" — CSS handles grid ratio and left-align ── */}
+          <div className="sage-panels">
+
+            {/* Tasks panel */}
             <div style={{ padding: "18px", background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px solid rgba(139,123,142,0.1)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: "#8b7b8e" }}>Tasks</span>
@@ -544,6 +630,8 @@ export default function App() {
                 ))}
               </div>
             </div>
+
+            {/* Side quests panel — L3: gets 1.5fr width via .sage-panels CSS */}
             <div style={{ padding: "18px", background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px solid rgba(139,123,142,0.1)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: "#8b7b8e" }}>Side Quests <span style={{ fontSize: 10, opacity: 0.5 }}>(D)</span></span>
@@ -564,7 +652,9 @@ export default function App() {
                 ))}
               </div>
             </div>
+
           </div>
+
           <div style={{ padding: "18px 20px", background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px solid rgba(139,123,142,0.1)", marginBottom: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: "#8b7b8e" }}>Last 14 Days</span>
@@ -574,6 +664,7 @@ export default function App() {
           </div>
         </>
       )}
+
       {zenMode && (
         <div style={{ maxWidth: 400, margin: "0 auto 20px", display: "flex", gap: 8 }}>
           <input ref={distRef} value={newDist} onChange={e => setNewDist(e.target.value)} onKeyDown={e => e.key === "Enter" && addDist()} placeholder="Park a thought... (D)"
@@ -581,6 +672,7 @@ export default function App() {
           <button onClick={addDist} style={btn({ padding: "8px 14px", borderRadius: 10, border: "1px solid rgba(155,126,216,0.2)", background: "rgba(155,126,216,0.06)", color: "#9B7ED8", fontSize: 16, lineHeight: 1 })}>+</button>
         </div>
       )}
+
       <div style={{ textAlign: "center", marginTop: 16, fontSize: 11, color: "#4a3d4e", letterSpacing: 1 }}>{zenMode ? "◯ zen mode · press Z to exit" : "✦ breathe · focus · flow ✦"}</div>
       {!zenMode && <div style={{ textAlign: "center", marginTop: 6, fontSize: 10, color: "#3d3242", letterSpacing: 1 }}>⎵ start/pause · D distraction · Z zen · Esc dismiss</div>}
     </div>
