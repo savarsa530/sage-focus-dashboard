@@ -177,14 +177,21 @@ export default function App() {
   const [overlayData, setOverlayData] = useState({});
   const [reflectInput, setReflectInput] = useState("");
   const [showedIntention, setShowedIntention] = useState(false);
-  // ── L4: Skip break state ──────────────────────────────────────────────────
+  // ── L4: Skip break ────────────────────────────────────────────────────────
   const [skipReason, setSkipReason] = useState("");
   const [showSkipInput, setShowSkipInput] = useState(false);
+  // ── M3: Sort ──────────────────────────────────────────────────────────────
+  const [sortBy, setSortBy] = useState("default"); // "default" | "alpha" | "time"
+  const [doneToBottom, setDoneToBottom] = useState(false);
+  // ── M2: Drag visual feedback ──────────────────────────────────────────────
+  const [dragOverId, setDragOverId] = useState(null);
 
   const soundRefs = useRef({});
   const ctxRef = useRef(null);
   const intervalRef = useRef(null);
   const distRef = useRef(null);
+  // ── M2: Drag item tracking ────────────────────────────────────────────────
+  const dragItemId = useRef(null);
 
   const getCtx = () => {
     if (!ctxRef.current) ctxRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -256,12 +263,9 @@ export default function App() {
   useEffect(() => { if (loaded) window.storage.set("sage-log", JSON.stringify(sessionLog)).catch(() => {}); }, [sessionLog, loaded]);
   useEffect(() => { if (loaded && !showedIntention && !dailyIntention) { setOverlay("intention"); setShowedIntention(true); } }, [loaded, showedIntention, dailyIntention]);
 
-  // ── Reset skip state when leaving the refocus overlay ────────────────────
+  // Reset skip state when overlay changes
   useEffect(() => {
-    if (overlay !== "refocus") {
-      setShowSkipInput(false);
-      setSkipReason("");
-    }
+    if (overlay !== "refocus") { setShowSkipInput(false); setSkipReason(""); }
   }, [overlay]);
 
   // ─── Timer ───
@@ -332,6 +336,8 @@ export default function App() {
   };
   const removeTask = (id) => { setTasks(t => t.filter(x => x.id !== id)); if (focusId === id) setFocusId(null); };
   const addDist = () => { if (!newDist.trim()) return; setDistractions(d => [{ id: Date.now(), text: newDist.trim(), time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }, ...d]); setNewDist(""); };
+  // ── M1: Delete individual side quest ─────────────────────────────────────
+  const removeDist = (id) => setDistractions(d => d.filter(x => x.id !== id));
   const clearDone = () => setTasks(t => t.filter(x => !x.done));
   const clearDist = () => setDistractions([]);
   const startWithTask = (id) => { setFocusId(id); setOverlay(null); getCtx(); setRunning(true); };
@@ -341,14 +347,39 @@ export default function App() {
   const applyCustom = () => { const w = Math.max(1, Math.min(180, parseInt(customWork) || 25)); const b = Math.max(1, Math.min(60, parseInt(customBreak) || 5)); applyPreset(w, b); setShowSettings(false); };
   const resetTimer = () => { setRunning(false); setPhase("work"); setTimeLeft(timerSettings.work * 60); };
 
-  // ── L4: Skip the current break ───────────────────────────────────────────
-  const skipBreak = () => {
-    setPhase("work");
-    setTimeLeft(timerSettings.work * 60);
-    setOverlay(null);
-    setSkipReason("");
-    setShowSkipInput(false);
+  // ── L4: Skip break ────────────────────────────────────────────────────────
+  const skipBreak = () => { setPhase("work"); setTimeLeft(timerSettings.work * 60); setOverlay(null); setSkipReason(""); setShowSkipInput(false); };
+
+  // ── M2: Drag — only active on Default sort with doneToBottom off ──────────
+  const canDrag = sortBy === "default" && !doneToBottom;
+
+  const handleDragStart = (id) => { dragItemId.current = id; };
+  const handleDragOver = (e, id) => { e.preventDefault(); setDragOverId(id); };
+  const handleDrop = (e, targetId) => {
+    e.preventDefault();
+    if (!dragItemId.current || dragItemId.current === targetId) { setDragOverId(null); return; }
+    setTasks(prev => {
+      const arr = [...prev];
+      const fromIdx = arr.findIndex(t => t.id === dragItemId.current);
+      const toIdx = arr.findIndex(t => t.id === targetId);
+      if (fromIdx < 0 || toIdx < 0) return prev;
+      const [removed] = arr.splice(fromIdx, 1);
+      arr.splice(toIdx, 0, removed);
+      return arr;
+    });
+    dragItemId.current = null;
+    setDragOverId(null);
   };
+  const handleDragEnd = () => { dragItemId.current = null; setDragOverId(null); };
+
+  // ── M3: Computed sorted task list ─────────────────────────────────────────
+  const sortedTasks = (() => {
+    let arr = [...tasks];
+    if (sortBy === "alpha") arr.sort((a, b) => a.text.localeCompare(b.text));
+    if (sortBy === "time") arr.sort((a, b) => (b.focusSecs || 0) - (a.focusSecs || 0));
+    if (doneToBottom) arr.sort((a, b) => (a.done === b.done ? 0 : a.done ? 1 : -1));
+    return arr;
+  })();
 
   const focusTask = tasks.find(t => t.id === focusId);
   const totalSec = (phase === "work" ? timerSettings.work : timerSettings.brk) * 60;
@@ -363,19 +394,7 @@ export default function App() {
   );
 
   return (
-    // ── L2: Background removed from this div — now lives on html/body via <style> below ──
     <div style={{ minHeight: "100vh", color: "#e8ddd3", fontFamily: "'Segoe UI', system-ui, sans-serif", padding: "20px 16px", boxSizing: "border-box", width: "100%" }}>
-
-      {/*
-        ── BATCH 1 CSS INJECTIONS ───────────────────────────────────────────
-        L1: #root text-align overridden to left (panel text left-justified)
-            Centered elements keep their inline textAlign:"center" so nothing breaks.
-        L2: Background gradient moved to html element — covers full viewport
-            regardless of horizontal scroll. body is transparent.
-        L3: .sage-panels grid — side quests get 1.5x the tasks column.
-            Stacks to 1 column below 700px.
-        ─────────────────────────────────────────────────────────────────────
-      */}
       <style>{`
         @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         input:focus,textarea:focus{border-color:rgba(212,165,116,0.4)!important;outline:none}
@@ -393,6 +412,7 @@ export default function App() {
           border:none!important;
           margin:0!important;
         }
+        /* L3: Tasks / Side Quests grid — side quests get 1.5x width */
         .sage-panels{
           display:grid;
           grid-template-columns:1fr 1.5fr;
@@ -402,6 +422,22 @@ export default function App() {
         @media(max-width:700px){
           .sage-panels{grid-template-columns:1fr;}
         }
+        /* M2: Drag styles */
+        .task-row{ transition: border-top 0.1s ease, opacity 0.15s ease; }
+        .task-row.drag-over{ border-top: 2px solid rgba(212,165,116,0.5) !important; }
+        .drag-handle{
+          cursor: grab;
+          color: #4a3d4e;
+          font-size: 13px;
+          padding: 0 4px 0 0;
+          flex-shrink: 0;
+          user-select: none;
+          transition: color 0.2s;
+          line-height: 1;
+        }
+        .drag-handle:hover{ color: #8b7b8e; }
+        /* M3: Sort pills */
+        .sort-pill{ transition: all 0.2s ease; }
       `}</style>
 
       {/* ═══ OVERLAYS ═══ */}
@@ -430,35 +466,21 @@ export default function App() {
           <button onClick={() => setOverlay(null)} style={btn({ padding: "12px 40px", border: "1px solid rgba(212,165,116,0.4)", background: "rgba(212,165,116,0.15)", color: "#d4a574", fontSize: 15, letterSpacing: 2 })}>
             {phase === "work" ? "Back to it" : "Resting"}
           </button>
-
-          {/* ── L4: Skip break option — only shown during break phase ──────── */}
+          {/* L4: Skip break — only during break phase */}
           {phase === "break" && (
             <div style={{ marginTop: 20 }}>
               {!showSkipInput ? (
-                <button
-                  onClick={() => setShowSkipInput(true)}
-                  style={btn({ padding: "7px 18px", border: "1px solid rgba(139,123,142,0.18)", background: "transparent", color: "#6b5b6e", fontSize: 12, letterSpacing: 0.5 })}
-                >
+                <button onClick={() => setShowSkipInput(true)} style={btn({ padding: "7px 18px", border: "1px solid rgba(139,123,142,0.18)", background: "transparent", color: "#6b5b6e", fontSize: 12, letterSpacing: 0.5 })}>
                   Skip this break
                 </button>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, animation: "fadeUp 0.3s ease" }}>
                   <div style={{ fontSize: 12, color: "#8b7b8e", marginBottom: 2 }}>What's pulling you back? <span style={{ opacity: 0.5 }}>(optional)</span></div>
-                  <input
-                    value={skipReason}
-                    onChange={e => setSkipReason(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && skipBreak()}
-                    placeholder="I'm on a roll / in a call / don't need one..."
-                    autoFocus
-                    style={{ width: "80%", maxWidth: 300, padding: "8px 14px", borderRadius: 10, border: "1px solid rgba(139,123,142,0.25)", background: "rgba(255,255,255,0.04)", color: "#e8ddd3", fontSize: 13, textAlign: "center", fontFamily: "'Segoe UI', system-ui, sans-serif" }}
-                  />
+                  <input value={skipReason} onChange={e => setSkipReason(e.target.value)} onKeyDown={e => e.key === "Enter" && skipBreak()} placeholder="I'm on a roll / in a call / don't need one..." autoFocus
+                    style={{ width: "80%", maxWidth: 300, padding: "8px 14px", borderRadius: 10, border: "1px solid rgba(139,123,142,0.25)", background: "rgba(255,255,255,0.04)", color: "#e8ddd3", fontSize: 13, textAlign: "center" }} />
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={skipBreak} style={btn({ padding: "7px 22px", border: "1px solid rgba(139,123,142,0.3)", background: "rgba(139,123,142,0.1)", color: "#c4b8c9", fontSize: 12 })}>
-                      Skip break →
-                    </button>
-                    <button onClick={() => { setShowSkipInput(false); setSkipReason(""); }} style={btn({ padding: "7px 14px", border: "none", background: "transparent", color: "#6b5b6e", fontSize: 12 })}>
-                      Cancel
-                    </button>
+                    <button onClick={skipBreak} style={btn({ padding: "7px 22px", border: "1px solid rgba(139,123,142,0.3)", background: "rgba(139,123,142,0.1)", color: "#c4b8c9", fontSize: 12 })}>Skip break →</button>
+                    <button onClick={() => { setShowSkipInput(false); setSkipReason(""); }} style={btn({ padding: "7px 14px", border: "none", background: "transparent", color: "#6b5b6e", fontSize: 12 })}>Cancel</button>
                   </div>
                 </div>
               )}
@@ -601,24 +623,76 @@ export default function App() {
       {/* ═══ PANELS ═══ */}
       {!zenMode && (
         <>
-          {/* ── L1 + L3: className="sage-panels" — CSS handles grid ratio and left-align ── */}
           <div className="sage-panels">
 
-            {/* Tasks panel */}
+            {/* ══ TASKS PANEL ══ */}
             <div style={{ padding: "18px", background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px solid rgba(139,123,142,0.1)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+
+              {/* Header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: "#8b7b8e" }}>Tasks</span>
                 {tasks.some(t => t.done) && <button onClick={clearDone} style={{ background: "none", border: "none", color: "#8b7b8e", cursor: "pointer", fontSize: 11, textDecoration: "underline" }}>Clear done</button>}
               </div>
+
+              {/* M3: Sort controls */}
+              <div style={{ display: "flex", gap: 5, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
+                {[
+                  { key: "default", label: "Default" },
+                  { key: "alpha",   label: "A–Z" },
+                  { key: "time",    label: "Time ↓" },
+                ].map(s => (
+                  <button key={s.key} className="sort-pill" onClick={() => setSortBy(s.key)}
+                    style={btn({ padding: "3px 11px", fontSize: 11, borderRadius: 12,
+                      border: `1px solid ${sortBy === s.key ? "rgba(212,165,116,0.5)" : "rgba(139,123,142,0.2)"}`,
+                      background: sortBy === s.key ? "rgba(212,165,116,0.12)" : "transparent",
+                      color: sortBy === s.key ? "#d4a574" : "#6b5b6e",
+                    })}>{s.label}
+                  </button>
+                ))}
+                <button className="sort-pill" onClick={() => setDoneToBottom(d => !d)}
+                  style={btn({ padding: "3px 11px", fontSize: 11, borderRadius: 12,
+                    border: `1px solid ${doneToBottom ? "rgba(212,165,116,0.5)" : "rgba(139,123,142,0.2)"}`,
+                    background: doneToBottom ? "rgba(212,165,116,0.12)" : "transparent",
+                    color: doneToBottom ? "#d4a574" : "#6b5b6e",
+                  })}>Done ↓
+                </button>
+                {canDrag && tasks.length > 1 && (
+                  <span style={{ fontSize: 10, color: "#3d3242", marginLeft: 2 }}>drag ⠿ to reorder</span>
+                )}
+              </div>
+
+              {/* Add task */}
               <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                 <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === "Enter" && addTask()} placeholder="Add a task..."
                   style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(139,123,142,0.2)", background: "rgba(255,255,255,0.04)", color: "#e8ddd3", fontSize: 13 }} />
                 <button onClick={addTask} style={btn({ padding: "8px 14px", borderRadius: 10, border: "1px solid rgba(212,165,116,0.3)", background: "rgba(212,165,116,0.1)", color: "#d4a574", fontSize: 16, lineHeight: 1 })}>+</button>
               </div>
+
+              {/* Task list */}
               <div style={{ maxHeight: 280, overflowY: "auto" }}>
                 {tasks.length === 0 && <p style={{ color: "#6b5b6e", fontSize: 13, fontStyle: "italic", textAlign: "center", margin: "16px 0" }}>Your slate is clean</p>}
-                {tasks.map(t => (
-                  <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 4px", borderBottom: "1px solid rgba(139,123,142,0.06)", opacity: t.done ? 0.4 : 1, background: focusId === t.id ? "rgba(212,165,116,0.05)" : "transparent", borderRadius: focusId === t.id ? 8 : 0 }}>
+                {sortedTasks.map(t => (
+                  <div
+                    key={t.id}
+                    className={`task-row${dragOverId === t.id ? " drag-over" : ""}`}
+                    draggable={canDrag}
+                    onDragStart={() => handleDragStart(t.id)}
+                    onDragOver={e => handleDragOver(e, t.id)}
+                    onDrop={e => handleDrop(e, t.id)}
+                    onDragEnd={handleDragEnd}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      padding: "7px 4px",
+                      borderBottom: "1px solid rgba(139,123,142,0.06)",
+                      borderTop: "2px solid transparent",
+                      opacity: t.done ? 0.4 : 1,
+                      background: focusId === t.id ? "rgba(212,165,116,0.05)" : "transparent",
+                      borderRadius: focusId === t.id ? 8 : 0,
+                    }}
+                  >
+                    {/* M2: Grip handle */}
+                    {canDrag && <span className="drag-handle" title="Drag to reorder">⠿</span>}
+
                     <button onClick={() => toggleTask(t.id)} style={{ background: "none", border: `1.5px solid ${t.done ? "#d4a574" : "rgba(139,123,142,0.3)"}`, borderRadius: 4, width: 18, height: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#d4a574", fontSize: 10, flexShrink: 0 }}>{t.done ? "✓" : ""}</button>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, textDecoration: t.done ? "line-through" : "none", color: t.done ? "#8b7b8e" : "#e8ddd3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.text}</div>
@@ -631,7 +705,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Side quests panel — L3: gets 1.5fr width via .sage-panels CSS */}
+            {/* ══ SIDE QUESTS PANEL ══ */}
             <div style={{ padding: "18px", background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px solid rgba(139,123,142,0.1)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: "#8b7b8e" }}>Side Quests <span style={{ fontSize: 10, opacity: 0.5 }}>(D)</span></span>
@@ -645,9 +719,10 @@ export default function App() {
               <div style={{ maxHeight: 280, overflowY: "auto" }}>
                 {distractions.length === 0 && <p style={{ color: "#6b5b6e", fontSize: 13, fontStyle: "italic", textAlign: "center", margin: "16px 0" }}>Nothing parked yet — stay focused</p>}
                 {distractions.map(d => (
-                  <div key={d.id} style={{ padding: "7px 4px", borderBottom: "1px solid rgba(139,123,142,0.06)", display: "flex", gap: 10, alignItems: "baseline" }}>
+                  <div key={d.id} style={{ padding: "7px 4px", borderBottom: "1px solid rgba(139,123,142,0.06)", display: "flex", gap: 10, alignItems: "center" }}>
                     <span style={{ fontSize: 10, color: "#6b5b6e", flexShrink: 0, fontFamily: "monospace" }}>{d.time}</span>
-                    <span style={{ fontSize: 13, color: "#c4b8c9" }}>{d.text}</span>
+                    <span style={{ fontSize: 13, color: "#c4b8c9", flex: 1 }}>{d.text}</span>
+                    <button onClick={() => removeDist(d.id)} style={{ background: "none", border: "none", color: "#6b5b6e", cursor: "pointer", fontSize: 14, padding: "0 2px", flexShrink: 0, lineHeight: 1 }}>×</button>
                   </div>
                 ))}
               </div>
