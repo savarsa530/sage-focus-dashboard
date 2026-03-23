@@ -248,7 +248,6 @@ export default function App() {
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [running, setRunning] = useState(false);
   const [phase, setPhase] = useState("work");
-  const [sessions, setSessions] = useState(0);
   const [activeSounds, setActiveSounds] = useState({});
   const [volume, setVolume] = useState(0.3);
   const [loaded, setLoaded] = useState(false);
@@ -282,6 +281,7 @@ export default function App() {
   const ctxRef = useRef(null);
   const intervalRef = useRef(null);
   const distRef = useRef(null);
+  const saveTasksTimer = useRef(null);
   // ── M2: Drag item tracking ────────────────────────────────────────────────
   const dragItemId = useRef(null);
 
@@ -340,7 +340,7 @@ export default function App() {
           window.storage.get("sage-intention").catch(() => null),
           window.storage.get("sage-theme").catch(() => null),
         ]);
-        if (tR?.value) { const t = JSON.parse(tR.value); setTasks(t.tasks || []); setFocusId(t.focusId || null); setSessions(t.sessions || 0); }
+        if (tR?.value) { const t = JSON.parse(tR.value); setTasks(t.tasks || []); setFocusId(t.focusId || null); }
         if (dR?.value) setDistractions(JSON.parse(dR.value));
         if (sR?.value) { const s = JSON.parse(sR.value); setTimerSettings(s); setTimeLeft(s.work * 60); setCustomWork(String(s.work)); setCustomBreak(String(s.brk)); }
         if (lR?.value) setSessionLog(JSON.parse(lR.value));
@@ -351,7 +351,13 @@ export default function App() {
     })();
   }, []);
 
-  useEffect(() => { if (loaded) window.storage.set("sage-tasks", JSON.stringify({ tasks, focusId, sessions })).catch(() => {}); }, [tasks, focusId, sessions, loaded]);
+  useEffect(() => {
+    if (!loaded) return;
+    clearTimeout(saveTasksTimer.current);
+    saveTasksTimer.current = setTimeout(() => {
+      window.storage.set("sage-tasks", JSON.stringify({ tasks, focusId })).catch(() => {});
+    }, 1000);
+  }, [tasks, focusId, loaded]);
   useEffect(() => { if (loaded) window.storage.set("sage-dist", JSON.stringify(distractions)).catch(() => {}); }, [distractions, loaded]);
   useEffect(() => { if (loaded) window.storage.set("sage-settings", JSON.stringify(timerSettings)).catch(() => {}); }, [timerSettings, loaded]);
   useEffect(() => { if (loaded) window.storage.set("sage-log", JSON.stringify(sessionLog)).catch(() => {}); }, [sessionLog, loaded]);
@@ -374,7 +380,7 @@ export default function App() {
           if (t <= 1) {
             playChime();
             if (phase === "work") {
-              setSessions(s => s + 1); updateLog(1); setPhase("break");
+              updateLog(1); setPhase("break");
               setOverlayData({ msg: pick(BREAK_PROMPTS), mantra: pick(MANTRAS) }); setOverlay("refocus");
               return timerSettings.brk * 60;
             } else {
@@ -410,7 +416,7 @@ export default function App() {
     const handler = (e) => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
       if (e.code === "Space") { e.preventDefault(); handleStartRef.current?.(); }
-      if (e.key === "d" || e.key === "D") { e.preventDefault(); distRef.current?.focus(); }
+      if (e.key === "d" || e.key === "D") { e.preventDefault(); setParkingOpen(true); distRef.current?.focus(); }
       if (e.key === "z" || e.key === "Z") { e.preventDefault(); setZenMode(z => !z); }
       if (e.key === "Escape") setOverlay(null);
       // Theme cycling with T key
@@ -551,15 +557,18 @@ export default function App() {
           border:none!important;
           margin:0!important;
         }
+        /* Smooth theme colour transitions on everything without an inline transition */
+        * { transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease; }
+        html{ transition: background 0.3s ease; }
         /* Side quests collapsed/expanded transition */
         .parking-body{
           overflow: hidden;
-          transition: max-height 0.25s ease, opacity 0.2s ease;
+          transition: max-height 0.25s ease, opacity 0.2s ease, background-color 0.2s ease;
         }
         .parking-body.open{ max-height: 400px; opacity: 1; }
         .parking-body.closed{ max-height: 0; opacity: 0; pointer-events: none; }
         /* M2: Drag styles */
-        .task-row{ transition: border-top 0.1s ease, opacity 0.15s ease; }
+        .task-row{ transition: border-top 0.1s ease, opacity 0.15s ease, background-color 0.2s ease, color 0.2s ease; }
         .task-row.drag-over{ border-top: 2px solid ${theme.accent}80 !important; }
         .drag-handle{
           cursor: grab;
@@ -568,7 +577,7 @@ export default function App() {
           padding: 0 4px 0 0;
           flex-shrink: 0;
           user-select: none;
-          transition: color 0.2s;
+          transition: color 0.2s ease;
           line-height: 1;
         }
         .drag-handle:hover{ color: ${theme.textSecondary}; }
@@ -606,12 +615,12 @@ export default function App() {
         }
         .focus-active {
           background: linear-gradient(270deg,
-            ${theme.key === 'light' ? '#f5f0eb' : '#1a1025'},
-            ${theme.key === 'light' ? '#ebe4dc' : '#2d1b3d'},
-            ${theme.key === 'light' ? '#e6ddd4' : '#251832'},
-            ${theme.key === 'light' ? '#ddd8d0' : '#2a1f38'},
-            ${theme.key === 'light' ? '#e8e2db' : '#1e1428'},
-            ${theme.key === 'light' ? '#f0ebe5' : '#1a1025'}) !important;
+            ${theme.key === 'light' ? '#f5f0eb' : theme.key === 'soft' ? '#2a2433' : '#1a1025'},
+            ${theme.key === 'light' ? '#ebe4dc' : theme.key === 'soft' ? '#3d3347' : '#2d1b3d'},
+            ${theme.key === 'light' ? '#e6ddd4' : theme.key === 'soft' ? '#352d40' : '#251832'},
+            ${theme.key === 'light' ? '#ddd8d0' : theme.key === 'soft' ? '#2e2838' : '#2a1f38'},
+            ${theme.key === 'light' ? '#e8e2db' : theme.key === 'soft' ? '#322b3c' : '#1e1428'},
+            ${theme.key === 'light' ? '#f0ebe5' : theme.key === 'soft' ? '#2a2433' : '#1a1025'}) !important;
           background-size: 400% 400% !important;
           animation: gradientShift 15s ease infinite !important;
         }
@@ -631,7 +640,7 @@ export default function App() {
           left: 0;
           width: 60%;
           height: 40%;
-          background: linear-gradient(90deg, transparent, ${theme.key === 'light' ? 'rgba(154,107,74,0.15)' : 'rgba(212,165,116,0.19)'}, ${theme.key === 'light' ? 'rgba(123,158,168,0.12)' : 'rgba(155,126,216,0.12)'}, transparent);
+          background: linear-gradient(90deg, transparent, ${theme.key === 'light' ? 'rgba(154,107,74,0.15)' : theme.key === 'soft' ? 'rgba(224,184,150,0.16)' : 'rgba(212,165,116,0.19)'}, ${theme.key === 'light' ? 'rgba(123,158,168,0.12)' : theme.key === 'soft' ? 'rgba(155,126,216,0.14)' : 'rgba(155,126,216,0.12)'}, transparent);
           border-radius: 50%;
           animation: auroraWave 12s ease-in-out infinite;
         }
@@ -641,7 +650,7 @@ export default function App() {
           right: 0;
           width: 50%;
           height: 35%;
-          background: linear-gradient(90deg, transparent, ${theme.key === 'light' ? 'rgba(123,158,168,0.14)' : 'rgba(123,158,168,0.12)'}, ${theme.key === 'light' ? 'rgba(154,107,74,0.12)' : 'rgba(212,165,116,0.15)'}, transparent);
+          background: linear-gradient(90deg, transparent, ${theme.key === 'light' ? 'rgba(123,158,168,0.14)' : theme.key === 'soft' ? 'rgba(123,158,168,0.13)' : 'rgba(123,158,168,0.12)'}, ${theme.key === 'light' ? 'rgba(154,107,74,0.12)' : theme.key === 'soft' ? 'rgba(224,184,150,0.14)' : 'rgba(212,165,116,0.15)'}, transparent);
           border-radius: 50%;
           animation: auroraWave2 16s ease-in-out infinite;
           animation-delay: 4s;
@@ -652,7 +661,7 @@ export default function App() {
           left: 20%;
           width: 40%;
           height: 30%;
-          background: linear-gradient(90deg, transparent, ${theme.key === 'light' ? 'rgba(155,126,216,0.10)' : 'rgba(155,126,216,0.09)'}, transparent);
+          background: linear-gradient(90deg, transparent, ${theme.key === 'light' ? 'rgba(155,126,216,0.10)' : theme.key === 'soft' ? 'rgba(155,126,216,0.11)' : 'rgba(155,126,216,0.09)'}, transparent);
           border-radius: 50%;
           animation: auroraWave 20s ease-in-out infinite;
           animation-delay: 8s;
@@ -967,7 +976,7 @@ export default function App() {
                   <button onClick={() => toggleTask(t.id)} style={{ background: "none", border: `1.5px solid ${t.done ? theme.accent : theme.textSecondary + "4D"}`, borderRadius: 4, width: 18, height: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: theme.accent, fontSize: 10, flexShrink: 0 }}>{t.done ? "✓" : ""}</button>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, textDecoration: t.done ? "line-through" : "none", color: t.done ? theme.textSecondary : theme.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.text}</div>
-                    {t.focusSecs > 0 && !t.done && <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 1 }}>{fmtMins(t.focusSecs)}</div>}
+                    {t.focusSecs > 0 && <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 1, opacity: t.done ? 0.5 : 1 }}>{fmtMins(t.focusSecs)}</div>}
                   </div>
                   {!t.done && <button onClick={() => { if (focusId === t.id) { setFocusId(null); } else { setFocusId(t.id); getCtx(); setRunning(true); } }} style={btn({ background: focusId === t.id ? theme.accentSoft : "none", border: `1px solid ${focusId === t.id ? theme.accent : theme.textSecondary + "26"}`, borderRadius: 12, padding: "2px 8px", color: focusId === t.id ? theme.accent : theme.textSecondary, fontSize: 10, letterSpacing: 1, flexShrink: 0 })}>{focusId === t.id ? "★" : "focus"}</button>}
                   <button onClick={() => removeTask(t.id)} style={{ background: "none", border: "none", color: theme.textMuted, cursor: "pointer", fontSize: 14, padding: "0 2px", flexShrink: 0 }}>×</button>
