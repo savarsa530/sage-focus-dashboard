@@ -275,6 +275,8 @@ export default function App() {
   // ── Theme ─────────────────────────────────────────────────────────────────
   const [themeKey, setThemeKey] = useState("dark");
   const theme = THEMES[themeKey];
+  // ── Parking lot collapse ──────────────────────────────────────────────────
+  const [parkingOpen, setParkingOpen] = useState(true);
 
   const soundRefs = useRef({});
   const ctxRef = useRef(null);
@@ -549,15 +551,12 @@ export default function App() {
           border:none!important;
           margin:0!important;
         }
-        /* L3: Tasks / Side Quests grid — side quests get 1.5x width */
+        /* Panels grid — wraps automatically when window is too narrow */
         .sage-panels{
           display:grid;
-          grid-template-columns:1fr 1.5fr;
+          grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
           gap:16px;
           margin-bottom:24px;
-        }
-        @media(max-width:700px){
-          .sage-panels{grid-template-columns:1fr;}
         }
         /* M2: Drag styles */
         .task-row{ transition: border-top 0.1s ease, opacity 0.15s ease; }
@@ -982,26 +981,39 @@ export default function App() {
             </div>
 
             {/* ══ SIDE QUESTS PANEL ══ */}
-            <div style={{ padding: "18px", background: theme.panelBg, borderRadius: 16, border: `1px solid ${theme.panelBorder}` }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: theme.textSecondary }}>Side Quests <span style={{ fontSize: 10, opacity: 0.5 }}>(D)</span></span>
-                {distractions.length > 0 && <button onClick={clearDist} style={{ background: "none", border: "none", color: theme.textSecondary, cursor: "pointer", fontSize: 11, textDecoration: "underline" }}>Clear all</button>}
+            <div style={{ padding: "18px", background: theme.panelBg, borderRadius: 16, border: `1px solid ${theme.panelBorder}`, transition: "all 0.2s ease" }}>
+              {/* Header — always visible, click to collapse/expand */}
+              <div onClick={() => setParkingOpen(o => !o)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: parkingOpen ? 12 : 0, cursor: "pointer", userSelect: "none" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: theme.textSecondary }}>Side Quests <span style={{ fontSize: 10, opacity: 0.5 }}>(D)</span></span>
+                  {!parkingOpen && distractions.length > 0 && (
+                    <span style={{ fontSize: 11, color: "#9B7ED8", background: "rgba(155,126,216,0.15)", border: "1px solid rgba(155,126,216,0.3)", borderRadius: 10, padding: "1px 7px" }}>{distractions.length}</span>
+                  )}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {parkingOpen && distractions.length > 0 && <button onClick={e => { e.stopPropagation(); clearDist(); }} style={{ background: "none", border: "none", color: theme.textSecondary, cursor: "pointer", fontSize: 11, textDecoration: "underline" }}>Clear all</button>}
+                  <span style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1, transition: "transform 0.2s", transform: parkingOpen ? "rotate(0deg)" : "rotate(-90deg)", display: "inline-block" }}>▾</span>
+                </div>
               </div>
-              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                <input ref={distRef} value={newDist} onChange={e => setNewDist(e.target.value)} onKeyDown={e => e.key === "Enter" && addDist()} placeholder="Park a thought..."
-                  style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: `1px solid ${theme.inputBorder}`, background: theme.inputBg, color: theme.textPrimary, fontSize: 13 }} />
-                <button onClick={addDist} style={btn({ padding: "8px 14px", borderRadius: 10, border: "1px solid rgba(155,126,216,0.3)", background: "rgba(155,126,216,0.1)", color: "#9B7ED8", fontSize: 16, lineHeight: 1 })}>+</button>
-              </div>
-              <div style={{ maxHeight: 280, overflowY: "auto" }}>
-                {distractions.length === 0 && <p style={{ color: theme.textMuted, fontSize: 13, fontStyle: "italic", textAlign: "center", margin: "16px 0" }}>Nothing parked yet — stay focused</p>}
-                {distractions.map(d => (
-                  <div key={d.id} style={{ padding: "7px 4px", borderBottom: `1px solid ${theme.textSecondary}0F`, display: "flex", gap: 10, alignItems: "center" }}>
-                    <span style={{ fontSize: 10, color: theme.textMuted, flexShrink: 0, fontFamily: "monospace" }}>{d.time}</span>
-                    <span style={{ fontSize: 13, color: theme.textPrimary, flex: 1, opacity: 0.85 }}>{d.text}</span>
-                    <button onClick={() => removeDist(d.id)} style={{ background: "none", border: "none", color: theme.textMuted, cursor: "pointer", fontSize: 14, padding: "0 2px", flexShrink: 0, lineHeight: 1 }}>×</button>
+              {parkingOpen && (
+                <>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                    <input ref={distRef} value={newDist} onChange={e => setNewDist(e.target.value)} onKeyDown={e => e.key === "Enter" && addDist()} placeholder="Park a thought..."
+                      style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: `1px solid ${theme.inputBorder}`, background: theme.inputBg, color: theme.textPrimary, fontSize: 13 }} />
+                    <button onClick={addDist} style={btn({ padding: "8px 14px", borderRadius: 10, border: "1px solid rgba(155,126,216,0.3)", background: "rgba(155,126,216,0.1)", color: "#9B7ED8", fontSize: 16, lineHeight: 1 })}>+</button>
                   </div>
-                ))}
-              </div>
+                  <div style={{ maxHeight: 280, overflowY: "auto" }}>
+                    {distractions.length === 0 && <p style={{ color: theme.textMuted, fontSize: 13, fontStyle: "italic", textAlign: "center", margin: "16px 0" }}>Nothing parked yet — stay focused</p>}
+                    {distractions.map(d => (
+                      <div key={d.id} style={{ padding: "7px 4px", borderBottom: `1px solid ${theme.textSecondary}0F`, display: "flex", gap: 10, alignItems: "center" }}>
+                        <span style={{ fontSize: 10, color: theme.textMuted, flexShrink: 0, fontFamily: "monospace" }}>{d.time}</span>
+                        <span style={{ fontSize: 13, color: theme.textPrimary, flex: 1, opacity: 0.85 }}>{d.text}</span>
+                        <button onClick={() => removeDist(d.id)} style={{ background: "none", border: "none", color: theme.textMuted, cursor: "pointer", fontSize: 14, padding: "0 2px", flexShrink: 0, lineHeight: 1 }}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
 
           </div>
