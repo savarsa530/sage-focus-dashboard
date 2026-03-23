@@ -557,8 +557,8 @@ export default function App() {
           border:none!important;
           margin:0!important;
         }
-        /* Smooth theme colour transitions on everything without an inline transition */
-        * { transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease; }
+        /* Smooth theme colour transitions — exclude draggable rows to avoid Chrome drag bug */
+        *:not([draggable="true"]) { transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease; }
         html{ transition: background 0.3s ease; }
         /* Side quests collapsed/expanded transition */
         .parking-body{
@@ -1042,7 +1042,7 @@ export default function App() {
 
       <div style={{ textAlign: "center", marginTop: 16, fontSize: 11, color: theme.textDimmest, letterSpacing: 1 }}>{zenMode ? "◯ zen mode · press Z to exit" : "✦ breathe · focus · flow ✦"}</div>
       {!zenMode && <div style={{ textAlign: "center", marginTop: 6, fontSize: 10, color: theme.textDimmest, letterSpacing: 1 }}>⎵ start/pause · D distraction · Z zen · T theme · Esc dismiss</div>}
-      <div style={{ textAlign: "center", marginTop: 12, fontSize: 10, color: theme.textDimmest, letterSpacing: 1, opacity: 0.6 }}>v0.2.1 · updated March 23, 2026</div>
+      <div style={{ textAlign: "center", marginTop: 12, fontSize: 10, color: theme.textDimmest, letterSpacing: 1, opacity: 0.6 }}>v0.2.3 · updated March 23, 2026</div>
     </div>
   );
 }
