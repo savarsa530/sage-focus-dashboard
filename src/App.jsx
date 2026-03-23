@@ -551,13 +551,13 @@ export default function App() {
           border:none!important;
           margin:0!important;
         }
-        /* Panels grid — wraps automatically when window is too narrow */
-        .sage-panels{
-          display:grid;
-          grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-          gap:16px;
-          margin-bottom:24px;
+        /* Side quests collapsed/expanded transition */
+        .parking-body{
+          overflow: hidden;
+          transition: max-height 0.25s ease, opacity 0.2s ease;
         }
+        .parking-body.open{ max-height: 400px; opacity: 1; }
+        .parking-body.closed{ max-height: 0; opacity: 0; pointer-events: none; }
         /* M2: Drag styles */
         .task-row{ transition: border-top 0.1s ease, opacity 0.15s ease; }
         .task-row.drag-over{ border-top: 2px solid ${theme.accent}80 !important; }
@@ -898,124 +898,119 @@ export default function App() {
       {/* ═══ PANELS ═══ */}
       {!zenMode && (
         <>
-          <div className="sage-panels" style={{ position: "relative", zIndex: 1 }}>
+          {/* ══ TASKS PANEL — full width ══ */}
+          <div style={{ padding: "18px", background: theme.panelBg, borderRadius: 16, border: `1px solid ${theme.panelBorder}`, marginBottom: 12, position: "relative", zIndex: 1 }}>
 
-            {/* ══ TASKS PANEL ══ */}
-            <div style={{ padding: "18px", background: theme.panelBg, borderRadius: 16, border: `1px solid ${theme.panelBorder}` }}>
-
-              {/* Header */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: theme.textSecondary }}>Tasks</span>
-                {tasks.some(t => t.done) && <button onClick={clearDone} style={{ background: "none", border: "none", color: theme.textSecondary, cursor: "pointer", fontSize: 11, textDecoration: "underline" }}>Clear done</button>}
-              </div>
-
-              {/* M3: Sort controls with bidirectional arrows */}
-              <div style={{ display: "flex", gap: 5, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
-                {[
-                  { key: "default", label: "Default" },
-                  { key: "alpha",   label: "A–Z" },
-                  { key: "time",    label: "Time" },
-                ].map(s => (
-                  <button key={s.key} className="sort-pill" onClick={() => toggleSort(s.key)}
-                    style={btn({ padding: "3px 11px", fontSize: 11, borderRadius: 12,
-                      border: `1px solid ${sortBy === s.key ? theme.accent + "80" : theme.textSecondary + "33"}`,
-                      background: sortBy === s.key ? theme.accentSoft : "transparent",
-                      color: sortBy === s.key ? theme.accent : theme.textMuted,
-                    })}>{s.label}{sortArrow(s.key)}
-                  </button>
-                ))}
-                <button className="sort-pill" onClick={() => setDoneToBottom(d => !d)}
-                  style={btn({ padding: "3px 11px", fontSize: 11, borderRadius: 12,
-                    border: `1px solid ${doneToBottom ? theme.accent + "80" : theme.textSecondary + "33"}`,
-                    background: doneToBottom ? theme.accentSoft : "transparent",
-                    color: doneToBottom ? theme.accent : theme.textMuted,
-                  })}>Done ↓
-                </button>
-                {canDrag && tasks.length > 1 && (
-                  <span style={{ fontSize: 10, color: theme.textDimmest, marginLeft: 2 }}>drag ⠿ to reorder</span>
-                )}
-              </div>
-
-              {/* Add task */}
-              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === "Enter" && addTask()} placeholder="Add a task..."
-                  style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: `1px solid ${theme.inputBorder}`, background: theme.inputBg, color: theme.textPrimary, fontSize: 13 }} />
-                <button onClick={addTask} style={btn({ padding: "8px 14px", borderRadius: 10, border: `1px solid ${theme.accent}4D`, background: theme.accentSoft, color: theme.accent, fontSize: 16, lineHeight: 1 })}>+</button>
-              </div>
-
-              {/* Task list */}
-              <div style={{ maxHeight: 280, overflowY: "auto" }}>
-                {tasks.length === 0 && <p style={{ color: theme.textMuted, fontSize: 13, fontStyle: "italic", textAlign: "center", margin: "16px 0" }}>Your slate is clean</p>}
-                {sortedTasks.map(t => (
-                  <div
-                    key={t.id}
-                    className={`task-row${dragOverId === t.id ? " drag-over" : ""}`}
-                    draggable={canDrag}
-                    onDragStart={() => handleDragStart(t.id)}
-                    onDragOver={e => handleDragOver(e, t.id)}
-                    onDrop={e => handleDrop(e, t.id)}
-                    onDragEnd={handleDragEnd}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 8,
-                      padding: "7px 4px",
-                      borderBottom: `1px solid ${theme.textSecondary}0F`,
-                      borderTop: "2px solid transparent",
-                      opacity: t.done ? 0.4 : 1,
-                      background: focusId === t.id ? theme.accentSoft : "transparent",
-                      borderRadius: focusId === t.id ? 8 : 0,
-                    }}
-                  >
-                    {/* M2: Grip handle */}
-                    {canDrag && <span className="drag-handle" title="Drag to reorder">⠿</span>}
-
-                    <button onClick={() => toggleTask(t.id)} style={{ background: "none", border: `1.5px solid ${t.done ? theme.accent : theme.textSecondary + "4D"}`, borderRadius: 4, width: 18, height: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: theme.accent, fontSize: 10, flexShrink: 0 }}>{t.done ? "✓" : ""}</button>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, textDecoration: t.done ? "line-through" : "none", color: t.done ? theme.textSecondary : theme.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.text}</div>
-                      {t.focusSecs > 0 && !t.done && <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 1 }}>{fmtMins(t.focusSecs)}</div>}
-                    </div>
-                    {!t.done && <button onClick={() => { if (focusId === t.id) { setFocusId(null); } else { setFocusId(t.id); getCtx(); setRunning(true); } }} style={btn({ background: focusId === t.id ? theme.accentSoft : "none", border: `1px solid ${focusId === t.id ? theme.accent : theme.textSecondary + "26"}`, borderRadius: 12, padding: "2px 8px", color: focusId === t.id ? theme.accent : theme.textSecondary, fontSize: 10, letterSpacing: 1, flexShrink: 0 })}>{focusId === t.id ? "★" : "focus"}</button>}
-                    <button onClick={() => removeTask(t.id)} style={{ background: "none", border: "none", color: theme.textMuted, cursor: "pointer", fontSize: 14, padding: "0 2px", flexShrink: 0 }}>×</button>
-                  </div>
-                ))}
-              </div>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: theme.textSecondary }}>Tasks</span>
+              {tasks.some(t => t.done) && <button onClick={clearDone} style={{ background: "none", border: "none", color: theme.textSecondary, cursor: "pointer", fontSize: 11, textDecoration: "underline" }}>Clear done</button>}
             </div>
 
-            {/* ══ SIDE QUESTS PANEL ══ */}
-            <div style={{ padding: "18px", background: theme.panelBg, borderRadius: 16, border: `1px solid ${theme.panelBorder}`, transition: "all 0.2s ease" }}>
-              {/* Header — always visible, click to collapse/expand */}
-              <div onClick={() => setParkingOpen(o => !o)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: parkingOpen ? 12 : 0, cursor: "pointer", userSelect: "none" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: theme.textSecondary }}>Side Quests <span style={{ fontSize: 10, opacity: 0.5 }}>(D)</span></span>
-                  {!parkingOpen && distractions.length > 0 && (
-                    <span style={{ fontSize: 11, color: "#9B7ED8", background: "rgba(155,126,216,0.15)", border: "1px solid rgba(155,126,216,0.3)", borderRadius: 10, padding: "1px 7px" }}>{distractions.length}</span>
-                  )}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {parkingOpen && distractions.length > 0 && <button onClick={e => { e.stopPropagation(); clearDist(); }} style={{ background: "none", border: "none", color: theme.textSecondary, cursor: "pointer", fontSize: 11, textDecoration: "underline" }}>Clear all</button>}
-                  <span style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1, transition: "transform 0.2s", transform: parkingOpen ? "rotate(0deg)" : "rotate(-90deg)", display: "inline-block" }}>▾</span>
-                </div>
-              </div>
-              {parkingOpen && (
-                <>
-                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                    <input ref={distRef} value={newDist} onChange={e => setNewDist(e.target.value)} onKeyDown={e => e.key === "Enter" && addDist()} placeholder="Park a thought..."
-                      style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: `1px solid ${theme.inputBorder}`, background: theme.inputBg, color: theme.textPrimary, fontSize: 13 }} />
-                    <button onClick={addDist} style={btn({ padding: "8px 14px", borderRadius: 10, border: "1px solid rgba(155,126,216,0.3)", background: "rgba(155,126,216,0.1)", color: "#9B7ED8", fontSize: 16, lineHeight: 1 })}>+</button>
-                  </div>
-                  <div style={{ maxHeight: 280, overflowY: "auto" }}>
-                    {distractions.length === 0 && <p style={{ color: theme.textMuted, fontSize: 13, fontStyle: "italic", textAlign: "center", margin: "16px 0" }}>Nothing parked yet — stay focused</p>}
-                    {distractions.map(d => (
-                      <div key={d.id} style={{ padding: "7px 4px", borderBottom: `1px solid ${theme.textSecondary}0F`, display: "flex", gap: 10, alignItems: "center" }}>
-                        <span style={{ fontSize: 10, color: theme.textMuted, flexShrink: 0, fontFamily: "monospace" }}>{d.time}</span>
-                        <span style={{ fontSize: 13, color: theme.textPrimary, flex: 1, opacity: 0.85 }}>{d.text}</span>
-                        <button onClick={() => removeDist(d.id)} style={{ background: "none", border: "none", color: theme.textMuted, cursor: "pointer", fontSize: 14, padding: "0 2px", flexShrink: 0, lineHeight: 1 }}>×</button>
-                      </div>
-                    ))}
-                  </div>
-                </>
+            {/* Sort controls */}
+            <div style={{ display: "flex", gap: 5, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
+              {[
+                { key: "default", label: "Default" },
+                { key: "alpha",   label: "A–Z" },
+                { key: "time",    label: "Time" },
+              ].map(s => (
+                <button key={s.key} className="sort-pill" onClick={() => toggleSort(s.key)}
+                  style={btn({ padding: "3px 11px", fontSize: 11, borderRadius: 12,
+                    border: `1px solid ${sortBy === s.key ? theme.accent + "80" : theme.textSecondary + "33"}`,
+                    background: sortBy === s.key ? theme.accentSoft : "transparent",
+                    color: sortBy === s.key ? theme.accent : theme.textMuted,
+                  })}>{s.label}{sortArrow(s.key)}
+                </button>
+              ))}
+              <button className="sort-pill" onClick={() => setDoneToBottom(d => !d)}
+                style={btn({ padding: "3px 11px", fontSize: 11, borderRadius: 12,
+                  border: `1px solid ${doneToBottom ? theme.accent + "80" : theme.textSecondary + "33"}`,
+                  background: doneToBottom ? theme.accentSoft : "transparent",
+                  color: doneToBottom ? theme.accent : theme.textMuted,
+                })}>Done ↓
+              </button>
+              {canDrag && tasks.length > 1 && (
+                <span style={{ fontSize: 10, color: theme.textDimmest, marginLeft: 2 }}>drag ⠿ to reorder</span>
               )}
             </div>
 
+            {/* Add task */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === "Enter" && addTask()} placeholder="Add a task..."
+                style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: `1px solid ${theme.inputBorder}`, background: theme.inputBg, color: theme.textPrimary, fontSize: 13 }} />
+              <button onClick={addTask} style={btn({ padding: "8px 14px", borderRadius: 10, border: `1px solid ${theme.accent}4D`, background: theme.accentSoft, color: theme.accent, fontSize: 16, lineHeight: 1 })}>+</button>
+            </div>
+
+            {/* Task list */}
+            <div style={{ maxHeight: 280, overflowY: "auto" }}>
+              {tasks.length === 0 && <p style={{ color: theme.textMuted, fontSize: 13, fontStyle: "italic", textAlign: "center", margin: "16px 0" }}>Your slate is clean</p>}
+              {sortedTasks.map(t => (
+                <div
+                  key={t.id}
+                  className={`task-row${dragOverId === t.id ? " drag-over" : ""}`}
+                  draggable={canDrag}
+                  onDragStart={() => handleDragStart(t.id)}
+                  onDragOver={e => handleDragOver(e, t.id)}
+                  onDrop={e => handleDrop(e, t.id)}
+                  onDragEnd={handleDragEnd}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "7px 4px",
+                    borderBottom: `1px solid ${theme.textSecondary}0F`,
+                    borderTop: "2px solid transparent",
+                    opacity: t.done ? 0.4 : 1,
+                    background: focusId === t.id ? theme.accentSoft : "transparent",
+                    borderRadius: focusId === t.id ? 8 : 0,
+                  }}
+                >
+                  {canDrag && <span className="drag-handle" title="Drag to reorder">⠿</span>}
+                  <button onClick={() => toggleTask(t.id)} style={{ background: "none", border: `1.5px solid ${t.done ? theme.accent : theme.textSecondary + "4D"}`, borderRadius: 4, width: 18, height: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: theme.accent, fontSize: 10, flexShrink: 0 }}>{t.done ? "✓" : ""}</button>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, textDecoration: t.done ? "line-through" : "none", color: t.done ? theme.textSecondary : theme.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.text}</div>
+                    {t.focusSecs > 0 && !t.done && <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 1 }}>{fmtMins(t.focusSecs)}</div>}
+                  </div>
+                  {!t.done && <button onClick={() => { if (focusId === t.id) { setFocusId(null); } else { setFocusId(t.id); getCtx(); setRunning(true); } }} style={btn({ background: focusId === t.id ? theme.accentSoft : "none", border: `1px solid ${focusId === t.id ? theme.accent : theme.textSecondary + "26"}`, borderRadius: 12, padding: "2px 8px", color: focusId === t.id ? theme.accent : theme.textSecondary, fontSize: 10, letterSpacing: 1, flexShrink: 0 })}>{focusId === t.id ? "★" : "focus"}</button>}
+                  <button onClick={() => removeTask(t.id)} style={{ background: "none", border: "none", color: theme.textMuted, cursor: "pointer", fontSize: 14, padding: "0 2px", flexShrink: 0 }}>×</button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ══ SIDE QUESTS — collapsible bar below tasks ══ */}
+          <div style={{ background: theme.panelBg, borderRadius: 16, border: `1px solid ${theme.panelBorder}`, marginBottom: 12, position: "relative", zIndex: 1, overflow: "hidden" }}>
+            {/* Header — always visible */}
+            <div onClick={() => setParkingOpen(o => !o)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 18px", cursor: "pointer", userSelect: "none" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: theme.textSecondary }}>Side Quests <span style={{ fontSize: 10, opacity: 0.5 }}>(D)</span></span>
+                {distractions.length > 0 && (
+                  <span style={{ fontSize: 11, color: "#9B7ED8", background: "rgba(155,126,216,0.15)", border: "1px solid rgba(155,126,216,0.3)", borderRadius: 10, padding: "1px 7px" }}>{distractions.length}</span>
+                )}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {parkingOpen && distractions.length > 0 && <button onClick={e => { e.stopPropagation(); clearDist(); }} style={{ background: "none", border: "none", color: theme.textSecondary, cursor: "pointer", fontSize: 11, textDecoration: "underline" }}>Clear all</button>}
+                <span style={{ fontSize: 14, color: theme.textMuted, lineHeight: 1, transition: "transform 0.2s", transform: parkingOpen ? "rotate(0deg)" : "rotate(-90deg)", display: "inline-block" }}>▾</span>
+              </div>
+            </div>
+            {/* Body — smooth CSS transition */}
+            <div className={`parking-body ${parkingOpen ? "open" : "closed"}`}>
+              <div style={{ padding: "0 18px 14px" }}>
+                <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                  <input ref={distRef} value={newDist} onChange={e => setNewDist(e.target.value)} onKeyDown={e => e.key === "Enter" && addDist()} placeholder="Park a thought..."
+                    style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: `1px solid ${theme.inputBorder}`, background: theme.inputBg, color: theme.textPrimary, fontSize: 13 }} />
+                  <button onClick={addDist} style={btn({ padding: "8px 14px", borderRadius: 10, border: "1px solid rgba(155,126,216,0.3)", background: "rgba(155,126,216,0.1)", color: "#9B7ED8", fontSize: 16, lineHeight: 1 })}>+</button>
+                </div>
+                <div style={{ maxHeight: 200, overflowY: "auto" }}>
+                  {distractions.length === 0 && <p style={{ color: theme.textMuted, fontSize: 13, fontStyle: "italic", textAlign: "center", margin: "12px 0" }}>Nothing parked yet — stay focused</p>}
+                  {distractions.map(d => (
+                    <div key={d.id} style={{ padding: "7px 4px", borderBottom: `1px solid ${theme.textSecondary}0F`, display: "flex", gap: 10, alignItems: "center" }}>
+                      <span style={{ fontSize: 10, color: theme.textMuted, flexShrink: 0, fontFamily: "monospace" }}>{d.time}</span>
+                      <span style={{ fontSize: 13, color: theme.textPrimary, flex: 1, opacity: 0.85 }}>{d.text}</span>
+                      <button onClick={() => removeDist(d.id)} style={{ background: "none", border: "none", color: theme.textMuted, cursor: "pointer", fontSize: 14, padding: "0 2px", flexShrink: 0, lineHeight: 1 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div style={{ padding: "18px 20px", background: theme.panelBg, borderRadius: 16, border: `1px solid ${theme.panelBorder}`, marginBottom: 16 }}>
