@@ -861,7 +861,7 @@ export default function App() {
             </div>
           </div>
         )}
-        <div style={{ marginTop: 10, fontSize: 12, color: theme.textSecondary, textAlign: "center" }}>Sessions today: <span style={{ color: theme.accent }}>{todayLog?.sessions || sessions}</span></div>
+        <div style={{ marginTop: 10, fontSize: 12, color: theme.textSecondary, textAlign: "center" }}>Sessions today: <span style={{ color: theme.accent }}>{todayLog?.sessions ?? 0}</span></div>
       </div>
 
       {/* ═══ SOUNDSCAPE ═══ */}
@@ -1026,6 +1026,7 @@ export default function App() {
 
       <div style={{ textAlign: "center", marginTop: 16, fontSize: 11, color: theme.textDimmest, letterSpacing: 1 }}>{zenMode ? "◯ zen mode · press Z to exit" : "✦ breathe · focus · flow ✦"}</div>
       {!zenMode && <div style={{ textAlign: "center", marginTop: 6, fontSize: 10, color: theme.textDimmest, letterSpacing: 1 }}>⎵ start/pause · D distraction · Z zen · T theme · Esc dismiss</div>}
+      <div style={{ textAlign: "center", marginTop: 12, fontSize: 10, color: theme.textDimmest, letterSpacing: 1, opacity: 0.6 }}>v0.2.1 · updated March 23, 2026</div>
     </div>
   );
 }
