@@ -34,6 +34,61 @@ const CELEBRATIONS = [
   "Intention met. That's not small.", "You said you'd do it. You did it.",
 ];
 
+// ─── Theme Definitions ───
+const THEMES = {
+  dark: {
+    key: "dark",
+    label: "Deep",
+    icon: "☽",
+    bg: "linear-gradient(145deg, #1a1025 0%, #2d1b3d 40%, #1e1428 100%)",
+    textPrimary: "#e8ddd3",
+    textSecondary: "#8b7b8e",
+    textMuted: "#6b5b6e",
+    textDimmest: "#4a3d4e",
+    accent: "#d4a574",
+    accentSoft: "rgba(212,165,116,0.15)",
+    panelBg: "rgba(255,255,255,0.02)",
+    panelBorder: "rgba(139,123,142,0.1)",
+    inputBg: "rgba(255,255,255,0.04)",
+    inputBorder: "rgba(139,123,142,0.2)",
+    overlayBg: "rgba(10,6,15,0.92)",
+  },
+  soft: {
+    key: "soft",
+    label: "Soft",
+    icon: "◐",
+    bg: "linear-gradient(145deg, #2a2433 0%, #3d3347 40%, #2e2838 100%)",
+    textPrimary: "#f0e6dc",
+    textSecondary: "#a89aad",
+    textMuted: "#8a7d8f",
+    textDimmest: "#6a5d6e",
+    accent: "#e0b896",
+    accentSoft: "rgba(224,184,150,0.18)",
+    panelBg: "rgba(255,255,255,0.04)",
+    panelBorder: "rgba(168,154,173,0.12)",
+    inputBg: "rgba(255,255,255,0.06)",
+    inputBorder: "rgba(168,154,173,0.25)",
+    overlayBg: "rgba(30,24,38,0.94)",
+  },
+  light: {
+    key: "light",
+    label: "Awake",
+    icon: "☀",
+    bg: "linear-gradient(145deg, #f5f0eb 0%, #ebe4dc 40%, #f0ebe5 100%)",
+    textPrimary: "#2d2433",
+    textSecondary: "#6b5d70",
+    textMuted: "#8a7d8f",
+    textDimmest: "#b0a3b5",
+    accent: "#9a6b4a",
+    accentSoft: "rgba(154,107,74,0.12)",
+    panelBg: "rgba(255,255,255,0.7)",
+    panelBorder: "rgba(139,123,142,0.15)",
+    inputBg: "rgba(255,255,255,0.8)",
+    inputBorder: "rgba(139,123,142,0.25)",
+    overlayBg: "rgba(245,240,235,0.96)",
+  },
+};
+
 const today = () => new Date().toISOString().slice(0, 10);
 const fmt = (s) => { const m = Math.floor(s / 60), sc = s % 60; return `${String(m).padStart(2, "0")}:${String(sc).padStart(2, "0")}`; };
 const fmtMins = (s) => { const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h > 0 ? `${h}h ${m}m` : `${m}m`; };
@@ -125,15 +180,15 @@ function buildBinaural(ctx, vol) {
 
 const BUILDERS = { rain: buildRain, brown: buildBrown, white: buildWhite, binaural: buildBinaural };
 
-function Overlay({ children, onClose, bg }) {
+function Overlay({ children, onClose, bg, theme }) {
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: bg || "rgba(10,6,15,0.92)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, backdropFilter: "blur(8px)" }}>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: bg || theme.overlayBg, zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, backdropFilter: "blur(8px)" }}>
       <div onClick={e => e.stopPropagation()} style={{ textAlign: "center", maxWidth: 460, animation: "fadeUp 0.6s ease", width: "100%" }}>{children}</div>
     </div>
   );
 }
 
-function StreakGrid({ log }) {
+function StreakGrid({ log, theme }) {
   const days = [];
   for (let i = 13; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
@@ -144,11 +199,42 @@ function StreakGrid({ log }) {
   return (
     <div style={{ display: "flex", gap: 4, justifyContent: "center", flexWrap: "wrap" }}>
       {days.map(d => (
-        <div key={d.key} title={`${d.key}: ${d.sessions} sessions, ${d.mins}m`} style={{ width: 28, height: 28, borderRadius: 6, background: d.sessions === 0 ? "rgba(139,123,142,0.08)" : d.sessions < 3 ? "rgba(212,165,116,0.2)" : d.sessions < 6 ? "rgba(212,165,116,0.4)" : "rgba(212,165,116,0.7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: d.sessions > 0 ? "#1a1025" : "#6b5b6e", fontWeight: 600 }}>
+        <div key={d.key} title={`${d.key}: ${d.sessions} sessions, ${d.mins}m`} style={{ width: 28, height: 28, borderRadius: 6, background: d.sessions === 0 ? `${theme.textMuted}14` : d.sessions < 3 ? `${theme.accent}33` : d.sessions < 6 ? `${theme.accent}66` : `${theme.accent}B3`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: d.sessions > 0 ? (theme.key === "light" ? "#fff" : "#1a1025") : theme.textMuted, fontWeight: 600 }}>
           {d.label}
         </div>
       ))}
     </div>
+  );
+}
+
+// ─── Live Clock Component ───
+function LiveClock({ theme }) {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const tick = () => setTime(new Date());
+    let intervalId = null;
+
+    const now = new Date();
+    const msUntilNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+
+    const timeout = setTimeout(() => {
+      tick();
+      intervalId = setInterval(tick, 60000);
+    }, msUntilNextMinute);
+
+    return () => {
+      clearTimeout(timeout);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, []);
+
+  const formatted = time.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+  return (
+    <span style={{ fontSize: 13, color: theme.textSecondary, fontFamily: "'Courier New', monospace", letterSpacing: 1 }}>
+      {formatted}
+    </span>
   );
 }
 
@@ -180,11 +266,15 @@ export default function App() {
   // ── L4: Skip break ────────────────────────────────────────────────────────
   const [skipReason, setSkipReason] = useState("");
   const [showSkipInput, setShowSkipInput] = useState(false);
-  // ── M3: Sort ──────────────────────────────────────────────────────────────
+  // ── M3: Sort — now with direction ─────────────────────────────────────────
   const [sortBy, setSortBy] = useState("default"); // "default" | "alpha" | "time"
+  const [sortDir, setSortDir] = useState("asc"); // "asc" | "desc"
   const [doneToBottom, setDoneToBottom] = useState(false);
   // ── M2: Drag visual feedback ──────────────────────────────────────────────
   const [dragOverId, setDragOverId] = useState(null);
+  // ── Theme ─────────────────────────────────────────────────────────────────
+  const [themeKey, setThemeKey] = useState("dark");
+  const theme = THEMES[themeKey];
 
   const soundRefs = useRef({});
   const ctxRef = useRef(null);
@@ -240,18 +330,20 @@ export default function App() {
   useEffect(() => {
     (async () => {
       try {
-        const [tR, dR, sR, lR, iR] = await Promise.all([
+        const [tR, dR, sR, lR, iR, thR] = await Promise.all([
           window.storage.get("sage-tasks").catch(() => null),
           window.storage.get("sage-dist").catch(() => null),
           window.storage.get("sage-settings").catch(() => null),
           window.storage.get("sage-log").catch(() => null),
           window.storage.get("sage-intention").catch(() => null),
+          window.storage.get("sage-theme").catch(() => null),
         ]);
         if (tR?.value) { const t = JSON.parse(tR.value); setTasks(t.tasks || []); setFocusId(t.focusId || null); setSessions(t.sessions || 0); }
         if (dR?.value) setDistractions(JSON.parse(dR.value));
         if (sR?.value) { const s = JSON.parse(sR.value); setTimerSettings(s); setTimeLeft(s.work * 60); setCustomWork(String(s.work)); setCustomBreak(String(s.brk)); }
         if (lR?.value) setSessionLog(JSON.parse(lR.value));
         if (iR?.value) { const i = JSON.parse(iR.value); if (i.date === today()) { setDailyIntention(i.text); setShowedIntention(true); } }
+        if (thR?.value && THEMES[thR.value]) setThemeKey(thR.value);
       } catch (_) {}
       setLoaded(true);
     })();
@@ -261,6 +353,7 @@ export default function App() {
   useEffect(() => { if (loaded) window.storage.set("sage-dist", JSON.stringify(distractions)).catch(() => {}); }, [distractions, loaded]);
   useEffect(() => { if (loaded) window.storage.set("sage-settings", JSON.stringify(timerSettings)).catch(() => {}); }, [timerSettings, loaded]);
   useEffect(() => { if (loaded) window.storage.set("sage-log", JSON.stringify(sessionLog)).catch(() => {}); }, [sessionLog, loaded]);
+  useEffect(() => { if (loaded) window.storage.set("sage-theme", themeKey).catch(() => {}); }, [themeKey, loaded]);
   useEffect(() => { if (loaded && !showedIntention && !dailyIntention) { setOverlay("intention"); setShowedIntention(true); } }, [loaded, showedIntention, dailyIntention]);
 
   // Reset skip state when overlay changes
@@ -318,10 +411,25 @@ export default function App() {
       if (e.key === "d" || e.key === "D") { e.preventDefault(); distRef.current?.focus(); }
       if (e.key === "z" || e.key === "Z") { e.preventDefault(); setZenMode(z => !z); }
       if (e.key === "Escape") setOverlay(null);
+      // Theme cycling with T key
+      if (e.key === "t" || e.key === "T") {
+        e.preventDefault();
+        setThemeKey(k => k === "dark" ? "soft" : k === "soft" ? "light" : "dark");
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+
+  // ─── Focus mode ambient effect on html ───
+  useEffect(() => {
+    if (running) {
+      document.documentElement.classList.add('focus-active');
+    } else {
+      document.documentElement.classList.remove('focus-active');
+    }
+    return () => document.documentElement.classList.remove('focus-active');
+  }, [running]);
 
   // ─── Actions ───
   const addTask = () => { if (!newTask.trim()) return; setTasks(t => [...t, { id: Date.now(), text: newTask.trim(), done: false, focusSecs: 0 }]); setNewTask(""); };
@@ -372,11 +480,33 @@ export default function App() {
   };
   const handleDragEnd = () => { dragItemId.current = null; setDragOverId(null); };
 
+  // ── M3: Bidirectional sort toggle ─────────────────────────────────────────
+  const toggleSort = (key) => {
+    if (sortBy === key) {
+      // Toggle direction
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      // Switch to new sort, default direction
+      setSortBy(key);
+      setSortDir("asc");
+    }
+  };
+
   // ── M3: Computed sorted task list ─────────────────────────────────────────
   const sortedTasks = (() => {
     let arr = [...tasks];
-    if (sortBy === "alpha") arr.sort((a, b) => a.text.localeCompare(b.text));
-    if (sortBy === "time") arr.sort((a, b) => (b.focusSecs || 0) - (a.focusSecs || 0));
+    if (sortBy === "alpha") {
+      arr.sort((a, b) => sortDir === "asc"
+        ? a.text.localeCompare(b.text)
+        : b.text.localeCompare(a.text)
+      );
+    }
+    if (sortBy === "time") {
+      arr.sort((a, b) => sortDir === "asc"
+        ? (b.focusSecs || 0) - (a.focusSecs || 0)  // asc = most time first (default)
+        : (a.focusSecs || 0) - (b.focusSecs || 0)  // desc = least time first
+      );
+    }
     if (doneToBottom) arr.sort((a, b) => (a.done === b.done ? 0 : a.done ? 1 : -1));
     return arr;
   })();
@@ -387,20 +517,27 @@ export default function App() {
   const todayLog = sessionLog.find(l => l.date === today());
   const btn = (x) => ({ border: "none", cursor: "pointer", borderRadius: 24, fontSize: 13, transition: "all 0.3s", ...x });
 
+  // Sort pill arrow helper
+  const sortArrow = (key) => {
+    if (sortBy !== key) return "";
+    return sortDir === "asc" ? " ↑" : " ↓";
+  };
+
   if (!loaded) return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(145deg, #1a1025 0%, #2d1b3d 40%, #1e1428 100%)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ color: "#d4a574", fontSize: 18, fontFamily: "Georgia, serif" }}>Loading your sanctuary...</div>
+    <div style={{ minHeight: "100vh", background: theme.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ color: theme.accent, fontSize: 18, fontFamily: "'Outfit', sans-serif" }}>Loading your sanctuary...</div>
     </div>
   );
 
   return (
-    <div style={{ minHeight: "100vh", color: "#e8ddd3", fontFamily: "'Segoe UI', system-ui, sans-serif", padding: "20px 16px", boxSizing: "border-box", width: "100%" }}>
+    <div style={{ minHeight: "100vh", color: theme.textPrimary, fontFamily: "'Outfit', 'Segoe UI', system-ui, sans-serif", padding: "20px 16px", boxSizing: "border-box", width: "100%" }}>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500&display=swap');
         @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-        input:focus,textarea:focus{border-color:rgba(212,165,116,0.4)!important;outline:none}
+        input:focus,textarea:focus{border-color:${theme.accent}66!important;outline:none}
         html{
           min-height:100%;
-          background:linear-gradient(145deg,#1a1025 0%,#2d1b3d 40%,#1e1428 100%);
+          background:${theme.bg};
           background-attachment:fixed;
         }
         body{min-height:100%;background:transparent;margin:0;}
@@ -424,10 +561,10 @@ export default function App() {
         }
         /* M2: Drag styles */
         .task-row{ transition: border-top 0.1s ease, opacity 0.15s ease; }
-        .task-row.drag-over{ border-top: 2px solid rgba(212,165,116,0.5) !important; }
+        .task-row.drag-over{ border-top: 2px solid ${theme.accent}80 !important; }
         .drag-handle{
           cursor: grab;
-          color: #4a3d4e;
+          color: ${theme.textDimmest};
           font-size: 13px;
           padding: 0 4px 0 0;
           flex-shrink: 0;
@@ -435,52 +572,147 @@ export default function App() {
           transition: color 0.2s;
           line-height: 1;
         }
-        .drag-handle:hover{ color: #8b7b8e; }
+        .drag-handle:hover{ color: ${theme.textSecondary}; }
         /* M3: Sort pills */
         .sort-pill{ transition: all 0.2s ease; }
+        /* Pulsing Start button when idle */
+        @keyframes gentlePulse {
+          0%, 100% { box-shadow: 0 0 0 0 ${theme.accent}40; }
+          50% { box-shadow: 0 0 12px 4px ${theme.accent}30; }
+        }
+        .start-pulse {
+          animation: gentlePulse 2.5s ease-in-out infinite;
+        }
+        /* ═══ FOCUS MODE AMBIENT EFFECTS ═══ */
+        @keyframes gradientShift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes auroraWave {
+          0% { transform: translateX(-100%) skewX(-15deg); opacity: 0; }
+          20% { opacity: 0.12; }
+          80% { opacity: 0.12; }
+          100% { transform: translateX(200%) skewX(-15deg); opacity: 0; }
+        }
+        @keyframes auroraWave2 {
+          0% { transform: translateX(200%) skewX(15deg); opacity: 0; }
+          20% { opacity: 0.08; }
+          80% { opacity: 0.08; }
+          100% { transform: translateX(-100%) skewX(15deg); opacity: 0; }
+        }
+        @keyframes timerGlow {
+          0%, 100% { filter: drop-shadow(0 0 8px ${theme.accent}40); }
+          50% { filter: drop-shadow(0 0 20px ${theme.accent}60); }
+        }
+        .focus-active {
+          background: linear-gradient(270deg,
+            ${theme.key === 'light' ? '#f5f0eb' : '#1a1025'},
+            ${theme.key === 'light' ? '#ebe4dc' : '#2d1b3d'},
+            ${theme.key === 'light' ? '#e6ddd4' : '#251832'},
+            ${theme.key === 'light' ? '#ddd8d0' : '#2a1f38'},
+            ${theme.key === 'light' ? '#e8e2db' : '#1e1428'},
+            ${theme.key === 'light' ? '#f0ebe5' : '#1a1025'}) !important;
+          background-size: 400% 400% !important;
+          animation: gradientShift 15s ease infinite !important;
+        }
+        .aurora-container {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          pointer-events: none;
+          overflow: hidden;
+          z-index: 0;
+        }
+        .aurora-wave {
+          position: absolute;
+          top: 10%;
+          left: 0;
+          width: 60%;
+          height: 40%;
+          background: linear-gradient(90deg, transparent, ${theme.key === 'light' ? 'rgba(154,107,74,0.15)' : 'rgba(212,165,116,0.19)'}, ${theme.key === 'light' ? 'rgba(123,158,168,0.12)' : 'rgba(155,126,216,0.12)'}, transparent);
+          border-radius: 50%;
+          animation: auroraWave 12s ease-in-out infinite;
+        }
+        .aurora-wave-2 {
+          position: absolute;
+          top: 50%;
+          right: 0;
+          width: 50%;
+          height: 35%;
+          background: linear-gradient(90deg, transparent, ${theme.key === 'light' ? 'rgba(123,158,168,0.14)' : 'rgba(123,158,168,0.12)'}, ${theme.key === 'light' ? 'rgba(154,107,74,0.12)' : 'rgba(212,165,116,0.15)'}, transparent);
+          border-radius: 50%;
+          animation: auroraWave2 16s ease-in-out infinite;
+          animation-delay: 4s;
+        }
+        .aurora-wave-3 {
+          position: absolute;
+          top: 30%;
+          left: 20%;
+          width: 40%;
+          height: 30%;
+          background: linear-gradient(90deg, transparent, ${theme.key === 'light' ? 'rgba(155,126,216,0.10)' : 'rgba(155,126,216,0.09)'}, transparent);
+          border-radius: 50%;
+          animation: auroraWave 20s ease-in-out infinite;
+          animation-delay: 8s;
+        }
+        .timer-glow svg {
+          animation: timerGlow 3s ease-in-out infinite;
+        }
       `}</style>
+
+      {/* ═══ AURORA WAVES (only when timer running) ═══ */}
+      {running && (
+        <div className="aurora-container">
+          <div className="aurora-wave"></div>
+          <div className="aurora-wave-2"></div>
+          <div className="aurora-wave-3"></div>
+        </div>
+      )}
 
       {/* ═══ OVERLAYS ═══ */}
       {overlay === "intention" && (
-        <Overlay onClose={() => setOverlay(null)}>
+        <Overlay onClose={() => setOverlay(null)} theme={theme}>
           <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.5 }}>☀</div>
-          <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 4, color: "#8b7b8e", marginBottom: 8 }}>New Day</div>
-          <div style={{ fontSize: 24, fontFamily: "Georgia, serif", color: "#d4a574", marginBottom: 24 }}>What matters most today?</div>
+          <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 4, color: theme.textSecondary, marginBottom: 8 }}>New Day</div>
+          <div style={{ fontSize: 24, fontFamily: "'Outfit', sans-serif", color: theme.accent, marginBottom: 24 }}>What matters most today?</div>
           <input value={intentionInput} onChange={e => setIntentionInput(e.target.value)} onKeyDown={e => e.key === "Enter" && saveIntention()} placeholder="My intention for today..." autoFocus
-            style={{ width: "80%", maxWidth: 340, padding: "12px 16px", borderRadius: 12, border: "1px solid rgba(212,165,116,0.3)", background: "rgba(255,255,255,0.05)", color: "#e8ddd3", fontSize: 15, textAlign: "center", fontFamily: "Georgia, serif" }} />
+            style={{ width: "80%", maxWidth: 340, padding: "12px 16px", borderRadius: 12, border: `1px solid ${theme.accent}4D`, background: theme.inputBg, color: theme.textPrimary, fontSize: 15, textAlign: "center", fontFamily: "'Outfit', sans-serif" }} />
           <div style={{ marginTop: 20, display: "flex", gap: 12, justifyContent: "center" }}>
-            <button onClick={saveIntention} style={btn({ padding: "10px 32px", border: "1px solid rgba(212,165,116,0.4)", background: "rgba(212,165,116,0.15)", color: "#d4a574", letterSpacing: 1 })}>Set Intention</button>
-            <button onClick={() => setOverlay(null)} style={btn({ padding: "10px 20px", border: "1px solid rgba(139,123,142,0.2)", background: "transparent", color: "#8b7b8e" })}>Skip</button>
+            <button onClick={saveIntention} style={btn({ padding: "10px 32px", border: `1px solid ${theme.accent}66`, background: theme.accentSoft, color: theme.accent, letterSpacing: 1 })}>Set Intention</button>
+            <button onClick={() => setOverlay(null)} style={btn({ padding: "10px 20px", border: `1px solid ${theme.textSecondary}33`, background: "transparent", color: theme.textSecondary })}>Skip</button>
           </div>
         </Overlay>
       )}
 
       {overlay === "refocus" && (
-        <Overlay onClose={() => setOverlay(null)}>
+        <Overlay onClose={() => setOverlay(null)} theme={theme}>
           <div style={{ fontSize: 48, marginBottom: 20, opacity: 0.6 }}>✦</div>
-          <div style={{ fontSize: 14, textTransform: "uppercase", letterSpacing: 4, color: "#8b7b8e", marginBottom: 16 }}>{phase === "work" ? "Time to focus" : "Take a breath"}</div>
-          {phase === "break" && overlayData.msg && <div style={{ fontSize: 20, fontFamily: "Georgia, serif", color: "#7B9EA8", marginBottom: 20, lineHeight: 1.5 }}>{overlayData.msg}</div>}
-          {focusTask && phase === "work" && <div style={{ fontSize: 28, fontFamily: "Georgia, serif", color: "#d4a574", lineHeight: 1.4, marginBottom: 20 }}>{focusTask.text}</div>}
-          {!focusTask && phase === "work" && <div style={{ fontSize: 22, fontFamily: "Georgia, serif", color: "#c4b8c9", marginBottom: 20, fontStyle: "italic" }}>What are you sitting down to do?</div>}
-          <div style={{ fontSize: 15, color: "#8b7b8e", fontStyle: "italic", marginBottom: 28 }}>{overlayData.mantra}</div>
-          <button onClick={() => setOverlay(null)} style={btn({ padding: "12px 40px", border: "1px solid rgba(212,165,116,0.4)", background: "rgba(212,165,116,0.15)", color: "#d4a574", fontSize: 15, letterSpacing: 2 })}>
+          <div style={{ fontSize: 14, textTransform: "uppercase", letterSpacing: 4, color: theme.textSecondary, marginBottom: 16 }}>{phase === "work" ? "Time to focus" : "Take a breath"}</div>
+          {phase === "break" && overlayData.msg && <div style={{ fontSize: 20, fontFamily: "'Outfit', sans-serif", color: "#7B9EA8", marginBottom: 20, lineHeight: 1.5 }}>{overlayData.msg}</div>}
+          {focusTask && phase === "work" && <div style={{ fontSize: 28, fontFamily: "'Outfit', sans-serif", color: theme.accent, lineHeight: 1.4, marginBottom: 20 }}>{focusTask.text}</div>}
+          {!focusTask && phase === "work" && <div style={{ fontSize: 22, fontFamily: "'Outfit', sans-serif", color: theme.textPrimary, marginBottom: 20, fontStyle: "italic", opacity: 0.8 }}>What are you sitting down to do?</div>}
+          <div style={{ fontSize: 15, color: theme.textSecondary, fontStyle: "italic", marginBottom: 28 }}>{overlayData.mantra}</div>
+          <button onClick={() => setOverlay(null)} style={btn({ padding: "12px 40px", border: `1px solid ${theme.accent}66`, background: theme.accentSoft, color: theme.accent, fontSize: 15, letterSpacing: 2 })}>
             {phase === "work" ? "Back to it" : "Resting"}
           </button>
           {/* L4: Skip break — only during break phase */}
           {phase === "break" && (
             <div style={{ marginTop: 20 }}>
               {!showSkipInput ? (
-                <button onClick={() => setShowSkipInput(true)} style={btn({ padding: "7px 18px", border: "1px solid rgba(139,123,142,0.18)", background: "transparent", color: "#6b5b6e", fontSize: 12, letterSpacing: 0.5 })}>
+                <button onClick={() => setShowSkipInput(true)} style={btn({ padding: "7px 18px", border: `1px solid ${theme.textSecondary}2E`, background: "transparent", color: theme.textMuted, fontSize: 12, letterSpacing: 0.5 })}>
                   Skip this break
                 </button>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, animation: "fadeUp 0.3s ease" }}>
-                  <div style={{ fontSize: 12, color: "#8b7b8e", marginBottom: 2 }}>What's pulling you back? <span style={{ opacity: 0.5 }}>(optional)</span></div>
+                  <div style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 2 }}>What's pulling you back? <span style={{ opacity: 0.5 }}>(optional)</span></div>
                   <input value={skipReason} onChange={e => setSkipReason(e.target.value)} onKeyDown={e => e.key === "Enter" && skipBreak()} placeholder="I'm on a roll / in a call / don't need one..." autoFocus
-                    style={{ width: "80%", maxWidth: 300, padding: "8px 14px", borderRadius: 10, border: "1px solid rgba(139,123,142,0.25)", background: "rgba(255,255,255,0.04)", color: "#e8ddd3", fontSize: 13, textAlign: "center" }} />
+                    style={{ width: "80%", maxWidth: 300, padding: "8px 14px", borderRadius: 10, border: `1px solid ${theme.textSecondary}40`, background: theme.inputBg, color: theme.textPrimary, fontSize: 13, textAlign: "center" }} />
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={skipBreak} style={btn({ padding: "7px 22px", border: "1px solid rgba(139,123,142,0.3)", background: "rgba(139,123,142,0.1)", color: "#c4b8c9", fontSize: 12 })}>Skip break →</button>
-                    <button onClick={() => { setShowSkipInput(false); setSkipReason(""); }} style={btn({ padding: "7px 14px", border: "none", background: "transparent", color: "#6b5b6e", fontSize: 12 })}>Cancel</button>
+                    <button onClick={skipBreak} style={btn({ padding: "7px 22px", border: `1px solid ${theme.textSecondary}4D`, background: `${theme.textSecondary}1A`, color: theme.textPrimary, fontSize: 12 })}>Skip break →</button>
+                    <button onClick={() => { setShowSkipInput(false); setSkipReason(""); }} style={btn({ padding: "7px 14px", border: "none", background: "transparent", color: theme.textMuted, fontSize: 12 })}>Cancel</button>
                   </div>
                 </div>
               )}
@@ -490,117 +722,161 @@ export default function App() {
       )}
 
       {overlay === "celebrate" && (
-        <Overlay onClose={() => setOverlay(null)} bg="rgba(10,6,15,0.95)">
+        <Overlay onClose={() => setOverlay(null)} bg={`${theme.overlayBg}`} theme={theme}>
           <div style={{ fontSize: 56, marginBottom: 16 }}>✧</div>
-          <div style={{ fontSize: 24, fontFamily: "Georgia, serif", color: "#d4a574", lineHeight: 1.4, marginBottom: 8 }}>{overlayData.msg}</div>
-          <div style={{ fontSize: 15, color: "#c4b8c9", marginBottom: 6 }}>{overlayData.task}</div>
-          {overlayData.secs > 0 && <div style={{ fontSize: 13, color: "#8b7b8e", marginBottom: 28 }}>{fmtMins(overlayData.secs)} of focused time</div>}
-          <button onClick={() => setOverlay(null)} style={btn({ padding: "12px 40px", border: "1px solid rgba(212,165,116,0.4)", background: "rgba(212,165,116,0.15)", color: "#d4a574", fontSize: 15, letterSpacing: 1 })}>Onward</button>
+          <div style={{ fontSize: 24, fontFamily: "'Outfit', sans-serif", color: theme.accent, lineHeight: 1.4, marginBottom: 8 }}>{overlayData.msg}</div>
+          <div style={{ fontSize: 15, color: theme.textPrimary, marginBottom: 6, opacity: 0.8 }}>{overlayData.task}</div>
+          {overlayData.secs > 0 && <div style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 28 }}>{fmtMins(overlayData.secs)} of focused time</div>}
+          <button onClick={() => setOverlay(null)} style={btn({ padding: "12px 40px", border: `1px solid ${theme.accent}66`, background: theme.accentSoft, color: theme.accent, fontSize: 15, letterSpacing: 1 })}>Onward</button>
         </Overlay>
       )}
 
       {overlay === "nudge" && (
-        <Overlay onClose={() => setOverlay(null)}>
-          <div style={{ background: "rgba(45,27,61,0.9)", border: "1px solid rgba(212,165,116,0.2)", borderRadius: 24, padding: "36px 28px" }}>
-            <div style={{ fontSize: 20, fontFamily: "Georgia, serif", color: "#d4a574", marginBottom: 8 }}>What are you sitting down to do?</div>
-            <p style={{ color: "#8b7b8e", fontSize: 14, marginBottom: 20, lineHeight: 1.5 }}>Pick a task to anchor your focus — or start without one.</p>
+        <Overlay onClose={() => setOverlay(null)} theme={theme}>
+          <div style={{ background: theme.panelBg, border: `1px solid ${theme.accent}33`, borderRadius: 24, padding: "36px 28px", backdropFilter: "blur(10px)" }}>
+            <div style={{ fontSize: 20, fontFamily: "'Outfit', sans-serif", color: theme.accent, marginBottom: 8 }}>What are you sitting down to do?</div>
+            <p style={{ color: theme.textSecondary, fontSize: 14, marginBottom: 20, lineHeight: 1.5 }}>Pick a task to anchor your focus — or start without one.</p>
             <div style={{ maxHeight: 200, overflowY: "auto", marginBottom: 16 }}>
               {tasks.filter(t => !t.done).map(t => (
-                <button key={t.id} onClick={() => startWithTask(t.id)} style={{ display: "block", width: "100%", padding: "10px 16px", marginBottom: 6, borderRadius: 12, border: "1px solid rgba(212,165,116,0.2)", background: "rgba(212,165,116,0.06)", color: "#e8ddd3", cursor: "pointer", fontSize: 14, textAlign: "left" }}>{t.text}</button>
+                <button key={t.id} onClick={() => startWithTask(t.id)} style={{ display: "block", width: "100%", padding: "10px 16px", marginBottom: 6, borderRadius: 12, border: `1px solid ${theme.accent}33`, background: theme.accentSoft, color: theme.textPrimary, cursor: "pointer", fontSize: 14, textAlign: "left" }}>{t.text}</button>
               ))}
             </div>
-            <button onClick={startAnyway} style={btn({ padding: "10px 28px", border: "1px solid rgba(139,123,142,0.3)", background: "transparent", color: "#8b7b8e", letterSpacing: 1 })}>Start without a task</button>
+            <button onClick={startAnyway} style={btn({ padding: "10px 28px", border: `1px solid ${theme.textSecondary}4D`, background: "transparent", color: theme.textSecondary, letterSpacing: 1 })}>Start without a task</button>
           </div>
         </Overlay>
       )}
 
       {overlay === "reflect" && (
-        <Overlay onClose={() => setOverlay(null)}>
+        <Overlay onClose={() => setOverlay(null)} theme={theme}>
           <div style={{ fontSize: 40, marginBottom: 16, opacity: 0.5 }}>☽</div>
-          <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 4, color: "#8b7b8e", marginBottom: 8 }}>End of Day</div>
-          <div style={{ fontSize: 22, fontFamily: "Georgia, serif", color: "#d4a574", marginBottom: 8 }}>What did you actually accomplish?</div>
-          {dailyIntention && <div style={{ fontSize: 14, color: "#8b7b8e", fontStyle: "italic", marginBottom: 20 }}>Your intention: "{dailyIntention}"</div>}
-          <div style={{ fontSize: 13, color: "#8b7b8e", marginBottom: 20 }}>{todayLog ? `${todayLog.sessions} sessions · ${fmtMins(todayLog.focusSecs || 0)} focused` : "No sessions yet today"}</div>
+          <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 4, color: theme.textSecondary, marginBottom: 8 }}>End of Day</div>
+          <div style={{ fontSize: 22, fontFamily: "'Outfit', sans-serif", color: theme.accent, marginBottom: 8 }}>What did you actually accomplish?</div>
+          {dailyIntention && <div style={{ fontSize: 14, color: theme.textSecondary, fontStyle: "italic", marginBottom: 20 }}>Your intention: "{dailyIntention}"</div>}
+          <div style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 20 }}>{todayLog ? `${todayLog.sessions} sessions · ${fmtMins(todayLog.focusSecs || 0)} focused` : "No sessions yet today"}</div>
           <textarea value={reflectInput} onChange={e => setReflectInput(e.target.value)} placeholder="A few words about today..." rows={3}
-            style={{ width: "80%", maxWidth: 360, padding: "12px 16px", borderRadius: 12, border: "1px solid rgba(212,165,116,0.3)", background: "rgba(255,255,255,0.05)", color: "#e8ddd3", fontSize: 14, fontFamily: "Georgia, serif", resize: "none" }} />
+            style={{ width: "80%", maxWidth: 360, padding: "12px 16px", borderRadius: 12, border: `1px solid ${theme.accent}4D`, background: theme.inputBg, color: theme.textPrimary, fontSize: 14, fontFamily: "'Outfit', sans-serif", resize: "none" }} />
           <div style={{ marginTop: 16 }}>
-            <button onClick={() => { setOverlay(null); setReflectInput(""); }} style={btn({ padding: "10px 32px", border: "1px solid rgba(212,165,116,0.4)", background: "rgba(212,165,116,0.15)", color: "#d4a574", letterSpacing: 1 })}>Close the day</button>
+            <button onClick={() => { setOverlay(null); setReflectInput(""); }} style={btn({ padding: "10px 32px", border: `1px solid ${theme.accent}66`, background: theme.accentSoft, color: theme.accent, letterSpacing: 1 })}>Close the day</button>
           </div>
         </Overlay>
       )}
 
       {/* ═══ HEADER ═══ */}
-      <div style={{ textAlign: "center", marginBottom: 24 }}>
-        <h1 style={{ fontFamily: "Georgia, serif", fontSize: 28, fontWeight: 400, color: "#d4a574", margin: 0, letterSpacing: 1 }}>✦ Sage & Steph ✦</h1>
-        <p style={{ color: "#8b7b8e", fontSize: 13, margin: "4px 0 0", letterSpacing: 2, textTransform: "uppercase" }}>Focus Dashboard</p>
-        {dailyIntention && !zenMode && <div style={{ marginTop: 8, fontSize: 13, color: "#c4b8c9", fontStyle: "italic" }}>Today's intention: {dailyIntention}</div>}
+      <div style={{ textAlign: "center", marginBottom: 24, position: "relative", zIndex: 1 }}>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 16, marginBottom: 4 }}>
+          <LiveClock theme={theme} />
+          <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 28, fontWeight: 500, color: theme.accent, margin: 0, letterSpacing: 1 }}>✦ Sage & Steph ✦</h1>
+          {/* Theme switcher */}
+          <div style={{ display: "flex", gap: 4 }}>
+            {Object.values(THEMES).map(t => (
+              <button
+                key={t.key}
+                onClick={() => setThemeKey(t.key)}
+                title={`${t.label} (T)`}
+                style={btn({
+                  padding: "4px 8px",
+                  fontSize: 14,
+                  border: themeKey === t.key ? `1px solid ${theme.accent}66` : `1px solid ${theme.textSecondary}33`,
+                  background: themeKey === t.key ? theme.accentSoft : "transparent",
+                  color: themeKey === t.key ? theme.accent : theme.textSecondary,
+                  borderRadius: 8,
+                })}
+              >
+                {t.icon}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p style={{ color: theme.textSecondary, fontSize: 13, margin: "4px 0 0", letterSpacing: 2, textTransform: "uppercase" }}>Focus Dashboard</p>
+        {dailyIntention && !zenMode && <div style={{ marginTop: 8, fontSize: 13, color: theme.textPrimary, fontStyle: "italic", opacity: 0.8 }}>Today's intention: {dailyIntention}</div>}
       </div>
 
       {focusTask && (
-        <div style={{ textAlign: "center", marginBottom: 20, padding: "14px 20px", background: "linear-gradient(135deg, rgba(212,165,116,0.08), rgba(212,165,116,0.03))", borderRadius: 16, border: "1px solid rgba(212,165,116,0.15)" }}>
-          <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 3, color: "#8b7b8e", marginBottom: 4 }}>Current Intention</div>
-          <div style={{ fontSize: 20, fontFamily: "Georgia, serif", color: "#d4a574" }}>{focusTask.text}</div>
-          {focusTask.focusSecs > 0 && <div style={{ fontSize: 12, color: "#8b7b8e", marginTop: 4 }}>{fmtMins(focusTask.focusSecs)} invested</div>}
+        <div style={{ textAlign: "center", marginBottom: 20, padding: "14px 20px", background: `linear-gradient(135deg, ${theme.accentSoft}, ${theme.accent}08)`, borderRadius: 16, border: `1px solid ${theme.accent}26`, position: "relative", zIndex: 1 }}>
+          <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 3, color: theme.textSecondary, marginBottom: 4 }}>Current Intention</div>
+          <div style={{ fontSize: 20, fontFamily: "'Outfit', sans-serif", color: theme.accent }}>{focusTask.text}</div>
+          {focusTask.focusSecs > 0 && <div style={{ fontSize: 12, color: theme.textSecondary, marginTop: 4 }}>{fmtMins(focusTask.focusSecs)} invested</div>}
+        </div>
+      )}
+
+      {/* Timer paused banner */}
+      {focusTask && !running && (
+        <div
+          onClick={handleStart}
+          style={{
+            textAlign: "center",
+            marginBottom: 16,
+            padding: "10px 20px",
+            background: `${theme.accent}15`,
+            borderRadius: 12,
+            border: `1px dashed ${theme.accent}50`,
+            cursor: "pointer",
+            transition: "all 0.2s ease",
+          }}
+        >
+          <span style={{ fontSize: 13, color: theme.accent, letterSpacing: 1 }}>
+            ⏸ Timer paused — <span style={{ textDecoration: "underline" }}>click to start</span>
+          </span>
         </div>
       )}
 
       {/* ═══ TIMER ═══ */}
-      <div style={{ textAlign: "center", marginBottom: 24, padding: "24px 20px", background: "radial-gradient(ellipse at center, rgba(212,165,116,0.08) 0%, transparent 70%)", borderRadius: 24 }}>
-        <div style={{ position: "relative", width: 200, height: 200, margin: "0 auto 20px" }}>
+      <div style={{ textAlign: "center", marginBottom: 24, padding: "24px 20px", background: `radial-gradient(ellipse at center, ${theme.accentSoft} 0%, transparent 70%)`, borderRadius: 24, position: "relative", zIndex: 1 }}>
+        <div className={running ? "timer-glow" : ""} style={{ position: "relative", width: 200, height: 200, margin: "0 auto 20px" }}>
           <svg width="200" height="200" viewBox="0 0 200 200">
-            <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(212,165,116,0.1)" strokeWidth="6" />
-            <circle cx="100" cy="100" r="88" fill="none" stroke={phase === "work" ? "#d4a574" : "#7B9EA8"} strokeWidth="6"
+            <circle cx="100" cy="100" r="88" fill="none" stroke={`${theme.accent}1A`} strokeWidth="6" />
+            <circle cx="100" cy="100" r="88" fill="none" stroke={phase === "work" ? theme.accent : "#7B9EA8"} strokeWidth="6"
               strokeDasharray={2 * Math.PI * 88} strokeDashoffset={2 * Math.PI * 88 * (1 - pct / 100)}
               strokeLinecap="round" transform="rotate(-90 100 100)" style={{ transition: "stroke-dashoffset 0.5s ease, stroke 0.5s ease" }} />
-            {running && <circle cx="100" cy="100" r="88" fill="none" stroke={phase === "work" ? "#d4a574" : "#7B9EA8"} strokeWidth="6" opacity="0.15">
+            {running && <circle cx="100" cy="100" r="88" fill="none" stroke={phase === "work" ? theme.accent : "#7B9EA8"} strokeWidth="6" opacity="0.15">
               <animate attributeName="r" values="88;96;88" dur="3s" repeatCount="indefinite" />
               <animate attributeName="opacity" values="0.15;0;0.15" dur="3s" repeatCount="indefinite" />
             </circle>}
           </svg>
           <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center" }}>
-            <div style={{ fontSize: 44, fontWeight: 300, fontFamily: "'Courier New', monospace", color: "#e8ddd3", letterSpacing: 2 }}>{fmt(timeLeft)}</div>
-            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 3, color: phase === "work" ? "#d4a574" : "#7B9EA8", marginTop: 2 }}>{phase === "work" ? "Focus" : "Break"}</div>
+            <div style={{ fontSize: 44, fontWeight: 300, fontFamily: "'Courier New', monospace", color: theme.textPrimary, letterSpacing: 2 }}>{fmt(timeLeft)}</div>
+            <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 3, color: phase === "work" ? theme.accent : "#7B9EA8", marginTop: 2 }}>{phase === "work" ? "Focus" : "Break"}</div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginBottom: 12 }}>
-          <button onClick={handleStart} style={btn({ padding: "10px 32px", border: "1px solid rgba(212,165,116,0.4)", background: running ? "rgba(212,165,116,0.15)" : "rgba(212,165,116,0.25)", color: "#d4a574", letterSpacing: 1 })}>
+          <button onClick={handleStart} className={!running ? "start-pulse" : ""} style={btn({ padding: "10px 32px", border: `1px solid ${theme.accent}66`, background: running ? theme.accentSoft : `${theme.accent}40`, color: theme.accent, letterSpacing: 1 })}>
             {running ? "Pause" : "Start"} <span style={{ fontSize: 10, opacity: 0.5, marginLeft: 4 }}>⎵</span>
           </button>
-          <button onClick={resetTimer} style={btn({ padding: "10px 20px", border: "1px solid rgba(139,123,142,0.3)", background: "transparent", color: "#8b7b8e", letterSpacing: 1 })}>Reset</button>
-          <button onClick={() => setShowSettings(!showSettings)} style={btn({ padding: "10px 20px", border: "1px solid rgba(139,123,142,0.3)", background: showSettings ? "rgba(139,123,142,0.15)" : "transparent", color: "#8b7b8e" })}>⚙</button>
-          <button onClick={() => setZenMode(z => !z)} title="Zen mode (Z)" style={btn({ padding: "10px 20px", border: `1px solid ${zenMode ? "rgba(212,165,116,0.4)" : "rgba(139,123,142,0.3)"}`, background: zenMode ? "rgba(212,165,116,0.1)" : "transparent", color: zenMode ? "#d4a574" : "#8b7b8e" })}>◯</button>
+          <button onClick={resetTimer} style={btn({ padding: "10px 20px", border: `1px solid ${theme.textSecondary}4D`, background: "transparent", color: theme.textSecondary, letterSpacing: 1 })}>Reset</button>
+          <button onClick={() => setShowSettings(!showSettings)} style={btn({ padding: "10px 20px", border: `1px solid ${theme.textSecondary}4D`, background: showSettings ? `${theme.textSecondary}26` : "transparent", color: theme.textSecondary })}>⚙</button>
+          <button onClick={() => setZenMode(z => !z)} title="Zen mode (Z)" style={btn({ padding: "10px 20px", border: `1px solid ${zenMode ? theme.accent + "66" : theme.textSecondary + "4D"}`, background: zenMode ? theme.accentSoft : "transparent", color: zenMode ? theme.accent : theme.textSecondary })}>◯</button>
         </div>
         {showSettings && (
-          <div style={{ marginTop: 8, padding: 14, background: "rgba(255,255,255,0.03)", borderRadius: 16, display: "inline-block" }}>
+          <div style={{ marginTop: 8, padding: 14, background: theme.panelBg, borderRadius: 16, display: "inline-block" }}>
             <div style={{ display: "flex", gap: 8, marginBottom: 10, justifyContent: "center" }}>
               {PRESETS.map(p => (
-                <button key={p.label} onClick={() => applyPreset(p.work, p.brk)} style={btn({ padding: "6px 14px", border: `1px solid ${timerSettings.work === p.work ? "#d4a574" : "rgba(139,123,142,0.3)"}`, background: timerSettings.work === p.work ? "rgba(212,165,116,0.15)" : "transparent", color: timerSettings.work === p.work ? "#d4a574" : "#8b7b8e" })}>{p.label}</button>
+                <button key={p.label} onClick={() => applyPreset(p.work, p.brk)} style={btn({ padding: "6px 14px", border: `1px solid ${timerSettings.work === p.work ? theme.accent : theme.textSecondary + "4D"}`, background: timerSettings.work === p.work ? theme.accentSoft : "transparent", color: timerSettings.work === p.work ? theme.accent : theme.textSecondary })}>{p.label}</button>
               ))}
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "center" }}>
-              <input value={customWork} onChange={e => setCustomWork(e.target.value)} placeholder="Work" style={{ width: 50, padding: "6px 8px", borderRadius: 8, border: "1px solid rgba(139,123,142,0.3)", background: "rgba(255,255,255,0.05)", color: "#e8ddd3", textAlign: "center", fontSize: 13 }} />
-              <span style={{ color: "#8b7b8e", fontSize: 12 }}>/</span>
-              <input value={customBreak} onChange={e => setCustomBreak(e.target.value)} placeholder="Break" style={{ width: 50, padding: "6px 8px", borderRadius: 8, border: "1px solid rgba(139,123,142,0.3)", background: "rgba(255,255,255,0.05)", color: "#e8ddd3", textAlign: "center", fontSize: 13 }} />
-              <button onClick={applyCustom} style={btn({ padding: "6px 14px", border: "1px solid rgba(212,165,116,0.3)", background: "rgba(212,165,116,0.15)", color: "#d4a574" })}>Set</button>
+              <input value={customWork} onChange={e => setCustomWork(e.target.value)} placeholder="Work" style={{ width: 50, padding: "6px 8px", borderRadius: 8, border: `1px solid ${theme.inputBorder}`, background: theme.inputBg, color: theme.textPrimary, textAlign: "center", fontSize: 13 }} />
+              <span style={{ color: theme.textSecondary, fontSize: 12 }}>/</span>
+              <input value={customBreak} onChange={e => setCustomBreak(e.target.value)} placeholder="Break" style={{ width: 50, padding: "6px 8px", borderRadius: 8, border: `1px solid ${theme.inputBorder}`, background: theme.inputBg, color: theme.textPrimary, textAlign: "center", fontSize: 13 }} />
+              <button onClick={applyCustom} style={btn({ padding: "6px 14px", border: `1px solid ${theme.accent}4D`, background: theme.accentSoft, color: theme.accent })}>Set</button>
             </div>
           </div>
         )}
-        <div style={{ marginTop: 10, fontSize: 12, color: "#8b7b8e", textAlign: "center" }}>Sessions today: <span style={{ color: "#d4a574" }}>{todayLog?.sessions || sessions}</span></div>
+        <div style={{ marginTop: 10, fontSize: 12, color: theme.textSecondary, textAlign: "center" }}>Sessions today: <span style={{ color: theme.accent }}>{todayLog?.sessions || sessions}</span></div>
       </div>
 
       {/* ═══ SOUNDSCAPE ═══ */}
       {!zenMode && (
-        <div style={{ marginBottom: 24, padding: "14px 20px", background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px solid rgba(139,123,142,0.1)" }}>
+        <div style={{ marginBottom: 24, padding: "14px 20px", background: theme.panelBg, borderRadius: 16, border: `1px solid ${theme.panelBorder}`, position: "relative", zIndex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-            <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: "#8b7b8e" }}>Soundscape</span>
+            <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: theme.textSecondary }}>Soundscape</span>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 11, color: "#8b7b8e" }}>♪</span>
-              <input type="range" min="0" max="1" step="0.05" value={volume} onChange={e => setVolume(parseFloat(e.target.value))} style={{ width: 80, accentColor: "#d4a574" }} />
+              <span style={{ fontSize: 11, color: theme.textSecondary }}>♪</span>
+              <input type="range" min="0" max="1" step="0.05" value={volume} onChange={e => setVolume(parseFloat(e.target.value))} style={{ width: 80, accentColor: theme.accent }} />
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {Object.entries(SOUNDS).map(([k, v]) => (
-              <button key={k} onClick={() => toggleSound(k)} style={btn({ padding: "8px 16px", borderRadius: 20, border: `1px solid ${activeSounds[k] ? v.color : "rgba(139,123,142,0.2)"}`, background: activeSounds[k] ? `${v.color}22` : "transparent", color: activeSounds[k] ? v.color : "#8b7b8e" })}>
+              <button key={k} onClick={() => toggleSound(k)} style={btn({ padding: "8px 16px", borderRadius: 20, border: `1px solid ${activeSounds[k] ? v.color : theme.textSecondary + "33"}`, background: activeSounds[k] ? `${v.color}22` : "transparent", color: activeSounds[k] ? v.color : theme.textSecondary })}>
                 {activeSounds[k] ? "◉" : "○"} {v.label}
               </button>
             ))}
@@ -611,11 +887,11 @@ export default function App() {
         <div style={{ textAlign: "center", marginBottom: 20 }}>
           <div style={{ display: "flex", gap: 8, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
             {Object.entries(SOUNDS).map(([k, v]) => (
-              <button key={k} onClick={() => toggleSound(k)} style={btn({ padding: "5px 12px", borderRadius: 16, border: `1px solid ${activeSounds[k] ? v.color : "rgba(139,123,142,0.12)"}`, background: activeSounds[k] ? `${v.color}15` : "transparent", color: activeSounds[k] ? v.color : "#6b5b6e", fontSize: 11 })}>
+              <button key={k} onClick={() => toggleSound(k)} style={btn({ padding: "5px 12px", borderRadius: 16, border: `1px solid ${activeSounds[k] ? v.color : theme.textSecondary + "1F"}`, background: activeSounds[k] ? `${v.color}15` : "transparent", color: activeSounds[k] ? v.color : theme.textMuted, fontSize: 11 })}>
                 {activeSounds[k] ? "◉" : "○"} {v.label}
               </button>
             ))}
-            <input type="range" min="0" max="1" step="0.05" value={volume} onChange={e => setVolume(parseFloat(e.target.value))} style={{ width: 60, accentColor: "#d4a574" }} />
+            <input type="range" min="0" max="1" step="0.05" value={volume} onChange={e => setVolume(parseFloat(e.target.value))} style={{ width: 60, accentColor: theme.accent }} />
           </div>
         </div>
       )}
@@ -623,54 +899,54 @@ export default function App() {
       {/* ═══ PANELS ═══ */}
       {!zenMode && (
         <>
-          <div className="sage-panels">
+          <div className="sage-panels" style={{ position: "relative", zIndex: 1 }}>
 
             {/* ══ TASKS PANEL ══ */}
-            <div style={{ padding: "18px", background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px solid rgba(139,123,142,0.1)" }}>
+            <div style={{ padding: "18px", background: theme.panelBg, borderRadius: 16, border: `1px solid ${theme.panelBorder}` }}>
 
               {/* Header */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: "#8b7b8e" }}>Tasks</span>
-                {tasks.some(t => t.done) && <button onClick={clearDone} style={{ background: "none", border: "none", color: "#8b7b8e", cursor: "pointer", fontSize: 11, textDecoration: "underline" }}>Clear done</button>}
+                <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: theme.textSecondary }}>Tasks</span>
+                {tasks.some(t => t.done) && <button onClick={clearDone} style={{ background: "none", border: "none", color: theme.textSecondary, cursor: "pointer", fontSize: 11, textDecoration: "underline" }}>Clear done</button>}
               </div>
 
-              {/* M3: Sort controls */}
+              {/* M3: Sort controls with bidirectional arrows */}
               <div style={{ display: "flex", gap: 5, marginBottom: 10, flexWrap: "wrap", alignItems: "center" }}>
                 {[
                   { key: "default", label: "Default" },
                   { key: "alpha",   label: "A–Z" },
-                  { key: "time",    label: "Time ↓" },
+                  { key: "time",    label: "Time" },
                 ].map(s => (
-                  <button key={s.key} className="sort-pill" onClick={() => setSortBy(s.key)}
+                  <button key={s.key} className="sort-pill" onClick={() => toggleSort(s.key)}
                     style={btn({ padding: "3px 11px", fontSize: 11, borderRadius: 12,
-                      border: `1px solid ${sortBy === s.key ? "rgba(212,165,116,0.5)" : "rgba(139,123,142,0.2)"}`,
-                      background: sortBy === s.key ? "rgba(212,165,116,0.12)" : "transparent",
-                      color: sortBy === s.key ? "#d4a574" : "#6b5b6e",
-                    })}>{s.label}
+                      border: `1px solid ${sortBy === s.key ? theme.accent + "80" : theme.textSecondary + "33"}`,
+                      background: sortBy === s.key ? theme.accentSoft : "transparent",
+                      color: sortBy === s.key ? theme.accent : theme.textMuted,
+                    })}>{s.label}{sortArrow(s.key)}
                   </button>
                 ))}
                 <button className="sort-pill" onClick={() => setDoneToBottom(d => !d)}
                   style={btn({ padding: "3px 11px", fontSize: 11, borderRadius: 12,
-                    border: `1px solid ${doneToBottom ? "rgba(212,165,116,0.5)" : "rgba(139,123,142,0.2)"}`,
-                    background: doneToBottom ? "rgba(212,165,116,0.12)" : "transparent",
-                    color: doneToBottom ? "#d4a574" : "#6b5b6e",
+                    border: `1px solid ${doneToBottom ? theme.accent + "80" : theme.textSecondary + "33"}`,
+                    background: doneToBottom ? theme.accentSoft : "transparent",
+                    color: doneToBottom ? theme.accent : theme.textMuted,
                   })}>Done ↓
                 </button>
                 {canDrag && tasks.length > 1 && (
-                  <span style={{ fontSize: 10, color: "#3d3242", marginLeft: 2 }}>drag ⠿ to reorder</span>
+                  <span style={{ fontSize: 10, color: theme.textDimmest, marginLeft: 2 }}>drag ⠿ to reorder</span>
                 )}
               </div>
 
               {/* Add task */}
               <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                 <input value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === "Enter" && addTask()} placeholder="Add a task..."
-                  style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(139,123,142,0.2)", background: "rgba(255,255,255,0.04)", color: "#e8ddd3", fontSize: 13 }} />
-                <button onClick={addTask} style={btn({ padding: "8px 14px", borderRadius: 10, border: "1px solid rgba(212,165,116,0.3)", background: "rgba(212,165,116,0.1)", color: "#d4a574", fontSize: 16, lineHeight: 1 })}>+</button>
+                  style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: `1px solid ${theme.inputBorder}`, background: theme.inputBg, color: theme.textPrimary, fontSize: 13 }} />
+                <button onClick={addTask} style={btn({ padding: "8px 14px", borderRadius: 10, border: `1px solid ${theme.accent}4D`, background: theme.accentSoft, color: theme.accent, fontSize: 16, lineHeight: 1 })}>+</button>
               </div>
 
               {/* Task list */}
               <div style={{ maxHeight: 280, overflowY: "auto" }}>
-                {tasks.length === 0 && <p style={{ color: "#6b5b6e", fontSize: 13, fontStyle: "italic", textAlign: "center", margin: "16px 0" }}>Your slate is clean</p>}
+                {tasks.length === 0 && <p style={{ color: theme.textMuted, fontSize: 13, fontStyle: "italic", textAlign: "center", margin: "16px 0" }}>Your slate is clean</p>}
                 {sortedTasks.map(t => (
                   <div
                     key={t.id}
@@ -683,46 +959,46 @@ export default function App() {
                     style={{
                       display: "flex", alignItems: "center", gap: 8,
                       padding: "7px 4px",
-                      borderBottom: "1px solid rgba(139,123,142,0.06)",
+                      borderBottom: `1px solid ${theme.textSecondary}0F`,
                       borderTop: "2px solid transparent",
                       opacity: t.done ? 0.4 : 1,
-                      background: focusId === t.id ? "rgba(212,165,116,0.05)" : "transparent",
+                      background: focusId === t.id ? theme.accentSoft : "transparent",
                       borderRadius: focusId === t.id ? 8 : 0,
                     }}
                   >
                     {/* M2: Grip handle */}
                     {canDrag && <span className="drag-handle" title="Drag to reorder">⠿</span>}
 
-                    <button onClick={() => toggleTask(t.id)} style={{ background: "none", border: `1.5px solid ${t.done ? "#d4a574" : "rgba(139,123,142,0.3)"}`, borderRadius: 4, width: 18, height: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#d4a574", fontSize: 10, flexShrink: 0 }}>{t.done ? "✓" : ""}</button>
+                    <button onClick={() => toggleTask(t.id)} style={{ background: "none", border: `1.5px solid ${t.done ? theme.accent : theme.textSecondary + "4D"}`, borderRadius: 4, width: 18, height: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: theme.accent, fontSize: 10, flexShrink: 0 }}>{t.done ? "✓" : ""}</button>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, textDecoration: t.done ? "line-through" : "none", color: t.done ? "#8b7b8e" : "#e8ddd3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.text}</div>
-                      {t.focusSecs > 0 && !t.done && <div style={{ fontSize: 10, color: "#6b5b6e", marginTop: 1 }}>{fmtMins(t.focusSecs)}</div>}
+                      <div style={{ fontSize: 13, textDecoration: t.done ? "line-through" : "none", color: t.done ? theme.textSecondary : theme.textPrimary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.text}</div>
+                      {t.focusSecs > 0 && !t.done && <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 1 }}>{fmtMins(t.focusSecs)}</div>}
                     </div>
-                    {!t.done && <button onClick={() => setFocusId(focusId === t.id ? null : t.id)} style={btn({ background: focusId === t.id ? "rgba(212,165,116,0.2)" : "none", border: `1px solid ${focusId === t.id ? "#d4a574" : "rgba(139,123,142,0.15)"}`, borderRadius: 12, padding: "2px 8px", color: focusId === t.id ? "#d4a574" : "#8b7b8e", fontSize: 10, letterSpacing: 1, flexShrink: 0 })}>{focusId === t.id ? "★" : "focus"}</button>}
-                    <button onClick={() => removeTask(t.id)} style={{ background: "none", border: "none", color: "#6b5b6e", cursor: "pointer", fontSize: 14, padding: "0 2px", flexShrink: 0 }}>×</button>
+                    {!t.done && <button onClick={() => { if (focusId === t.id) { setFocusId(null); } else { setFocusId(t.id); getCtx(); setRunning(true); } }} style={btn({ background: focusId === t.id ? theme.accentSoft : "none", border: `1px solid ${focusId === t.id ? theme.accent : theme.textSecondary + "26"}`, borderRadius: 12, padding: "2px 8px", color: focusId === t.id ? theme.accent : theme.textSecondary, fontSize: 10, letterSpacing: 1, flexShrink: 0 })}>{focusId === t.id ? "★" : "focus"}</button>}
+                    <button onClick={() => removeTask(t.id)} style={{ background: "none", border: "none", color: theme.textMuted, cursor: "pointer", fontSize: 14, padding: "0 2px", flexShrink: 0 }}>×</button>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* ══ SIDE QUESTS PANEL ══ */}
-            <div style={{ padding: "18px", background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px solid rgba(139,123,142,0.1)" }}>
+            <div style={{ padding: "18px", background: theme.panelBg, borderRadius: 16, border: `1px solid ${theme.panelBorder}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: "#8b7b8e" }}>Side Quests <span style={{ fontSize: 10, opacity: 0.5 }}>(D)</span></span>
-                {distractions.length > 0 && <button onClick={clearDist} style={{ background: "none", border: "none", color: "#8b7b8e", cursor: "pointer", fontSize: 11, textDecoration: "underline" }}>Clear all</button>}
+                <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: theme.textSecondary }}>Side Quests <span style={{ fontSize: 10, opacity: 0.5 }}>(D)</span></span>
+                {distractions.length > 0 && <button onClick={clearDist} style={{ background: "none", border: "none", color: theme.textSecondary, cursor: "pointer", fontSize: 11, textDecoration: "underline" }}>Clear all</button>}
               </div>
               <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                 <input ref={distRef} value={newDist} onChange={e => setNewDist(e.target.value)} onKeyDown={e => e.key === "Enter" && addDist()} placeholder="Park a thought..."
-                  style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(139,123,142,0.2)", background: "rgba(255,255,255,0.04)", color: "#e8ddd3", fontSize: 13 }} />
+                  style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: `1px solid ${theme.inputBorder}`, background: theme.inputBg, color: theme.textPrimary, fontSize: 13 }} />
                 <button onClick={addDist} style={btn({ padding: "8px 14px", borderRadius: 10, border: "1px solid rgba(155,126,216,0.3)", background: "rgba(155,126,216,0.1)", color: "#9B7ED8", fontSize: 16, lineHeight: 1 })}>+</button>
               </div>
               <div style={{ maxHeight: 280, overflowY: "auto" }}>
-                {distractions.length === 0 && <p style={{ color: "#6b5b6e", fontSize: 13, fontStyle: "italic", textAlign: "center", margin: "16px 0" }}>Nothing parked yet — stay focused</p>}
+                {distractions.length === 0 && <p style={{ color: theme.textMuted, fontSize: 13, fontStyle: "italic", textAlign: "center", margin: "16px 0" }}>Nothing parked yet — stay focused</p>}
                 {distractions.map(d => (
-                  <div key={d.id} style={{ padding: "7px 4px", borderBottom: "1px solid rgba(139,123,142,0.06)", display: "flex", gap: 10, alignItems: "center" }}>
-                    <span style={{ fontSize: 10, color: "#6b5b6e", flexShrink: 0, fontFamily: "monospace" }}>{d.time}</span>
-                    <span style={{ fontSize: 13, color: "#c4b8c9", flex: 1 }}>{d.text}</span>
-                    <button onClick={() => removeDist(d.id)} style={{ background: "none", border: "none", color: "#6b5b6e", cursor: "pointer", fontSize: 14, padding: "0 2px", flexShrink: 0, lineHeight: 1 }}>×</button>
+                  <div key={d.id} style={{ padding: "7px 4px", borderBottom: `1px solid ${theme.textSecondary}0F`, display: "flex", gap: 10, alignItems: "center" }}>
+                    <span style={{ fontSize: 10, color: theme.textMuted, flexShrink: 0, fontFamily: "monospace" }}>{d.time}</span>
+                    <span style={{ fontSize: 13, color: theme.textPrimary, flex: 1, opacity: 0.85 }}>{d.text}</span>
+                    <button onClick={() => removeDist(d.id)} style={{ background: "none", border: "none", color: theme.textMuted, cursor: "pointer", fontSize: 14, padding: "0 2px", flexShrink: 0, lineHeight: 1 }}>×</button>
                   </div>
                 ))}
               </div>
@@ -730,12 +1006,12 @@ export default function App() {
 
           </div>
 
-          <div style={{ padding: "18px 20px", background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px solid rgba(139,123,142,0.1)", marginBottom: 16 }}>
+          <div style={{ padding: "18px 20px", background: theme.panelBg, borderRadius: 16, border: `1px solid ${theme.panelBorder}`, marginBottom: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: "#8b7b8e" }}>Last 14 Days</span>
-              <button onClick={() => setOverlay("reflect")} style={btn({ padding: "6px 16px", border: "1px solid rgba(139,123,142,0.2)", background: "transparent", color: "#8b7b8e", fontSize: 12 })}>☽ Reflect</button>
+              <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 2, color: theme.textSecondary }}>Last 14 Days</span>
+              <button onClick={() => setOverlay("reflect")} style={btn({ padding: "6px 16px", border: `1px solid ${theme.textSecondary}33`, background: "transparent", color: theme.textSecondary, fontSize: 12 })}>☽ Reflect</button>
             </div>
-            <StreakGrid log={sessionLog} />
+            <StreakGrid log={sessionLog} theme={theme} />
           </div>
         </>
       )}
@@ -743,13 +1019,13 @@ export default function App() {
       {zenMode && (
         <div style={{ maxWidth: 400, margin: "0 auto 20px", display: "flex", gap: 8 }}>
           <input ref={distRef} value={newDist} onChange={e => setNewDist(e.target.value)} onKeyDown={e => e.key === "Enter" && addDist()} placeholder="Park a thought... (D)"
-            style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(139,123,142,0.15)", background: "rgba(255,255,255,0.03)", color: "#e8ddd3", fontSize: 13 }} />
+            style={{ flex: 1, padding: "8px 12px", borderRadius: 10, border: `1px solid ${theme.textSecondary}26`, background: theme.inputBg, color: theme.textPrimary, fontSize: 13 }} />
           <button onClick={addDist} style={btn({ padding: "8px 14px", borderRadius: 10, border: "1px solid rgba(155,126,216,0.2)", background: "rgba(155,126,216,0.06)", color: "#9B7ED8", fontSize: 16, lineHeight: 1 })}>+</button>
         </div>
       )}
 
-      <div style={{ textAlign: "center", marginTop: 16, fontSize: 11, color: "#4a3d4e", letterSpacing: 1 }}>{zenMode ? "◯ zen mode · press Z to exit" : "✦ breathe · focus · flow ✦"}</div>
-      {!zenMode && <div style={{ textAlign: "center", marginTop: 6, fontSize: 10, color: "#3d3242", letterSpacing: 1 }}>⎵ start/pause · D distraction · Z zen · Esc dismiss</div>}
+      <div style={{ textAlign: "center", marginTop: 16, fontSize: 11, color: theme.textDimmest, letterSpacing: 1 }}>{zenMode ? "◯ zen mode · press Z to exit" : "✦ breathe · focus · flow ✦"}</div>
+      {!zenMode && <div style={{ textAlign: "center", marginTop: 6, fontSize: 10, color: theme.textDimmest, letterSpacing: 1 }}>⎵ start/pause · D distraction · Z zen · T theme · Esc dismiss</div>}
     </div>
   );
 }
