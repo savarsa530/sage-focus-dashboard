@@ -14,6 +14,7 @@ const SOUNDS = {
   white: { label: "White Noise", color: "#B8B8B8" },
 };
 const PRESETS = [
+  { label: "10 / 2", work: 10, brk: 2 },
   { label: "25 / 5", work: 25, brk: 5 },
   { label: "50 / 10", work: 50, brk: 10 },
   { label: "90 / 20", work: 90, brk: 20 },
@@ -32,6 +33,22 @@ const CELEBRATIONS = [
   "Done. You actually did the thing.", "Look at you, finishing what you started.",
   "That's one fewer thing on your mind.", "Checked off. Breathe that in.",
   "Intention met. That's not small.", "You said you'd do it. You did it.",
+];
+const GENTLE_MANTRAS = [
+  "You're doing fine.", "One breath at a time.", "Small steps count.",
+  "You showed up. That's enough.", "Easy does it.", "Progress, not perfection.",
+  "Be gentle with yourself.", "You're right where you need to be.",
+];
+const GENTLE_CELEBRATIONS = [
+  "That's done. Rest a moment.", "Good — one thing off the list.",
+  "You completed something. That matters.", "Done. Be kind to yourself.",
+  "Step by step. You got this one.", "Noted. You're making progress.",
+];
+const GENTLE_BREAK_PROMPTS = [
+  "Close your eyes for a moment.", "Take three slow breaths.",
+  "Rest is productive too.", "You're allowed to pause.",
+  "Drink some water, slowly.", "Look away from the screen.",
+  "Stretch if it feels good.", "You don't have to rush.",
 ];
 
 // ─── Theme Definitions ───
@@ -276,6 +293,10 @@ export default function App() {
   const theme = THEMES[themeKey];
   // ── Parking lot collapse ──────────────────────────────────────────────────
   const [parkingOpen, setParkingOpen] = useState(true);
+  // ── Gentle mode ───────────────────────────────────────────────────────────
+  const [gentleMode, setGentleMode] = useState(false);
+  // ── Micro-note (end-of-session) ───────────────────────────────────────────
+  const [microNote, setMicroNote] = useState("");
 
   const soundRefs = useRef({});
   const ctxRef = useRef(null);
@@ -284,6 +305,12 @@ export default function App() {
   const saveTasksTimer = useRef(null);
   // ── M2: Drag item tracking ────────────────────────────────────────────────
   const dragItemId = useRef(null);
+  // ── Energy check-in (once per day) ───────────────────────────────────────
+  const showedEnergyRef = useRef(false);
+  // ── Gentle mode ref (for timer closure) ──────────────────────────────────
+  const gentleModeRef = useRef(false);
+
+  useEffect(() => { gentleModeRef.current = gentleMode; }, [gentleMode]);
 
   const getCtx = () => {
     if (!ctxRef.current) ctxRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -332,20 +359,27 @@ export default function App() {
   useEffect(() => {
     (async () => {
       try {
-        const [tR, dR, sR, lR, iR, thR] = await Promise.all([
+        const [tR, dR, sR, lR, iR, thR, gR] = await Promise.all([
           window.storage.get("sage-tasks").catch(() => null),
           window.storage.get("sage-dist").catch(() => null),
           window.storage.get("sage-settings").catch(() => null),
           window.storage.get("sage-log").catch(() => null),
           window.storage.get("sage-intention").catch(() => null),
           window.storage.get("sage-theme").catch(() => null),
+          window.storage.get("sage-gentle").catch(() => null),
         ]);
         if (tR?.value) { const t = JSON.parse(tR.value); setTasks(t.tasks || []); setFocusId(t.focusId || null); }
         if (dR?.value) setDistractions(JSON.parse(dR.value));
         if (sR?.value) { const s = JSON.parse(sR.value); setTimerSettings(s); setTimeLeft(s.work * 60); setCustomWork(String(s.work)); setCustomBreak(String(s.brk)); }
-        if (lR?.value) setSessionLog(JSON.parse(lR.value));
+        if (lR?.value) {
+          const log = JSON.parse(lR.value);
+          setSessionLog(log);
+          const todayEntry = log.find(l => l.date === today());
+          if (todayEntry?.energy != null) showedEnergyRef.current = true;
+        }
         if (iR?.value) { const i = JSON.parse(iR.value); if (i.date === today()) { setDailyIntention(i.text); setShowedIntention(true); } }
         if (thR?.value && THEMES[thR.value]) setThemeKey(thR.value);
+        if (gR?.value) { const g = JSON.parse(gR.value); setGentleMode(g); gentleModeRef.current = g; }
       } catch (_) {}
       setLoaded(true);
     })();
@@ -362,6 +396,7 @@ export default function App() {
   useEffect(() => { if (loaded) window.storage.set("sage-settings", JSON.stringify(timerSettings)).catch(() => {}); }, [timerSettings, loaded]);
   useEffect(() => { if (loaded) window.storage.set("sage-log", JSON.stringify(sessionLog)).catch(() => {}); }, [sessionLog, loaded]);
   useEffect(() => { if (loaded) window.storage.set("sage-theme", themeKey).catch(() => {}); }, [themeKey, loaded]);
+  useEffect(() => { if (loaded) window.storage.set("sage-gentle", JSON.stringify(gentleMode)).catch(() => {}); }, [gentleMode, loaded]);
   useEffect(() => { if (loaded && !showedIntention && !dailyIntention) { setOverlay("intention"); setShowedIntention(true); } }, [loaded, showedIntention, dailyIntention]);
 
   // Reset skip state when overlay changes
@@ -379,13 +414,15 @@ export default function App() {
         setTimeLeft(t => {
           if (t <= 1) {
             playChime();
+            const gm = gentleModeRef.current;
             if (phase === "work") {
               updateLog(1); setPhase("break");
-              setOverlayData({ msg: pick(BREAK_PROMPTS), mantra: pick(MANTRAS) }); setOverlay("refocus");
+              setMicroNote("");
+              setOverlayData({ msg: pick(gm ? GENTLE_BREAK_PROMPTS : BREAK_PROMPTS), mantra: pick(gm ? GENTLE_MANTRAS : MANTRAS), showNote: true }); setOverlay("refocus");
               return timerSettings.brk * 60;
             } else {
               setPhase("work");
-              setOverlayData({ mantra: pick(MANTRAS) }); setOverlay("refocus");
+              setOverlayData({ mantra: pick(gm ? GENTLE_MANTRAS : MANTRAS), showNote: false }); setOverlay("refocus");
               return timerSettings.work * 60;
             }
           }
@@ -400,13 +437,32 @@ export default function App() {
     setSessionLog(prev => {
       const d = today(), idx = prev.findIndex(l => l.date === d);
       if (idx >= 0) { const u = [...prev]; u[idx] = { ...u[idx], sessions: u[idx].sessions + add, focusSecs: (u[idx].focusSecs || 0) + timerSettings.work * 60 }; return u; }
-      return [...prev.slice(-29), { date: d, sessions: add, focusSecs: timerSettings.work * 60 }];
+      return [...prev.slice(-29), { date: d, sessions: add, focusSecs: timerSettings.work * 60, energy: null, notes: [] }];
+    });
+  };
+  const saveEnergy = (level) => {
+    showedEnergyRef.current = true;
+    setSessionLog(prev => {
+      const d = today(), idx = prev.findIndex(l => l.date === d);
+      if (idx >= 0) { const u = [...prev]; u[idx] = { ...u[idx], energy: level }; return u; }
+      return [...prev.slice(-29), { date: d, sessions: 0, focusSecs: 0, energy: level, notes: [] }];
+    });
+  };
+  const saveSessionNote = (note) => {
+    if (!note?.trim()) return;
+    setSessionLog(prev => {
+      const d = today(), idx = prev.findIndex(l => l.date === d);
+      if (idx < 0) return prev;
+      const u = [...prev];
+      u[idx] = { ...u[idx], notes: [...(u[idx].notes || []), note.trim()] };
+      return u;
     });
   };
 
   const handleStartRef = useRef(null);
   const handleStart = useCallback(() => {
     if (running) { setRunning(false); return; }
+    if (!showedEnergyRef.current) { setOverlay("energy"); return; }
     if (!focusId && tasks.filter(t => !t.done).length > 0) { setOverlay("nudge"); return; }
     getCtx(); setRunning(true);
   }, [running, focusId, tasks]);
@@ -444,7 +500,7 @@ export default function App() {
   const toggleTask = (id) => {
     const task = tasks.find(t => t.id === id);
     if (task && !task.done && id === focusId) {
-      setOverlayData({ msg: pick(CELEBRATIONS), task: task.text, secs: task.focusSecs || 0 });
+      setOverlayData({ msg: pick(gentleMode ? GENTLE_CELEBRATIONS : CELEBRATIONS), task: task.text, secs: task.focusSecs || 0 });
       setOverlay("celebrate"); setFocusId(null);
     }
     setTasks(t => t.map(x => x.id === id ? { ...x, done: !x.done } : x));
@@ -452,6 +508,7 @@ export default function App() {
   };
   const removeTask = (id) => { setTasks(t => t.filter(x => x.id !== id)); if (focusId === id) setFocusId(null); };
   const addDist = () => { if (!newDist.trim()) return; setDistractions(d => [{ id: Date.now(), text: newDist.trim(), time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }, ...d]); setNewDist(""); };
+  const promoteToTask = (id) => { const d = distractions.find(x => x.id === id); if (!d) return; setTasks(t => [...t, { id: Date.now(), text: d.text, done: false, focusSecs: 0 }]); removeDist(id); };
   // ── M1: Delete individual side quest ─────────────────────────────────────
   const removeDist = (id) => setDistractions(d => d.filter(x => x.id !== id));
   const clearDone = () => setTasks(t => t.filter(x => !x.done));
@@ -567,8 +624,8 @@ export default function App() {
         }
         .parking-body.open{ max-height: 400px; opacity: 1; }
         .parking-body.closed{ max-height: 0; opacity: 0; pointer-events: none; }
-        /* M2: Drag styles */
-        .task-row{ transition: border-top 0.1s ease, opacity 0.15s ease, background-color 0.2s ease, color 0.2s ease; }
+        /* M2: Drag styles — exclude draggable="true" rows from transitions (Chrome drag bug) */
+        .task-row:not([draggable="true"]){ transition: border-top 0.1s ease, opacity 0.15s ease, background-color 0.2s ease, color 0.2s ease; }
         .task-row.drag-over{ border-top: 2px solid ${theme.accent}80 !important; }
         .drag-handle{
           cursor: grab;
@@ -703,7 +760,13 @@ export default function App() {
           {focusTask && phase === "work" && <div style={{ fontSize: 28, fontFamily: "'Outfit', sans-serif", color: theme.accent, lineHeight: 1.4, marginBottom: 20 }}>{focusTask.text}</div>}
           {!focusTask && phase === "work" && <div style={{ fontSize: 22, fontFamily: "'Outfit', sans-serif", color: theme.textPrimary, marginBottom: 20, fontStyle: "italic", opacity: 0.8 }}>What are you sitting down to do?</div>}
           <div style={{ fontSize: 15, color: theme.textSecondary, fontStyle: "italic", marginBottom: 28 }}>{overlayData.mantra}</div>
-          <button onClick={() => setOverlay(null)} style={btn({ padding: "12px 40px", border: `1px solid ${theme.accent}66`, background: theme.accentSoft, color: theme.accent, fontSize: 15, letterSpacing: 2 })}>
+          {overlayData.showNote && (
+            <div style={{ marginBottom: 20 }}>
+              <input value={microNote} onChange={e => setMicroNote(e.target.value)} placeholder="One thing you accomplished... (optional)"
+                style={{ width: "80%", maxWidth: 340, padding: "10px 14px", borderRadius: 10, border: `1px solid ${theme.accent}33`, background: theme.inputBg, color: theme.textPrimary, fontSize: 13, textAlign: "center", fontFamily: "'Outfit', sans-serif" }} />
+            </div>
+          )}
+          <button onClick={() => { if (overlayData.showNote) { saveSessionNote(microNote); setMicroNote(""); } setOverlay(null); }} style={btn({ padding: "12px 40px", border: `1px solid ${theme.accent}66`, background: theme.accentSoft, color: theme.accent, fontSize: 15, letterSpacing: 2 })}>
             {phase === "work" ? "Back to it" : "Resting"}
           </button>
           {/* L4: Skip break — only during break phase */}
@@ -751,6 +814,29 @@ export default function App() {
             </div>
             <button onClick={startAnyway} style={btn({ padding: "10px 28px", border: `1px solid ${theme.textSecondary}4D`, background: "transparent", color: theme.textSecondary, letterSpacing: 1 })}>Start without a task</button>
           </div>
+        </Overlay>
+      )}
+
+      {overlay === "energy" && (
+        <Overlay onClose={() => { showedEnergyRef.current = true; setOverlay(null); }} theme={theme}>
+          <div style={{ fontSize: 36, marginBottom: 12, opacity: 0.5 }}>✦</div>
+          <div style={{ fontSize: 14, textTransform: "uppercase", letterSpacing: 4, color: theme.textSecondary, marginBottom: 8 }}>Check In</div>
+          <div style={{ fontSize: 20, fontFamily: "'Outfit', sans-serif", color: theme.accent, marginBottom: 24 }}>How's your energy right now?</div>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 10 }}>
+            {[1, 2, 3, 4, 5].map(n => (
+              <button key={n} onClick={() => { saveEnergy(n); setOverlay(null); if (!focusId && tasks.filter(t => !t.done).length > 0) { setOverlay("nudge"); return; } getCtx(); setRunning(true); }}
+                style={btn({ width: 44, height: 44, borderRadius: 12, border: `1px solid ${theme.accent}66`, background: theme.accentSoft, color: theme.accent, fontSize: 16, fontWeight: 500 })}>
+                {n}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", maxWidth: 240, margin: "0 auto 20px", fontSize: 11, color: theme.textMuted }}>
+            <span>running low</span><span>full tank</span>
+          </div>
+          <button onClick={() => { showedEnergyRef.current = true; setOverlay(null); if (!focusId && tasks.filter(t => !t.done).length > 0) { setOverlay("nudge"); return; } getCtx(); setRunning(true); }}
+            style={btn({ padding: "7px 20px", border: `1px solid ${theme.textSecondary}2E`, background: "transparent", color: theme.textMuted, fontSize: 12 })}>
+            skip for now →
+          </button>
         </Overlay>
       )}
 
@@ -853,6 +939,7 @@ export default function App() {
           <button onClick={resetTimer} style={btn({ padding: "10px 20px", border: `1px solid ${theme.textSecondary}4D`, background: "transparent", color: theme.textSecondary, letterSpacing: 1 })}>Reset</button>
           <button onClick={() => setShowSettings(!showSettings)} style={btn({ padding: "10px 20px", border: `1px solid ${theme.textSecondary}4D`, background: showSettings ? `${theme.textSecondary}26` : "transparent", color: theme.textSecondary })}>⚙</button>
           <button onClick={() => setZenMode(z => !z)} title="Zen mode (Z)" style={btn({ padding: "10px 20px", border: `1px solid ${zenMode ? theme.accent + "66" : theme.textSecondary + "4D"}`, background: zenMode ? theme.accentSoft : "transparent", color: zenMode ? theme.accent : theme.textSecondary })}>◯</button>
+          <button onClick={() => setGentleMode(g => !g)} title="Gentle mode — calmer copy for hard days" style={btn({ padding: "10px 20px", border: `1px solid ${gentleMode ? theme.accent + "66" : theme.textSecondary + "4D"}`, background: gentleMode ? theme.accentSoft : "transparent", color: gentleMode ? theme.accent : theme.textSecondary })}>☁</button>
         </div>
         {showSettings && (
           <div style={{ marginTop: 8, padding: 14, background: theme.panelBg, borderRadius: 16, display: "inline-block" }}>
@@ -1014,6 +1101,7 @@ export default function App() {
                     <div key={d.id} style={{ padding: "7px 4px", borderBottom: `1px solid ${theme.textSecondary}0F`, display: "flex", gap: 10, alignItems: "center" }}>
                       <span style={{ fontSize: 10, color: theme.textMuted, flexShrink: 0, fontFamily: "monospace" }}>{d.time}</span>
                       <span style={{ fontSize: 13, color: theme.textPrimary, flex: 1, opacity: 0.85 }}>{d.text}</span>
+                      <button onClick={() => promoteToTask(d.id)} title="Move to tasks" style={{ background: "none", border: `1px solid ${theme.textSecondary}26`, borderRadius: 6, color: theme.textSecondary, cursor: "pointer", fontSize: 10, padding: "2px 6px", flexShrink: 0, lineHeight: 1.4 }}>→ task</button>
                       <button onClick={() => removeDist(d.id)} style={{ background: "none", border: "none", color: theme.textMuted, cursor: "pointer", fontSize: 14, padding: "0 2px", flexShrink: 0, lineHeight: 1 }}>×</button>
                     </div>
                   ))}
@@ -1042,7 +1130,7 @@ export default function App() {
 
       <div style={{ textAlign: "center", marginTop: 16, fontSize: 11, color: theme.textDimmest, letterSpacing: 1 }}>{zenMode ? "◯ zen mode · press Z to exit" : "✦ breathe · focus · flow ✦"}</div>
       {!zenMode && <div style={{ textAlign: "center", marginTop: 6, fontSize: 10, color: theme.textDimmest, letterSpacing: 1 }}>⎵ start/pause · D distraction · Z zen · T theme · Esc dismiss</div>}
-      <div style={{ textAlign: "center", marginTop: 12, fontSize: 10, color: theme.textDimmest, letterSpacing: 1, opacity: 0.6 }}>v0.2.3 · updated March 23, 2026</div>
+      <div style={{ textAlign: "center", marginTop: 12, fontSize: 10, color: theme.textDimmest, letterSpacing: 1, opacity: 0.6 }}>v0.3.0 · updated March 25, 2026</div>
     </div>
   );
 }
