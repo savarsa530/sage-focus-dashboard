@@ -69,6 +69,8 @@ const THEMES = {
     inputBg: "rgba(255,255,255,0.04)",
     inputBorder: "rgba(139,123,142,0.2)",
     overlayBg: "rgba(10,6,15,0.92)",
+    focusGradient: "270deg, #1a1025, #2d1b3d, #251832, #2a1f38, #1e1428, #1a1025",
+    auroraA: "rgba(212,165,116,0.19)", auroraB: "rgba(155,126,216,0.12)", auroraC: "rgba(123,158,168,0.12)", auroraD: "rgba(155,126,216,0.09)",
   },
   soft: {
     key: "soft",
@@ -86,6 +88,8 @@ const THEMES = {
     inputBg: "rgba(255,255,255,0.06)",
     inputBorder: "rgba(168,154,173,0.25)",
     overlayBg: "rgba(30,24,38,0.94)",
+    focusGradient: "270deg, #2a2433, #3d3347, #352d40, #2e2838, #322b3c, #2a2433",
+    auroraA: "rgba(224,184,150,0.16)", auroraB: "rgba(155,126,216,0.14)", auroraC: "rgba(123,158,168,0.13)", auroraD: "rgba(155,126,216,0.11)",
   },
   light: {
     key: "light",
@@ -103,6 +107,46 @@ const THEMES = {
     inputBg: "rgba(255,255,255,0.8)",
     inputBorder: "rgba(139,123,142,0.25)",
     overlayBg: "rgba(245,240,235,0.96)",
+    focusGradient: "270deg, #f5f0eb, #ebe4dc, #e6ddd4, #ddd8d0, #e8e2db, #f0ebe5",
+    auroraA: "rgba(154,107,74,0.15)", auroraB: "rgba(123,158,168,0.12)", auroraC: "rgba(154,107,74,0.12)", auroraD: "rgba(155,126,216,0.10)",
+  },
+  forest: {
+    key: "forest",
+    label: "Forest",
+    icon: "❧",
+    bg: "linear-gradient(145deg, #0b1a0e 0%, #152b18 40%, #0f2012 100%)",
+    textPrimary: "#cde8cb",
+    textSecondary: "#7aaa80",
+    textMuted: "#567a5c",
+    textDimmest: "#344d38",
+    accent: "#7ecb87",
+    accentSoft: "rgba(126,203,135,0.14)",
+    panelBg: "rgba(255,255,255,0.02)",
+    panelBorder: "rgba(122,170,128,0.1)",
+    inputBg: "rgba(255,255,255,0.04)",
+    inputBorder: "rgba(122,170,128,0.2)",
+    overlayBg: "rgba(5,12,6,0.93)",
+    focusGradient: "270deg, #0b1a0e, #152b18, #112414, #0e2010, #142716, #0b1a0e",
+    auroraA: "rgba(126,203,135,0.18)", auroraB: "rgba(94,180,140,0.14)", auroraC: "rgba(126,203,135,0.13)", auroraD: "rgba(100,190,160,0.10)",
+  },
+  ocean: {
+    key: "ocean",
+    label: "Ocean",
+    icon: "〰",
+    bg: "linear-gradient(145deg, #08131e 0%, #0d2035 40%, #0a1828 100%)",
+    textPrimary: "#c8dff0",
+    textSecondary: "#6a9ab8",
+    textMuted: "#4a7a96",
+    textDimmest: "#2d5570",
+    accent: "#5ab4d8",
+    accentSoft: "rgba(90,180,216,0.14)",
+    panelBg: "rgba(255,255,255,0.02)",
+    panelBorder: "rgba(106,154,184,0.1)",
+    inputBg: "rgba(255,255,255,0.04)",
+    inputBorder: "rgba(106,154,184,0.2)",
+    overlayBg: "rgba(4,10,18,0.93)",
+    focusGradient: "270deg, #08131e, #0d2035, #0b1c30, #09172a, #0c1e32, #08131e",
+    auroraA: "rgba(90,180,216,0.18)", auroraB: "rgba(60,140,190,0.14)", auroraC: "rgba(90,180,216,0.13)", auroraD: "rgba(70,160,200,0.10)",
   },
 };
 
@@ -196,6 +240,72 @@ function buildBinaural(ctx, vol) {
 }
 
 const BUILDERS = { rain: buildRain, brown: buildBrown, white: buildWhite, binaural: buildBinaural };
+
+// ─── Confetti ───
+const CONFETTI_COLORS = ["#d4a574","#7ecb87","#5ab4d8","#9B7ED8","#e0b896","#7B9EA8","#f0e6dc","#cde8cb"];
+function Confetti({ theme }) {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const accentColor = theme.accent;
+    const colors = [accentColor, ...CONFETTI_COLORS];
+    const particles = Array.from({ length: 110 }, () => ({
+      x: canvas.width / 2 + (Math.random() - 0.5) * 80,
+      y: canvas.height * 0.42,
+      vx: (Math.random() - 0.5) * 14,
+      vy: -(Math.random() * 12 + 4),
+      size: Math.random() * 7 + 3,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rotation: Math.random() * Math.PI * 2,
+      rotationSpeed: (Math.random() - 0.5) * 0.25,
+      shape: Math.random() > 0.5 ? "rect" : "circle",
+      alpha: 1,
+    }));
+    let frame;
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let alive = false;
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.38;
+        p.vx *= 0.99;
+        p.rotation += p.rotationSpeed;
+        p.alpha = Math.max(0, p.alpha - 0.012);
+        if (p.alpha > 0) alive = true;
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        ctx.fillStyle = p.color;
+        if (p.shape === "rect") {
+          ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      });
+      if (alive) frame = requestAnimationFrame(draw);
+    };
+    frame = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(frame);
+  }, [theme.accent]);
+  return (
+    <canvas ref={canvasRef} style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1001 }} />
+  );
+}
+
+// ─── Milestone badge messages ───
+const MILESTONE_MSGS = {
+  3: "3 sessions — you're in your flow state",
+  5: "5 sessions — exceptional focus today",
+};
 
 function Overlay({ children, onClose, bg, theme }) {
   return (
@@ -305,6 +415,9 @@ export default function App() {
   const saveTasksTimer = useRef(null);
   // ── M2: Drag item tracking ────────────────────────────────────────────────
   const dragItemId = useRef(null);
+  // ── Session milestone badge ───────────────────────────────────────────────
+  const [milestoneMsg, setMilestoneMsg] = useState(null);
+  const milestoneTimer = useRef(null);
   // ── Energy check-in (once per day) ───────────────────────────────────────
   const showedEnergyRef = useRef(false);
   // ── Gentle mode ref (for timer closure) ──────────────────────────────────
@@ -436,8 +549,24 @@ export default function App() {
   const updateLog = (add) => {
     setSessionLog(prev => {
       const d = today(), idx = prev.findIndex(l => l.date === d);
-      if (idx >= 0) { const u = [...prev]; u[idx] = { ...u[idx], sessions: u[idx].sessions + add, focusSecs: (u[idx].focusSecs || 0) + timerSettings.work * 60 }; return u; }
-      return [...prev.slice(-29), { date: d, sessions: add, focusSecs: timerSettings.work * 60, energy: null, notes: [] }];
+      let nextSessions;
+      let next;
+      if (idx >= 0) {
+        nextSessions = prev[idx].sessions + add;
+        const u = [...prev]; u[idx] = { ...u[idx], sessions: nextSessions, focusSecs: (u[idx].focusSecs || 0) + timerSettings.work * 60 };
+        next = u;
+      } else {
+        nextSessions = add;
+        next = [...prev.slice(-29), { date: d, sessions: nextSessions, focusSecs: timerSettings.work * 60, energy: null, notes: [] }];
+      }
+      if (MILESTONE_MSGS[nextSessions]) {
+        setTimeout(() => {
+          setMilestoneMsg(MILESTONE_MSGS[nextSessions]);
+          clearTimeout(milestoneTimer.current);
+          milestoneTimer.current = setTimeout(() => setMilestoneMsg(null), 4000);
+        }, 300);
+      }
+      return next;
     });
   };
   const saveEnergy = (level) => {
@@ -478,7 +607,8 @@ export default function App() {
       // Theme cycling with T key
       if (e.key === "t" || e.key === "T") {
         e.preventDefault();
-        setThemeKey(k => k === "dark" ? "soft" : k === "soft" ? "light" : "dark");
+        const order = ["dark", "soft", "light", "forest", "ocean"];
+        setThemeKey(k => order[(order.indexOf(k) + 1) % order.length]);
       }
     };
     window.addEventListener("keydown", handler);
@@ -671,13 +801,7 @@ export default function App() {
           50% { filter: drop-shadow(0 0 20px ${theme.accent}60); }
         }
         .focus-active {
-          background: linear-gradient(270deg,
-            ${theme.key === 'light' ? '#f5f0eb' : theme.key === 'soft' ? '#2a2433' : '#1a1025'},
-            ${theme.key === 'light' ? '#ebe4dc' : theme.key === 'soft' ? '#3d3347' : '#2d1b3d'},
-            ${theme.key === 'light' ? '#e6ddd4' : theme.key === 'soft' ? '#352d40' : '#251832'},
-            ${theme.key === 'light' ? '#ddd8d0' : theme.key === 'soft' ? '#2e2838' : '#2a1f38'},
-            ${theme.key === 'light' ? '#e8e2db' : theme.key === 'soft' ? '#322b3c' : '#1e1428'},
-            ${theme.key === 'light' ? '#f0ebe5' : theme.key === 'soft' ? '#2a2433' : '#1a1025'}) !important;
+          background: linear-gradient(${theme.focusGradient}) !important;
           background-size: 400% 400% !important;
           animation: gradientShift 15s ease infinite !important;
         }
@@ -697,7 +821,7 @@ export default function App() {
           left: 0;
           width: 60%;
           height: 40%;
-          background: linear-gradient(90deg, transparent, ${theme.key === 'light' ? 'rgba(154,107,74,0.15)' : theme.key === 'soft' ? 'rgba(224,184,150,0.16)' : 'rgba(212,165,116,0.19)'}, ${theme.key === 'light' ? 'rgba(123,158,168,0.12)' : theme.key === 'soft' ? 'rgba(155,126,216,0.14)' : 'rgba(155,126,216,0.12)'}, transparent);
+          background: linear-gradient(90deg, transparent, ${theme.auroraA}, ${theme.auroraB}, transparent);
           border-radius: 50%;
           animation: auroraWave 12s ease-in-out infinite;
         }
@@ -707,7 +831,7 @@ export default function App() {
           right: 0;
           width: 50%;
           height: 35%;
-          background: linear-gradient(90deg, transparent, ${theme.key === 'light' ? 'rgba(123,158,168,0.14)' : theme.key === 'soft' ? 'rgba(123,158,168,0.13)' : 'rgba(123,158,168,0.12)'}, ${theme.key === 'light' ? 'rgba(154,107,74,0.12)' : theme.key === 'soft' ? 'rgba(224,184,150,0.14)' : 'rgba(212,165,116,0.15)'}, transparent);
+          background: linear-gradient(90deg, transparent, ${theme.auroraC}, ${theme.auroraA}, transparent);
           border-radius: 50%;
           animation: auroraWave2 16s ease-in-out infinite;
           animation-delay: 4s;
@@ -718,13 +842,23 @@ export default function App() {
           left: 20%;
           width: 40%;
           height: 30%;
-          background: linear-gradient(90deg, transparent, ${theme.key === 'light' ? 'rgba(155,126,216,0.10)' : theme.key === 'soft' ? 'rgba(155,126,216,0.11)' : 'rgba(155,126,216,0.09)'}, transparent);
+          background: linear-gradient(90deg, transparent, ${theme.auroraD}, transparent);
           border-radius: 50%;
           animation: auroraWave 20s ease-in-out infinite;
           animation-delay: 8s;
         }
         .timer-glow svg {
           animation: timerGlow 3s ease-in-out infinite;
+        }
+        /* Milestone badge */
+        @keyframes milestoneIn {
+          0% { opacity: 0; transform: translateY(6px) scale(0.94); }
+          15% { opacity: 1; transform: translateY(0) scale(1); }
+          80% { opacity: 1; transform: translateY(0) scale(1); }
+          100% { opacity: 0; transform: translateY(-4px) scale(0.97); }
+        }
+        .milestone-badge {
+          animation: milestoneIn 4s ease forwards;
         }
       `}</style>
 
@@ -793,13 +927,16 @@ export default function App() {
       )}
 
       {overlay === "celebrate" && (
-        <Overlay onClose={() => setOverlay(null)} bg={`${theme.overlayBg}`} theme={theme}>
-          <div style={{ fontSize: 56, marginBottom: 16 }}>✧</div>
-          <div style={{ fontSize: 24, fontFamily: "'Outfit', sans-serif", color: theme.accent, lineHeight: 1.4, marginBottom: 8 }}>{overlayData.msg}</div>
-          <div style={{ fontSize: 15, color: theme.textPrimary, marginBottom: 6, opacity: 0.8 }}>{overlayData.task}</div>
-          {overlayData.secs > 0 && <div style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 28 }}>{fmtMins(overlayData.secs)} of focused time</div>}
-          <button onClick={() => setOverlay(null)} style={btn({ padding: "12px 40px", border: `1px solid ${theme.accent}66`, background: theme.accentSoft, color: theme.accent, fontSize: 15, letterSpacing: 1 })}>Onward</button>
-        </Overlay>
+        <>
+          <Confetti theme={theme} />
+          <Overlay onClose={() => setOverlay(null)} bg={`${theme.overlayBg}`} theme={theme}>
+            <div style={{ fontSize: 56, marginBottom: 16 }}>✧</div>
+            <div style={{ fontSize: 24, fontFamily: "'Outfit', sans-serif", color: theme.accent, lineHeight: 1.4, marginBottom: 8 }}>{overlayData.msg}</div>
+            <div style={{ fontSize: 15, color: theme.textPrimary, marginBottom: 6, opacity: 0.8 }}>{overlayData.task}</div>
+            {overlayData.secs > 0 && <div style={{ fontSize: 13, color: theme.textSecondary, marginBottom: 28 }}>{fmtMins(overlayData.secs)} of focused time</div>}
+            <button onClick={() => setOverlay(null)} style={btn({ padding: "12px 40px", border: `1px solid ${theme.accent}66`, background: theme.accentSoft, color: theme.accent, fontSize: 15, letterSpacing: 1 })}>Onward</button>
+          </Overlay>
+        </>
       )}
 
       {overlay === "nudge" && (
@@ -926,6 +1063,20 @@ export default function App() {
               <animate attributeName="r" values="88;96;88" dur="3s" repeatCount="indefinite" />
               <animate attributeName="opacity" values="0.15;0;0.15" dur="3s" repeatCount="indefinite" />
             </circle>}
+            {/* Traveling dot at leading edge of progress */}
+            {pct > 0 && (() => {
+              const angle = -Math.PI / 2 + (2 * Math.PI * pct / 100);
+              const dotColor = phase === "work" ? theme.accent : "#7B9EA8";
+              return (
+                <circle
+                  cx={100 + 88 * Math.cos(angle)}
+                  cy={100 + 88 * Math.sin(angle)}
+                  r="5"
+                  fill={dotColor}
+                  style={{ filter: `drop-shadow(0 0 4px ${dotColor})`, transition: "cx 0.5s ease, cy 0.5s ease" }}
+                />
+              );
+            })()}
           </svg>
           <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center" }}>
             <div style={{ fontSize: 44, fontWeight: 300, fontFamily: "'Courier New', monospace", color: theme.textPrimary, letterSpacing: 2 }}>{fmt(timeLeft)}</div>
@@ -957,6 +1108,11 @@ export default function App() {
           </div>
         )}
         <div style={{ marginTop: 10, fontSize: 12, color: theme.textSecondary, textAlign: "center" }}>Sessions today: <span style={{ color: theme.accent }}>{todayLog?.sessions ?? 0}</span></div>
+        {milestoneMsg && (
+          <div className="milestone-badge" style={{ marginTop: 10, display: "inline-block", padding: "6px 18px", borderRadius: 20, background: theme.accentSoft, border: `1px solid ${theme.accent}50`, color: theme.accent, fontSize: 12, letterSpacing: 0.5 }}>
+            ✦ {milestoneMsg}
+          </div>
+        )}
       </div>
 
       {/* ═══ SOUNDSCAPE ═══ */}
