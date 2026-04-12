@@ -130,12 +130,17 @@ export default function PIParkingLot({ theme }) {
   }
 
   // ── Style helpers that pull from the existing theme ──────────
-  const isDark = theme?.key !== "light";
+  const isDark = theme?.isDark ?? false;
 
   const s = {
     section: {
-      marginTop: "2rem",
-      padding: "0",
+      marginTop: "1.25rem",
+    },
+    card: {
+      background: theme?.card || "rgba(255,255,255,0.05)",
+      border: `1px solid ${theme?.border || "rgba(255,255,255,0.1)"}`,
+      borderRadius: "16px",
+      padding: "1.25rem",
     },
     header: {
       display: "flex",
@@ -146,11 +151,11 @@ export default function PIParkingLot({ theme }) {
       gap: "0.5rem",
     },
     title: {
-      fontFamily: "'Outfit', sans-serif",
-      fontSize: "1.1rem",
-      fontWeight: 600,
+      fontFamily: "'Barlow', sans-serif",
+      fontSize: "0.68rem",
+      fontWeight: 700,
       color: theme?.accent || "#9B7ED8",
-      letterSpacing: "0.04em",
+      letterSpacing: "0.12em",
       textTransform: "uppercase",
       margin: 0,
     },
@@ -170,7 +175,7 @@ export default function PIParkingLot({ theme }) {
       fontSize: "0.8rem",
       fontWeight: activePi === pi ? 600 : 400,
       cursor: "pointer",
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       transition: "all 0.15s ease",
     }),
     // Status filter pills
@@ -188,7 +193,7 @@ export default function PIParkingLot({ theme }) {
       color: filterStatus === key ? (theme?.accent || "#9B7ED8") : (theme?.muted || "#aaa"),
       fontSize: "0.72rem",
       cursor: "pointer",
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       transition: "all 0.15s ease",
     }),
     // Item card
@@ -210,7 +215,7 @@ export default function PIParkingLot({ theme }) {
     },
     cardTitle: {
       flex: 1,
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.95rem",
       fontWeight: 500,
       color: theme?.text || "#e8e0f0",
@@ -230,7 +235,7 @@ export default function PIParkingLot({ theme }) {
         border: `1px solid ${colors[status]}44`,
         color: colors[status],
         background: colors[status] + "18",
-        fontFamily: "'Outfit', sans-serif",
+        fontFamily: "'Barlow', sans-serif",
         whiteSpace: "nowrap",
       };
     },
@@ -252,7 +257,7 @@ export default function PIParkingLot({ theme }) {
       marginTop: "0.75rem",
     },
     fieldLabel: {
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.7rem",
       fontWeight: 600,
       color: theme?.accent || "#9B7ED8",
@@ -261,13 +266,13 @@ export default function PIParkingLot({ theme }) {
       marginBottom: "0.2rem",
     },
     fieldValue: {
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.82rem",
       color: theme?.text || "#e8e0f0",
       lineHeight: 1.5,
     },
     fieldEmpty: {
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.78rem",
       color: theme?.muted || "#888",
       fontStyle: "italic",
@@ -280,7 +285,7 @@ export default function PIParkingLot({ theme }) {
       borderRadius: "8px",
       padding: "0.45rem 0.6rem",
       color: theme?.text || "#e8e0f0",
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.82rem",
       resize: "vertical",
       minHeight: "52px",
@@ -294,7 +299,7 @@ export default function PIParkingLot({ theme }) {
       borderRadius: "8px",
       padding: "0.45rem 0.6rem",
       color: theme?.text || "#e8e0f0",
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.82rem",
       outline: "none",
       boxSizing: "border-box",
@@ -305,7 +310,7 @@ export default function PIParkingLot({ theme }) {
       borderRadius: "8px",
       padding: "0.35rem 0.6rem",
       color: theme?.text || "#e8e0f0",
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.78rem",
       outline: "none",
     },
@@ -344,7 +349,7 @@ export default function PIParkingLot({ theme }) {
         padding: "0.3rem 0.75rem",
         borderRadius: "8px",
         fontSize: "0.75rem",
-        fontFamily: "'Outfit', sans-serif",
+        fontFamily: "'Barlow', sans-serif",
         cursor: "pointer",
         fontWeight: 500,
         transition: "opacity 0.15s ease",
@@ -362,7 +367,7 @@ export default function PIParkingLot({ theme }) {
       padding: "0.6rem 1rem",
       width: "100%",
       cursor: "pointer",
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.85rem",
       marginTop: "0.5rem",
       transition: "background 0.15s ease",
@@ -380,7 +385,7 @@ export default function PIParkingLot({ theme }) {
       textAlign: "center",
       padding: "2rem 1rem",
       color: theme?.muted || "#888",
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.85rem",
       fontStyle: "italic",
     },
@@ -427,10 +432,11 @@ export default function PIParkingLot({ theme }) {
 
   return (
     <div style={s.section}>
+    <div style={s.card}>
       {/* ── Section header ── */}
       <div style={s.header}>
-        <h2 style={s.title}>🅿️ PI Planning Parking Lot</h2>
-        <span style={{ fontSize: "0.75rem", color: theme?.muted || "#888", fontFamily: "'Outfit', sans-serif" }}>
+        <span style={s.title}>🅿️ PI Planning Parking Lot</span>
+        <span style={{ fontSize: "0.75rem", color: theme?.muted || "#888", fontFamily: "'Barlow', sans-serif" }}>
           {items.length} item{items.length !== 1 ? "s" : ""} across all PIs
         </span>
       </div>
@@ -558,7 +564,7 @@ export default function PIParkingLot({ theme }) {
                 {STATUSES.find((s) => s.key === item.status)?.label}
               </span>
               {item.deadline && (
-                <span style={{ fontSize: "0.72rem", color: theme?.muted || "#aaa", fontFamily: "'Outfit', sans-serif" }}>
+                <span style={{ fontSize: "0.72rem", color: theme?.muted || "#aaa", fontFamily: "'Barlow', sans-serif" }}>
                   📅 {item.deadline}
                 </span>
               )}
@@ -623,7 +629,7 @@ export default function PIParkingLot({ theme }) {
                       <button style={s.btn("danger")} onClick={() => deleteItem(item.id)}>Delete</button>
                     </div>
                     {current.createdAt && (
-                      <div style={{ marginTop: "0.5rem", fontSize: "0.68rem", color: theme?.muted || "#888", fontFamily: "'Outfit', sans-serif" }}>
+                      <div style={{ marginTop: "0.5rem", fontSize: "0.68rem", color: theme?.muted || "#888", fontFamily: "'Barlow', sans-serif" }}>
                         Added {new Date(current.createdAt).toLocaleDateString()}
                       </div>
                     )}
@@ -641,6 +647,7 @@ export default function PIParkingLot({ theme }) {
           <span style={{ fontSize: "1rem" }}>+</span> Park something new in PI {activePi}
         </button>
       )}
+    </div>
     </div>
   );
 }

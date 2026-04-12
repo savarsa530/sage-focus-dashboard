@@ -179,7 +179,7 @@ export default function PIReadiness({ theme }) {
     saveData(currentPi, data);
   }, [data, currentPi]);
 
-  const isDark = theme?.key !== "light";
+  const isDark = theme?.isDark ?? false;
 
   // ── Derived metrics ─────────────────────────────────────────
   const allStatuses = BUCKETS.flatMap((b) =>
@@ -229,7 +229,13 @@ export default function PIReadiness({ theme }) {
 
   // ── Shared style helpers ─────────────────────────────────────
   const s = {
-    section: { marginTop: "2rem" },
+    section: { marginTop: "1.25rem" },
+    card: {
+      background: theme?.card || "rgba(255,255,255,0.05)",
+      border: `1px solid ${theme?.border || "rgba(255,255,255,0.1)"}`,
+      borderRadius: "16px",
+      padding: "1.25rem",
+    },
     header: {
       display: "flex",
       alignItems: "center",
@@ -239,16 +245,16 @@ export default function PIReadiness({ theme }) {
       gap: "0.5rem",
     },
     title: {
-      fontFamily: "'Outfit', sans-serif",
-      fontSize: "1.1rem",
-      fontWeight: 600,
+      fontFamily: "'Barlow', sans-serif",
+      fontSize: "0.68rem",
+      fontWeight: 700,
       color: theme?.accent || "#9B7ED8",
-      letterSpacing: "0.04em",
+      letterSpacing: "0.12em",
       textTransform: "uppercase",
       margin: 0,
     },
     piSelect: {
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.78rem",
       padding: "0.3rem 0.6rem",
       borderRadius: "8px",
@@ -259,7 +265,7 @@ export default function PIReadiness({ theme }) {
       outline: "none",
     },
     resetBtn: {
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.72rem",
       padding: "0.25rem 0.6rem",
       borderRadius: "8px",
@@ -281,14 +287,14 @@ export default function PIReadiness({ theme }) {
       padding: "0.65rem 0.75rem",
     },
     metricVal: (color) => ({
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "1.4rem",
       fontWeight: 600,
       color,
       lineHeight: 1,
     }),
     metricLbl: {
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.68rem",
       color: theme?.muted || "#888",
       marginTop: "0.2rem",
@@ -296,7 +302,7 @@ export default function PIReadiness({ theme }) {
       letterSpacing: "0.05em",
     },
     overallPct: {
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.78rem",
       color: theme?.muted || "#888",
       marginBottom: "0.5rem",
@@ -340,7 +346,7 @@ export default function PIReadiness({ theme }) {
       flexShrink: 0,
     }),
     bucketTitle: {
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.9rem",
       fontWeight: 500,
       color: theme?.text || "#e8e0f0",
@@ -354,7 +360,7 @@ export default function PIReadiness({ theme }) {
       overflow: "hidden",
     },
     bucketCount: {
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.7rem",
       color: theme?.muted || "#888",
     },
@@ -380,13 +386,13 @@ export default function PIReadiness({ theme }) {
       borderBottom: "none",
     },
     checkLabel: {
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.85rem",
       color: theme?.text || "#e8e0f0",
       lineHeight: 1.4,
     },
     checkSub: {
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.72rem",
       color: theme?.muted || "#888",
       marginTop: "0.15rem",
@@ -400,14 +406,14 @@ export default function PIReadiness({ theme }) {
       borderRadius: "6px",
       padding: "0.3rem 0.5rem",
       color: theme?.text || "#e8e0f0",
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.75rem",
       resize: "none",
       outline: "none",
     },
     // Status buttons
     statusBtnBase: {
-      fontFamily: "'Outfit', sans-serif",
+      fontFamily: "'Barlow', sans-serif",
       fontSize: "0.68rem",
       padding: "0.2rem 0.5rem",
       borderRadius: "999px",
@@ -439,9 +445,10 @@ export default function PIReadiness({ theme }) {
 
   return (
     <div style={s.section}>
+    <div style={s.card}>
       {/* ── Header ── */}
       <div style={s.header}>
-        <h2 style={s.title}>✈️ PI Readiness Check</h2>
+        <span style={s.title}>✈️ PI Readiness Check</span>
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
           <select
             style={s.piSelect}
@@ -550,6 +557,7 @@ export default function PIReadiness({ theme }) {
           </div>
         );
       })}
+    </div>
     </div>
   );
 }
