@@ -221,8 +221,13 @@ export default function App() {
   const [showSkipInput, setShowSkipInput] = useState(false);
   const intervalRef = useRef(null);
 
-  // ── Tasks ──
-  const [tasks, setTasks] = useState(() => JSON.parse(localStorage.getItem("sage_tasks_v4") || "[]"));
+  // ── Tasks (migrate from pre-v4 keys on first load) ──
+  const [tasks, setTasks] = useState(() => {
+    const v4 = localStorage.getItem("sage_tasks_v4");
+    if (v4) return JSON.parse(v4);
+    const old = localStorage.getItem("sage_tasks");
+    return old ? JSON.parse(old) : [];
+  });
   const [newTask, setNewTask] = useState("");
   const [newTaskTime, setNewTaskTime] = useState("");
   const [sortMode, setSortMode] = useState("default");
@@ -231,16 +236,30 @@ export default function App() {
   const [focusTask, setFocusTask] = useState(null);
 
   // ── Side quests ──
-  const [sideQuests, setSideQuests] = useState(() => JSON.parse(localStorage.getItem("sage_sq_v4") || "[]"));
+  const [sideQuests, setSideQuests] = useState(() => {
+    const v4 = localStorage.getItem("sage_sq_v4");
+    if (v4) return JSON.parse(v4);
+    const old = localStorage.getItem("sage_sq");
+    return old ? JSON.parse(old) : [];
+  });
   const [newSQ, setNewSQ] = useState("");
 
   // ── Sessions / streak ──
-  const [sessions, setSessions] = useState(() => JSON.parse(localStorage.getItem("sage_sessions_v4") || "[]"));
+  const [sessions, setSessions] = useState(() => {
+    const v4 = localStorage.getItem("sage_sessions_v4");
+    if (v4) return JSON.parse(v4);
+    const old = localStorage.getItem("sage_sessions");
+    return old ? JSON.parse(old) : [];
+  });
 
   // ── Sound ──
   const [sound, setSound] = useState(null);
   const [vol, setVol] = useState(0.4);
   const [showPI, setShowPI] = useState(() => localStorage.getItem("sage_show_pi_v4") !== "false");
+  const [zenMode, setZenMode] = useState(false);
+  const [showTimerEdit, setShowTimerEdit] = useState(false);
+  const [editWork, setEditWork] = useState("");
+  const [editBrk, setEditBrk] = useState("");
   const audioCtxRef = useRef(null);
   const gainRef = useRef(null);
   const nodesRef = useRef([]);
@@ -583,6 +602,11 @@ export default function App() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <LiveClock color={theme.muted} />
+            <button
+              onClick={() => setZenMode(!zenMode)}
+              title="Zen mode"
+              style={{ background: "transparent", border: `1px solid ${theme.border}`, borderRadius: "8px", padding: "0.25rem 0.6rem", color: theme.muted, cursor: "pointer", fontSize: "0.72rem", fontFamily: "'Barlow', sans-serif", letterSpacing: "0.05em" }}
+            >{zenMode ? "Exit Zen" : "Zen"}</button>
             <div style={{ display: "flex", gap: "0.35rem" }}>
               {THEMES.map((t, i) => (
                 <button
@@ -607,14 +631,37 @@ export default function App() {
         <div style={{ ...cardStyle, marginBottom: "1.25rem" }}>
           <span style={sectionLabel}>Focus Timer</span>
 
-          {/* Presets */}
-          <div style={{ display: "flex", gap: "0.4rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+          {/* Presets + gear */}
+          <div style={{ display: "flex", gap: "0.4rem", marginBottom: showTimerEdit ? "0.5rem" : "1rem", flexWrap: "wrap", alignItems: "center" }}>
             {PRESETS.map((p) => (
               <button key={p.label} style={pillStyle(workMin === p.work && brkMin === p.brk)} onClick={() => applyPreset(p)}>
                 {p.label}
               </button>
             ))}
+            <button
+              title="Custom timer"
+              onClick={() => { setShowTimerEdit(!showTimerEdit); setEditWork(workMin); setEditBrk(brkMin); }}
+              style={{ ...pillStyle(showTimerEdit), padding: "0.25rem 0.55rem" }}
+            >⚙️</button>
           </div>
+
+          {/* Custom timer editor */}
+          {showTimerEdit && (
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap" }}>
+              <label style={{ fontSize: "0.75rem", color: theme.muted, fontFamily: "'Barlow', sans-serif" }}>Work</label>
+              <input type="number" min="1" max="180" value={editWork} onChange={(e) => setEditWork(e.target.value)}
+                style={{ ...inputStyle, width: "64px" }} />
+              <label style={{ fontSize: "0.75rem", color: theme.muted, fontFamily: "'Barlow', sans-serif" }}>Break</label>
+              <input type="number" min="1" max="60" value={editBrk} onChange={(e) => setEditBrk(e.target.value)}
+                style={{ ...inputStyle, width: "64px" }} />
+              <button style={btnPrimary} onClick={() => {
+                const w = Math.max(1, parseInt(editWork) || 25);
+                const b = Math.max(1, parseInt(editBrk) || 5);
+                setWorkMin(w); setBrkMin(b); setSeconds(w * 60); setRunning(false); setOnBreak(false);
+                setShowTimerEdit(false);
+              }}>Set</button>
+            </div>
+          )}
 
           {/* Timer ring */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
@@ -717,7 +764,8 @@ export default function App() {
         </div>
 
         {/* ══ TASK + SIDE QUEST PANELS ═════════════════════════ */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: "1.25rem", marginBottom: "1.25rem" }}>
+        {!zenMode && <>
+        <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "1.25rem", marginBottom: "1.25rem" }}>
 
           {/* Tasks */}
           <div style={cardStyle}>
@@ -815,6 +863,7 @@ export default function App() {
             </>
           )}
         </div>
+        </>}
 
       </div>
     </div>
