@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import PIParkingLot from "./PIParkingLot";
+import PIReadiness from "./PIReadiness";
 
 if (!window.storage) {
   window.storage = {
@@ -417,6 +419,7 @@ export default function App() {
   const dragItemId = useRef(null);
   // ── Session milestone badge ───────────────────────────────────────────────
   const [milestoneMsg, setMilestoneMsg] = useState(null);
+  const [showPiPlanning, setShowPiPlanning] = useState(false);
   const milestoneTimer = useRef(null);
   // ── Energy check-in (once per day) ───────────────────────────────────────
   const showedEnergyRef = useRef(false);
@@ -1283,6 +1286,22 @@ export default function App() {
           <button onClick={addDist} style={btn({ padding: "8px 14px", borderRadius: 10, border: "1px solid rgba(155,126,216,0.2)", background: "rgba(155,126,216,0.06)", color: "#9B7ED8", fontSize: 16, lineHeight: 1 })}>+</button>
         </div>
       )}
+
+      <div style={{ marginTop: "2rem" }}>
+        <button
+          onClick={() => setShowPiPlanning(p => !p)}
+          style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", background: "transparent", border: `1px solid ${theme.textSecondary}33`, borderRadius: "10px", padding: "0.6rem 1rem", cursor: "pointer", color: theme.textSecondary, fontFamily: "'Outfit', sans-serif", fontSize: "0.82rem", letterSpacing: "0.06em", textTransform: "uppercase" }}
+        >
+          <span style={{ flex: 1, textAlign: "left" }}>📋 PI Planning</span>
+          <span style={{ fontSize: "0.65rem", transition: "transform 0.2s ease", display: "inline-block", transform: showPiPlanning ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+        </button>
+        {showPiPlanning && (
+          <div style={{ marginTop: "1rem" }}>
+            <PIParkingLot theme={theme} />
+            <PIReadiness theme={theme} />
+          </div>
+        )}
+      </div>
 
       <div style={{ textAlign: "center", marginTop: 16, fontSize: 11, color: theme.textDimmest, letterSpacing: 1 }}>{zenMode ? "◯ zen mode · press Z to exit" : "✦ breathe · focus · flow ✦"}</div>
       {!zenMode && <div style={{ textAlign: "center", marginTop: 6, fontSize: 10, color: theme.textDimmest, letterSpacing: 1 }}>⎵ start/pause · D distraction · Z zen · T theme · Esc dismiss</div>}
