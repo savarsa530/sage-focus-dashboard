@@ -240,6 +240,7 @@ export default function App() {
   // ── Sound ──
   const [sound, setSound] = useState(null);
   const [vol, setVol] = useState(0.4);
+  const [showPI, setShowPI] = useState(() => localStorage.getItem("sage_show_pi_v4") !== "false");
   const audioCtxRef = useRef(null);
   const gainRef = useRef(null);
   const nodesRef = useRef([]);
@@ -799,9 +800,21 @@ export default function App() {
         </div>
 
         {/* ══ PI PLANNING SECTIONS ═════════════════════════════ */}
-        <PIParkingLot theme={theme} />
-        <PIReadiness theme={theme} />
-        {/* See PI_DEPLOY_INSTRUCTIONS.md for exact placement */}
+        <div style={{ marginTop: "1.25rem" }}>
+          <button
+            onClick={() => { const next = !showPI; setShowPI(next); localStorage.setItem("sage_show_pi_v4", next); }}
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem", background: "transparent", border: "none", cursor: "pointer", padding: 0, marginBottom: showPI ? "0.75rem" : 0 }}
+          >
+            <span style={{ ...sectionLabel, marginBottom: 0, color: theme.muted }}>PI Planning</span>
+            <span style={{ fontSize: "0.6rem", color: theme.muted, transition: "transform 0.2s ease", display: "inline-block", transform: showPI ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
+          </button>
+          {showPI && (
+            <>
+              <PIParkingLot theme={theme} />
+              <PIReadiness theme={theme} />
+            </>
+          )}
+        </div>
 
       </div>
     </div>
