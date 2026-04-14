@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import PIReadiness from "./PIReadiness";
 
-const VERSION = "5.1.1";
+const VERSION = "5.1.1 · 2026-04-14";
 
 // ── THEMES ──────────────────────────────────────────────────────────
 const THEMES = [
@@ -283,13 +283,14 @@ export default function App() {
   // clicking "focus" on a task → set it AND auto-start
   const focusTask = (taskId) => {
     if (focusedTaskId === taskId) {
+      // clicking same task again → unfocus and pause
       setFocusedTaskId(null);
       setRunning(false);
     } else {
       setFocusedTaskId(taskId);
       setNeedTask(false);
-      if (phase === "work" && timeLeft === workMins * 60) {
-        // fresh session — auto-start
+      // always start the timer when a task is focused (work phase only)
+      if (phase === "work" && !running) {
         setRunning(true);
       }
     }
