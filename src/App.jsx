@@ -4,8 +4,9 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import PIReadiness from "./PIReadiness";
 
-const VERSION = "5.1.0";
+const VERSION = "5.1.1";
 
 // ── THEMES ──────────────────────────────────────────────────────────
 const THEMES = [
@@ -41,15 +42,6 @@ const PI_STATUSES = [
   { key:"ready",    label:"✅ Ready"    },
   { key:"parked",   label:"🅿️ Parked"   },
 ];
-const READINESS_ITEMS = [
-  { key:"objective",    label:"PI Objective defined"  },
-  { key:"epics",        label:"Epics scoped"          },
-  { key:"risks",        label:"Risks identified"      },
-  { key:"dependencies", label:"Dependencies mapped"   },
-  { key:"capacity",     label:"Capacity checked"      },
-  { key:"stakeholders", label:"Stakeholders aligned"  },
-];
-
 // ── AUDIO ENGINE ──────────────────────────────────────────────────────
 // Each sound key gets its own AudioContext + nodes so they're fully independent.
 const audioRefs = {}; // { [key]: { ctx, gain, src } }
@@ -200,15 +192,24 @@ export default function App() {
   });
   const switchTheme = (t) => { setTheme(t); localStorage.setItem("sage_theme_v5", t.key); };
 
+  // ── Focused task (gating the timer) — declared early so timer can reference it
+  const [focusedTaskId, setFocusedTaskId] = useState(null);
+
+  // ── Tasks — declared early so timer tick can call setTasks ───
+  const [tasks, setTasks] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("sage_tasks_v5")||"[]"); } catch { return []; }
+  });
+  const saveTasks = (list) => { setTasks(list); localStorage.setItem("sage_tasks_v5", JSON.stringify(list)); };
+
   // ── Timer: work/break cycle ───────────────────────────────────
   const [workMins,  setWorkMins]  = useState(25);
   const [brkMins,   setBrkMins]   = useState(5);
   const [customW,   setCustomW]   = useState("");
   const [customB,   setCustomB]   = useState("");
-  const [phase,     setPhase]     = useState("work"); // "work" | "break"
+  const [phase,     setPhase]     = useState("work");
   const [timeLeft,  setTimeLeft]  = useState(25 * 60);
   const [running,   setRunning]   = useState(false);
-  const [needTask,  setNeedTask]  = useState(false); // flash when start pressed without a task
+  const [needTask,  setNeedTask]  = useState(false);
   const intervalRef = useRef(null);
 
   const totalSecs = phase === "work" ? workMins * 60 : brkMins * 60;
@@ -245,20 +246,27 @@ export default function App() {
   useEffect(() => {
     if (running) {
       intervalRef.current = setInterval(() => {
+        // Accumulate focus seconds on the currently focused task (work phase only)
+        if (phase === "work") {
+          setTasks(prev => {
+            const updated = prev.map(t =>
+              t.id === focusedTaskId ? { ...t, focusSecs: (t.focusSecs||0) + 1 } : t
+            );
+            localStorage.setItem("sage_tasks_v5", JSON.stringify(updated));
+            return updated;
+          });
+        }
         setTimeLeft(prev => {
           if (prev <= 1) {
             clearInterval(intervalRef.current);
             if (phase === "work") {
-              // work session done
               const nc = sessionsToday + 1;
               setSessionsToday(nc);
               localStorage.setItem("sage_sessions_date", new Date().toDateString());
               localStorage.setItem("sage_sessions_count", String(nc));
               bumpStreak();
-              // switch to break
               setPhase("break"); setTimeLeft(brkMins * 60); setRunning(false);
             } else {
-              // break done → back to work
               setPhase("work"); setTimeLeft(workMins * 60); setRunning(false);
             }
             return 0;
@@ -270,10 +278,7 @@ export default function App() {
       clearInterval(intervalRef.current);
     }
     return () => clearInterval(intervalRef.current);
-  }, [running, phase, workMins, brkMins]);
-
-  // ── Focused task (gating the timer) ──────────────────────────
-  const [focusedTaskId, setFocusedTaskId] = useState(null);
+  }, [running, phase, workMins, brkMins, focusedTaskId]);
 
   // clicking "focus" on a task → set it AND auto-start
   const focusTask = (taskId) => {
@@ -323,34 +328,77 @@ export default function App() {
 
   useEffect(() => () => stopAllSounds(), []);
 
-  // ── Tasks ─────────────────────────────────────────────────────
-  const [tasks, setTasks] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("sage_tasks_v5")||"[]"); } catch { return []; }
-  });
-  const [newTask, setNewTask] = useState("");
-  const [taskSort, setTaskSort] = useState({ by:"priority", asc:false });
+  // ── Tasks continued ───────────────────────────────────────────
+  const [newTask,       setNewTask]       = useState("");
+  const [taskSort,      setTaskSort]      = useState({ by:"default", asc:true });
+  const [doneToBottom,  setDoneToBottom]  = useState(true);
+  const [dragId,        setDragId]        = useState(null);
+  const [dragOverId,    setDragOverId]    = useState(null);
 
-  const saveTasks = (list) => { setTasks(list); localStorage.setItem("sage_tasks_v5", JSON.stringify(list)); };
+  // Drag is only available on Default sort (other sorts define order logically)
+  const canDrag = taskSort.by === "default";
+
   const addTask = () => {
     if (!newTask.trim()) return;
-    saveTasks([...tasks, { id:uuid(), text:newTask.trim(), done:false, priority:"medium", createdAt:Date.now() }]);
+    // Append at end: give it an order value = current max + 1
+    const maxOrder = tasks.reduce((m, t) => Math.max(m, t.order||0), 0);
+    saveTasks([...tasks, { id:uuid(), text:newTask.trim(), done:false, priority:"medium", focusSecs:0, order:maxOrder+1, createdAt:Date.now() }]);
     setNewTask("");
   };
-  const toggleTask  = (id) => saveTasks(tasks.map(t => t.id===id ? {...t, done:!t.done} : t));
-  const deleteTask  = (id) => { if (focusedTaskId===id) { setFocusedTaskId(null); setRunning(false); } saveTasks(tasks.filter(t=>t.id!==id)); };
+
+  const toggleTask    = (id) => saveTasks(tasks.map(t => t.id===id ? {...t, done:!t.done} : t));
+  const deleteTask    = (id) => { if (focusedTaskId===id) { setFocusedTaskId(null); setRunning(false); } saveTasks(tasks.filter(t=>t.id!==id)); };
   const cyclePriority = (id) => {
     const o = ["low","medium","high"];
     saveTasks(tasks.map(t => t.id===id ? {...t, priority:o[(o.indexOf(t.priority)+1)%3]} : t));
   };
-  const pColor = (p) => ({ high:"#f87171", medium:theme.accent, low:theme.textMuted }[p]);
-  const pNum   = (p) => ({ high:3, medium:2, low:1 }[p]);
-  const sortedTasks = [...tasks].sort((a,b) => {
-    let d = 0;
-    if (taskSort.by==="priority") d = pNum(b.priority)-pNum(a.priority);
-    else if (taskSort.by==="alpha") d = a.text.localeCompare(b.text);
-    else if (taskSort.by==="created") d = b.createdAt-a.createdAt;
-    return taskSort.asc ? -d : d;
-  });
+
+  const pColor   = (p) => ({ high:"#f87171", medium:theme.accent, low:theme.textMuted }[p]);
+  const pLabel   = (p) => ({ high:"H · High priority", medium:"M · Medium priority", low:"L · Low priority" }[p]);
+  const pNum     = (p) => ({ high:3, medium:2, low:1 }[p]);
+  const fmtMins  = (s) => s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s/60)}m` : `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
+
+  // Sort + done-to-bottom
+  const sortedTasks = (() => {
+    let list = [...tasks];
+    if (doneToBottom) list.sort((a, b) => (a.done===b.done) ? 0 : a.done ? 1 : -1);
+    if (taskSort.by === "default") {
+      // stable order by .order field; doneToBottom already applied above
+      if (!doneToBottom) list.sort((a, b) => (a.order||0) - (b.order||0));
+      else {
+        const undone = list.filter(t => !t.done).sort((a, b) => (a.order||0) - (b.order||0));
+        const done   = list.filter(t => t.done).sort((a, b) => (a.order||0) - (b.order||0));
+        list = [...undone, ...done];
+      }
+    } else {
+      let d = 0;
+      list.sort((a, b) => {
+        if (taskSort.by === "priority") d = pNum(b.priority) - pNum(a.priority);
+        else if (taskSort.by === "alpha") d = a.text.localeCompare(b.text);
+        else if (taskSort.by === "time") d = (b.focusSecs||0) - (a.focusSecs||0);
+        return taskSort.asc ? -d : d;
+      });
+    }
+    return list;
+  })();
+
+  // Drag-and-drop handlers (only fires when canDrag)
+  const handleDragStart = (id) => setDragId(id);
+  const handleDragOver  = (e, id) => { e.preventDefault(); setDragOverId(id); };
+  const handleDragEnd   = () => { setDragId(null); setDragOverId(null); };
+  const handleDrop      = (e, targetId) => {
+    e.preventDefault();
+    if (!dragId || dragId === targetId) { handleDragEnd(); return; }
+    const ordered = [...tasks].sort((a, b) => (a.order||0) - (b.order||0));
+    const fromIdx = ordered.findIndex(t => t.id === dragId);
+    const toIdx   = ordered.findIndex(t => t.id === targetId);
+    const reordered = [...ordered];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    saveTasks(reordered.map((t, i) => ({ ...t, order: i })));
+    handleDragEnd();
+  };
+
   const focusedTask = tasks.find(t => t.id === focusedTaskId);
 
   // ── Side Quests ───────────────────────────────────────────────
@@ -378,18 +426,6 @@ export default function App() {
   const addPiItem    = () => { if (!newPi.title.trim()) return; savePiItems([...piItems, { ...newPi, id:uuid(), createdAt:Date.now() }]); setNewPi({ pi:"2026.2", title:"", objectives:"", risks:"", status:"seeding" }); setShowAddPi(false); };
   const updatePiItem = (id,f,v) => savePiItems(piItems.map(x=>x.id===id ? {...x,[f]:v} : x));
   const deletePiItem = (id) => savePiItems(piItems.filter(x=>x.id!==id));
-
-  // ── PI Readiness ──────────────────────────────────────────────
-  const [readiness, setReadiness] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("sage_pi_readiness_v5")||"{}"); } catch { return {}; }
-  });
-  const [readinessPi, setReadinessPi] = useState("2026.2");
-  const toggleReadiness = (key) => {
-    const u = { ...readiness, [`${readinessPi}_${key}`]: !readiness[`${readinessPi}_${key}`] };
-    setReadiness(u); localStorage.setItem("sage_pi_readiness_v5", JSON.stringify(u));
-  };
-  const readinessScore = READINESS_ITEMS.filter(r=>readiness[`${readinessPi}_${r.key}`]).length;
-  const readinessPct   = Math.round((readinessScore/READINESS_ITEMS.length)*100);
 
   // ── UI state ──────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState("tasks");
@@ -459,12 +495,6 @@ export default function App() {
     transition:   "all 0.15s",
   });
 
-  const sortPill = (by, label) => (
-    <button style={pill(taskSort.by===by)} onClick={()=>setTaskSort(p=>p.by===by ? {...p,asc:!p.asc} : {by,asc:false})}>
-      {label}{taskSort.by===by ? (taskSort.asc?" ↑":" ↓") : ""}
-    </button>
-  );
-
   // ── PHASE LABEL ───────────────────────────────────────────────
   const phaseLabel = phase==="work" ? "Focus" : "Break";
   const phaseColor = phase==="work" ? theme.timerRing : "#86efac";
@@ -472,35 +502,101 @@ export default function App() {
   // ═══════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════
+
+  // Shared CSS (injected whether zen or not)
+  const globalStyles = `
+    @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:${theme.bg};}
+    ::placeholder{color:${theme.textMuted}88;}
+    input:focus,textarea:focus{border-color:${theme.accent}88!important;outline:none;}
+    button:hover{opacity:0.82;}
+    textarea{resize:vertical;}
+    select{background:${theme.panel};color:${theme.text};border:1px solid ${theme.panelBorder};border-radius:8px;padding:6px 10px;font-family:'Barlow',sans-serif;font-size:0.85rem;outline:none;}
+    ::-webkit-scrollbar{width:5px;}
+    ::-webkit-scrollbar-thumb{background:${theme.panelBorder};border-radius:4px;}
+    @keyframes gentlePulse{0%,100%{box-shadow:0 0 0 0 ${theme.accent}40;}50%{box-shadow:0 0 16px 6px ${theme.accent}35;}}
+    @keyframes needTaskShake{0%,100%{transform:translateX(0);}20%,60%{transform:translateX(-4px);}40%,80%{transform:translateX(4px);}}
+    @keyframes auroraWave{0%{transform:translateX(-120%) skewX(-12deg);opacity:0;}20%{opacity:${theme.isDark?0.15:0.09};}80%{opacity:${theme.isDark?0.15:0.09};}100%{transform:translateX(220%) skewX(-12deg);opacity:0;}}
+    @keyframes auroraWave2{0%{transform:translateX(220%) skewX(12deg);opacity:0;}20%{opacity:${theme.isDark?0.11:0.07};}80%{opacity:${theme.isDark?0.11:0.07};}100%{transform:translateX(-120%) skewX(12deg);opacity:0;}}
+    @keyframes timerGlow{0%,100%{filter:drop-shadow(0 0 6px ${phaseColor}40);}50%{filter:drop-shadow(0 0 22px ${phaseColor}66);}}
+    .aurora-wrap{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+    .aurora-1{position:absolute;width:60%;height:35%;top:15%;left:0;background:linear-gradient(90deg,transparent,${auroraC[0]},transparent);border-radius:50%;animation:auroraWave 13s ease-in-out infinite;}
+    .aurora-2{position:absolute;width:50%;height:30%;top:45%;left:20%;background:linear-gradient(90deg,transparent,${auroraC[1]},transparent);border-radius:50%;animation:auroraWave2 18s ease-in-out infinite;animation-delay:5s;}
+    .aurora-3{position:absolute;width:70%;height:25%;top:65%;left:10%;background:linear-gradient(90deg,transparent,${auroraC[2]},transparent);border-radius:50%;animation:auroraWave 22s ease-in-out infinite;animation-delay:10s;}
+    .timer-pulse{animation:timerGlow 3s ease-in-out infinite;}
+    .start-pulse{animation:gentlePulse 2.5s ease-in-out infinite;}
+    .need-task{animation:needTaskShake 0.5s ease;}
+  `;
+
+  // ── ZEN MODE: full-screen replacement, nothing else renders ──
+  if (zenMode) {
+    return (
+      <div style={{ minHeight:"100vh", background:theme.bg, fontFamily:"'Barlow',sans-serif", color:theme.text, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
+        <style>{globalStyles}</style>
+
+        {/* Aurora in zen too when running */}
+        {running && phase==="work" && <div className="aurora-wrap"><div className="aurora-1"/><div className="aurora-2"/><div className="aurora-3"/></div>}
+
+        {/* Phase label */}
+        <div style={{ fontSize:"0.68rem", color:phaseColor, fontWeight:800, letterSpacing:"0.18em", textTransform:"uppercase", marginBottom:"1.5rem" }}>
+          {phase==="work" ? "Focus" : "Break"}
+        </div>
+
+        {/* Big ring */}
+        <div className={running?"timer-pulse":""}>
+          <TimerRing pct={timerPct} color={phaseColor} running={running}>
+            <div style={{ fontSize:"3.2rem", fontWeight:900, letterSpacing:"-0.03em", color:theme.text }}>{fmt(timeLeft)}</div>
+            {focusedTask
+              ? <div style={{ fontSize:"0.78rem", color:phaseColor, maxWidth:150, textAlign:"center", marginTop:6, fontWeight:700, lineHeight:1.3 }}>✦ {focusedTask.text}</div>
+              : <div style={{ fontSize:"0.65rem", color:theme.textMuted, marginTop:6 }}>no task selected</div>
+            }
+          </TimerRing>
+        </div>
+
+        {/* Controls */}
+        <div style={{ display:"flex", gap:"0.75rem", marginTop:"2rem", alignItems:"center" }}>
+          {!running
+            ? <button className={!focusedTaskId?"start-pulse":""} style={{ ...btn(true), fontSize:"1rem", padding:"0.7rem 2.2rem" }} onClick={handleStart}>
+                ▶ {phase==="work"?"Start Focus":"Start Break"}
+              </button>
+            : <button style={{ ...btn(true), fontSize:"1rem", padding:"0.7rem 2.2rem" }} onClick={handlePause}>⏸ Pause</button>
+          }
+          <button style={{ ...btn(false), padding:"0.7rem 1.2rem" }} onClick={handleReset}>↺</button>
+        </div>
+
+        {/* Need-task nudge in zen */}
+        {needTask && (
+          <div className="need-task" style={{ marginTop:"1rem", color:"#f87171", fontSize:"0.82rem", fontWeight:700 }}>
+            👆 Pick a task from the Tasks tab first!
+          </div>
+        )}
+
+        {/* Exit hint + streak */}
+        <div style={{ marginTop:"2rem", display:"flex", flexDirection:"column", alignItems:"center", gap:"0.4rem" }}>
+          <div style={{ fontSize:"0.68rem", color:theme.textMuted, letterSpacing:"0.1em" }}>
+            Z to exit · space to start/pause
+          </div>
+          <div style={{ fontSize:"0.72rem", color:theme.textMuted }}>
+            🔥 {streakLabel} · {sessionsToday} session{sessionsToday!==1?"s":""} today
+          </div>
+        </div>
+
+        {/* Tiny exit button */}
+        <button
+          onClick={()=>setZenMode(false)}
+          style={{ position:"fixed", top:"1.25rem", right:"1.25rem", ...btn(false), fontSize:"0.72rem", padding:"0.3rem 0.7rem", opacity:0.5 }}
+        >
+          ✦ Exit
+        </button>
+      </div>
+    );
+  }
+
+  // ── NORMAL MODE ──────────────────────────────────────────────
   return (
     <div style={{ minHeight:"100vh", background:theme.bg, fontFamily:"'Barlow',sans-serif", color:theme.text, transition:"background 0.4s, color 0.3s", position:"relative", overflow:"hidden" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800;900&display=swap');
-        *{box-sizing:border-box;margin:0;padding:0;}
-        body{background:${theme.bg};}
-        ::placeholder{color:${theme.textMuted}88;}
-        input:focus,textarea:focus{border-color:${theme.accent}88!important;outline:none;}
-        button:hover{opacity:0.82;}
-        textarea{resize:vertical;}
-        select{background:${theme.panel};color:${theme.text};border:1px solid ${theme.panelBorder};border-radius:8px;padding:6px 10px;font-family:'Barlow',sans-serif;font-size:0.85rem;outline:none;}
-        ::-webkit-scrollbar{width:5px;}
-        ::-webkit-scrollbar-thumb{background:${theme.panelBorder};border-radius:4px;}
-
-        @keyframes gentlePulse{0%,100%{box-shadow:0 0 0 0 ${theme.accent}40;}50%{box-shadow:0 0 16px 6px ${theme.accent}35;}}
-        @keyframes needTaskShake{0%,100%{transform:translateX(0);}20%,60%{transform:translateX(-4px);}40%,80%{transform:translateX(4px);}}
-        @keyframes auroraWave{0%{transform:translateX(-120%) skewX(-12deg);opacity:0;}20%{opacity:${theme.isDark?0.15:0.09};}80%{opacity:${theme.isDark?0.15:0.09};}100%{transform:translateX(220%) skewX(-12deg);opacity:0;}}
-        @keyframes auroraWave2{0%{transform:translateX(220%) skewX(12deg);opacity:0;}20%{opacity:${theme.isDark?0.11:0.07};}80%{opacity:${theme.isDark?0.11:0.07};}100%{transform:translateX(-120%) skewX(12deg);opacity:0;}}
-        @keyframes timerGlow{0%,100%{filter:drop-shadow(0 0 6px ${phaseColor}40);}50%{filter:drop-shadow(0 0 22px ${phaseColor}66);}}
-        @keyframes phaseFlash{0%,100%{opacity:1;}50%{opacity:0.4;}}
-
-        .aurora-wrap{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
-        .aurora-1{position:absolute;width:60%;height:35%;top:15%;left:0;background:linear-gradient(90deg,transparent,${auroraC[0]},transparent);border-radius:50%;animation:auroraWave 13s ease-in-out infinite;}
-        .aurora-2{position:absolute;width:50%;height:30%;top:45%;left:20%;background:linear-gradient(90deg,transparent,${auroraC[1]},transparent);border-radius:50%;animation:auroraWave2 18s ease-in-out infinite;animation-delay:5s;}
-        .aurora-3{position:absolute;width:70%;height:25%;top:65%;left:10%;background:linear-gradient(90deg,transparent,${auroraC[2]},transparent);border-radius:50%;animation:auroraWave 22s ease-in-out infinite;animation-delay:10s;}
-        .timer-pulse{animation:timerGlow 3s ease-in-out infinite;}
-        .start-pulse{animation:gentlePulse 2.5s ease-in-out infinite;}
-        .need-task{animation:needTaskShake 0.5s ease;}
-      `}</style>
+      <style>{globalStyles}</style>
 
       {/* Aurora — only when running + focus phase */}
       {running && phase==="work" && <div className="aurora-wrap"><div className="aurora-1"/><div className="aurora-2"/><div className="aurora-3"/></div>}
@@ -676,12 +772,35 @@ export default function App() {
                 <div style={{ fontSize:"0.68rem", fontWeight:700, color:theme.textMuted, letterSpacing:"0.1em", textTransform:"uppercase" }}>
                   Tasks ({tasks.filter(t=>!t.done).length} open)
                 </div>
-                <div style={{ display:"flex", gap:"0.35rem" }}>
-                  {sortPill("priority","Priority")}
-                  {sortPill("alpha","A–Z")}
-                  {sortPill("created","New")}
+                <div style={{ display:"flex", gap:"0.35rem", flexWrap:"wrap", alignItems:"center" }}>
+                  {/* Default sort — no direction arrow, drag enabled here */}
+                  <button style={pill(taskSort.by==="default")} onClick={()=>setTaskSort({by:"default",asc:true})}>
+                    Default {canDrag && tasks.length>1 && <span style={{ fontSize:"0.6rem", opacity:0.7 }}>⠿</span>}
+                  </button>
+                  {/* Priority */}
+                  <button style={pill(taskSort.by==="priority")} onClick={()=>setTaskSort(p=>p.by==="priority"?{...p,asc:!p.asc}:{by:"priority",asc:false})}>
+                    Priority{taskSort.by==="priority" ? (taskSort.asc?" ↑":" ↓") : ""}
+                  </button>
+                  {/* A–Z */}
+                  <button style={pill(taskSort.by==="alpha")} onClick={()=>setTaskSort(p=>p.by==="alpha"?{...p,asc:!p.asc}:{by:"alpha",asc:true})}>
+                    A–Z{taskSort.by==="alpha" ? (taskSort.asc?" ↑":" ↓") : ""}
+                  </button>
+                  {/* Time invested */}
+                  <button style={pill(taskSort.by==="time")} onClick={()=>setTaskSort(p=>p.by==="time"?{...p,asc:!p.asc}:{by:"time",asc:false})}>
+                    Time{taskSort.by==="time" ? (taskSort.asc?" ↑":" ↓") : " ↓"}
+                  </button>
+                  {/* Done↓ toggle */}
+                  <button style={{ ...pill(doneToBottom), fontSize:"0.7rem" }} onClick={()=>setDoneToBottom(p=>!p)}>
+                    Done ↓
+                  </button>
                 </div>
               </div>
+
+              {canDrag && tasks.length > 1 && (
+                <div style={{ fontSize:"0.68rem", color:theme.textMuted, marginBottom:"0.5rem", textAlign:"right" }}>
+                  drag ⠿ to reorder
+                </div>
+              )}
 
               {sortedTasks.length===0 && (
                 <div style={{ textAlign:"center", padding:"1.5rem 0", color:theme.textMuted, fontSize:"0.85rem" }}>
@@ -691,33 +810,66 @@ export default function App() {
 
               <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
                 {sortedTasks.map(task => {
-                  const isFocused = task.id===focusedTaskId;
+                  const isFocused  = task.id === focusedTaskId;
+                  const isDragOver = task.id === dragOverId;
                   return (
-                    <div key={task.id} style={{
-                      display:"flex", alignItems:"center", gap:"0.6rem",
-                      padding:"0.5rem 0.6rem", borderRadius:10,
-                      background: isFocused ? `${theme.accent}18` : task.done ? `${theme.panelBorder}40` : `${theme.accent}0a`,
-                      border:`1px solid ${isFocused ? theme.accent+"60" : task.done ? theme.panelBorder : theme.accent+"28"}`,
-                      opacity: task.done ? 0.55 : 1,
-                      transition:"all 0.2s",
-                    }}>
+                    <div
+                      key={task.id}
+                      draggable={canDrag && !task.done}
+                      onDragStart={() => canDrag && handleDragStart(task.id)}
+                      onDragOver={e => canDrag && handleDragOver(e, task.id)}
+                      onDrop={e => canDrag && handleDrop(e, task.id)}
+                      onDragEnd={handleDragEnd}
+                      style={{
+                        display:"flex", alignItems:"center", gap:"0.6rem",
+                        padding:"0.5rem 0.6rem", borderRadius:10,
+                        background: isFocused ? `${theme.accent}18` : task.done ? `${theme.panelBorder}40` : `${theme.accent}0a`,
+                        border:`1px solid ${isDragOver ? theme.accent : isFocused ? theme.accent+"60" : task.done ? theme.panelBorder : theme.accent+"28"}`,
+                        borderTop: isDragOver ? `2px solid ${theme.accent}` : undefined,
+                        opacity: task.done ? 0.55 : 1,
+                        transition:"all 0.15s",
+                        cursor: canDrag && !task.done ? "grab" : "default",
+                      }}
+                    >
+                      {/* Grip handle — only shown on Default sort */}
+                      {canDrag && !task.done && (
+                        <span style={{ color:theme.textMuted, fontSize:"0.9rem", cursor:"grab", userSelect:"none", flexShrink:0 }} title="Drag to reorder">⠿</span>
+                      )}
+
                       <input type="checkbox" checked={task.done} onChange={()=>toggleTask(task.id)}
                         style={{ width:16, height:16, accentColor:theme.accent, cursor:"pointer", flexShrink:0 }}/>
-                      <span style={{ flex:1, fontSize:"0.88rem", textDecoration:task.done?"line-through":"none", color:theme.text }}>
-                        {task.text}
-                      </span>
-                      <button onClick={()=>cyclePriority(task.id)} title="Cycle priority"
-                        style={{ background:"none", border:"none", cursor:"pointer", fontSize:"0.7rem", color:pColor(task.priority), fontWeight:700, padding:"0 4px" }}>
-                        {task.priority.toUpperCase()[0]}
+
+                      {/* Task text + time invested */}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:"0.88rem", textDecoration:task.done?"line-through":"none", color:theme.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                          {task.text}
+                        </div>
+                        {(task.focusSecs||0) > 0 && !task.done && (
+                          <div style={{ fontSize:"0.68rem", color:theme.accent, marginTop:1, fontWeight:600 }}>
+                            ⏱ {fmtMins(task.focusSecs)} invested
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Priority cycle — letter with tooltip */}
+                      <button
+                        onClick={()=>cyclePriority(task.id)}
+                        title={pLabel(task.priority)}
+                        style={{ background:"none", border:`1px solid ${pColor(task.priority)}44`, borderRadius:6, cursor:"pointer", fontSize:"0.68rem", color:pColor(task.priority), fontWeight:800, padding:"1px 5px", flexShrink:0 }}
+                      >
+                        {task.priority[0].toUpperCase()}
                       </button>
+
+                      {/* Focus button */}
                       {!task.done && (
                         <button onClick={()=>focusTask(task.id)}
                           style={{ ...pill(isFocused), fontSize:"0.7rem", padding:"0.2rem 0.6rem", flexShrink:0 }}>
                           {isFocused ? "★ focused" : "focus"}
                         </button>
                       )}
+
                       <button onClick={()=>deleteTask(task.id)}
-                        style={{ background:"none", border:"none", cursor:"pointer", color:theme.textMuted, fontSize:"0.85rem", padding:"0 2px" }}>✕</button>
+                        style={{ background:"none", border:"none", cursor:"pointer", color:theme.textMuted, fontSize:"0.85rem", padding:"0 2px", flexShrink:0 }}>✕</button>
                     </div>
                   );
                 })}
@@ -818,59 +970,13 @@ export default function App() {
 
         {/* ════ PI READINESS TAB ════ */}
         {!zenMode && activeTab==="readiness" && (
-          <div style={panel}>
-            <div style={{ marginBottom:"1rem" }}>
-              <div style={{ fontSize:"0.68rem", fontWeight:700, color:theme.textMuted, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:"0.5rem" }}>PI Readiness Checklist</div>
-              <div style={{ display:"flex", alignItems:"center", gap:"0.75rem", flexWrap:"wrap" }}>
-                <select value={readinessPi} onChange={e=>setReadinessPi(e.target.value)}>{PI_CYCLES.map(c=><option key={c} value={c}>{c}</option>)}</select>
-                <div style={{ flex:1, minWidth:100, background:theme.panelBorder, borderRadius:20, height:6 }}>
-                  <div style={{ width:`${readinessPct}%`, background:theme.accent, borderRadius:20, height:"100%", transition:"width 0.3s ease" }}/>
-                </div>
-                <div style={{ fontWeight:800, color:readinessPct===100?theme.accent:theme.text, fontSize:"0.88rem" }}>{readinessPct}%</div>
-              </div>
-            </div>
-            <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
-              {READINESS_ITEMS.map(r => {
-                const checked = !!readiness[`${readinessPi}_${r.key}`];
-                return (
-                  <div key={r.key} onClick={()=>toggleReadiness(r.key)} style={{ display:"flex", alignItems:"center", gap:"0.75rem", padding:"0.65rem 0.85rem", borderRadius:12, background:checked?`${theme.accent}14`:`${theme.panelBorder}30`, border:`1px solid ${checked?theme.accent+"40":theme.panelBorder}`, cursor:"pointer", transition:"all 0.2s" }}>
-                    <div style={{ width:20, height:20, borderRadius:6, flexShrink:0, background:checked?theme.accent:"transparent", border:`2px solid ${checked?theme.accent:theme.textMuted}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:"0.75rem", color:theme.isDark?"#000":"#fff" }}>{checked&&"✓"}</div>
-                    <span style={{ fontSize:"0.88rem", color:theme.text, textDecoration:checked?"line-through":"none", opacity:checked?0.7:1 }}>{r.label}</span>
-                  </div>
-                );
-              })}
-            </div>
-            {readinessPct===100 && <div style={{ textAlign:"center", marginTop:"1rem", fontSize:"0.9rem", color:theme.accent, fontWeight:800 }}>✅ PI {readinessPi} is ready to plan!</div>}
-          </div>
-        )}
-
-        {/* ════ ZEN MODE ════ */}
-        {zenMode && (
-          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"2rem", paddingTop:"2rem" }}>
-            <div style={{ fontSize:"0.7rem", color:phaseColor, fontWeight:800, letterSpacing:"0.15em", textTransform:"uppercase" }}>{phaseLabel}</div>
-            <div className={running?"timer-pulse":""}>
-              <TimerRing pct={timerPct} color={phaseColor} running={running}>
-                <div style={{ fontSize:"3rem", fontWeight:900, letterSpacing:"-0.03em", color:theme.text }}>{fmt(timeLeft)}</div>
-                {focusedTask && <div style={{ fontSize:"0.78rem", color:phaseColor, maxWidth:140, textAlign:"center", marginTop:6, fontWeight:700 }}>✦ {focusedTask.text}</div>}
-              </TimerRing>
-            </div>
-            <div style={{ display:"flex", gap:"0.6rem" }}>
-              {!running
-                ? <button className={!focusedTaskId?"start-pulse":""} style={{ ...btn(true), fontSize:"1rem", padding:"0.65rem 2rem" }} onClick={handleStart}>▶ {phase==="work"?"Start Focus":"Start Break"}</button>
-                : <button style={{ ...btn(true), fontSize:"1rem", padding:"0.65rem 2rem" }} onClick={handlePause}>⏸ Pause</button>}
-              <button style={{ ...btn(false), padding:"0.65rem 1.2rem" }} onClick={handleReset}>↺</button>
-            </div>
-            {needTask && <div className="need-task" style={{ color:"#f87171", fontSize:"0.82rem", fontWeight:700 }}>👆 Pick a task from the Tasks tab first!</div>}
-            <div style={{ fontSize:"0.75rem", color:theme.textMuted }}>Z to exit zen · space to start/pause</div>
-          </div>
+          <PIReadiness theme={theme} />
         )}
 
         {/* ════ FOOTER ════ */}
-        {!zenMode && (
-          <div style={{ textAlign:"center", marginTop:"1.5rem", fontSize:"0.68rem", color:theme.textMuted, letterSpacing:"0.06em" }}>
-            space = start/pause · Z = zen mode · click <strong>focus</strong> on a task to lock it in and start
-          </div>
-        )}
+        <div style={{ textAlign:"center", marginTop:"1.5rem", fontSize:"0.68rem", color:theme.textMuted, letterSpacing:"0.06em" }}>
+          space = start/pause · Z = zen mode · click <strong>focus</strong> on a task to lock it in and start
+        </div>
       </div>
     </div>
   );

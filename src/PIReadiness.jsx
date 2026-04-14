@@ -1,17 +1,19 @@
-// ============================================================
+// ═══════════════════════════════════════════════════════════════════
 // PI READINESS CHECKLIST — Sage & Steph Focus Dashboard
-// Drop this file into src/PIReadiness.jsx
-// Then import and add <PIReadiness theme={theme} /> in App.jsx
-// ============================================================
+// src/PIReadiness.jsx
+// ═══════════════════════════════════════════════════════════════════
+// Rich preflight check: 6 themed buckets, 3 states (Done/Partial/No),
+// per-item notes, per-bucket progress, overall metrics, per-PI storage
 
 import { useState, useEffect } from "react";
 
 const PI_CYCLES = ["2026.2", "2026.3", "2026.4", "2027.1"];
 
+// ── The 6 themed buckets with all items ──────────────────────────────
 const BUCKETS = [
   {
     id: "artifacts",
-    label: "Artifacts in Jira",
+    label: "📋 Artifacts in Jira",
     color: "#378ADD",
     items: [
       {
@@ -33,531 +35,401 @@ const BUCKETS = [
   },
   {
     id: "risk-dep",
-    label: "Risk & dependencies",
+    label: "⚠️ Risk & Dependencies",
     color: "#D85A30",
     items: [
       {
         id: "risks-mapped",
         label: "Risks mapped for each objective",
-        sub: "Or flagged as a planning discussion item — either is fine, just decided",
+        sub: "Known unknowns documented — not just 'some risk exists'",
       },
       {
-        id: "deps-mapped",
-        label: "Dependencies mapped for each objective",
-        sub: "Cross-team, cross-system, or external — identified and noted",
+        id: "deps-identified",
+        label: "Dependencies identified",
+        sub: "Other teams, systems, or approvals that must move first",
       },
       {
         id: "deps-communicated",
-        label: "Dependency owners notified",
-        sub: "Relevant teams or individuals are aware they're in the picture",
+        label: "Dependencies communicated",
+        sub: "Dependent parties are aware and have acknowledged",
+      },
+      {
+        id: "mitigations",
+        label: "Mitigations defined for top risks",
+        sub: "At least one 'if this, then that' for each high-severity risk",
       },
     ],
   },
   {
     id: "logistics",
-    label: "Planning logistics",
-    color: "#1D9E75",
+    label: "🗓 Planning Logistics",
+    color: "#7B5EA7",
     items: [
       {
-        id: "sprints-loaded",
-        label: "Sprints loaded with realistic capacity",
-        sub: "Accounting for PTO, holidays, and part-time contributors",
+        id: "dates-confirmed",
+        label: "PI planning dates confirmed",
+        sub: "Everyone knows when and where — no 'I think it's the 14th'",
       },
       {
-        id: "roadmap-written",
-        label: "Roadmap written and shared",
-        sub: "Stakeholders can see what's coming and why",
+        id: "agenda-set",
+        label: "Agenda distributed",
+        sub: "Teams know what to expect and what to prepare",
       },
       {
-        id: "constraints-noted",
-        label: "Constraints already baked in",
-        sub: "Known blockers, tech debt, or dependencies reflected in loaded sprints",
+        id: "facilitators-set",
+        label: "Facilitators assigned",
+        sub: "Who is running each session — not left to the day-of chaos",
       },
       {
-        id: "schedule-exists",
-        label: "Planning schedule exists",
-        sub: "Agenda with time blocks so everything gets covered",
+        id: "rooms-tools",
+        label: "Rooms / tools confirmed",
+        sub: "Physical space or virtual tooling locked in (Miro, Teams, etc.)",
       },
     ],
   },
   {
-    id: "people",
-    label: "People & capacity",
-    color: "#7F77DD",
+    id: "capacity",
+    label: "👥 People & Capacity",
+    color: "#3A9E7E",
     items: [
       {
-        id: "capacity-confirmed",
-        label: "Capacity confirmed across all three regions",
-        sub: "US, India, Canada — actual headcount for the PI, not assumed",
+        id: "capacity-pulled",
+        label: "Capacity pulled for each team",
+        sub: "Actual availability — accounting for PTO, holidays, part-time",
       },
       {
-        id: "rollover-accounted",
-        label: "Rollover from previous PI accounted for",
-        sub: "Unfinished work has a home or is explicitly parked",
+        id: "velocity-reviewed",
+        label: "Team velocity reviewed",
+        sub: "Last 2–3 PIs of actuals, not just theoretical capacity",
       },
       {
-        id: "leads-context",
-        label: "Leads have enough context to participate",
-        sub: "Not hearing objectives for the first time in the planning room",
+        id: "po-sm-ready",
+        label: "POs and SMs are prepared",
+        sub: "Product owners and scrum masters have reviewed objectives and backlog",
       },
       {
-        id: "stakeholders-aligned",
-        label: "Stakeholder expectations validated",
-        sub: "Nothing assumed 'definitely in' without capacity backing it",
+        id: "specialists-available",
+        label: "Key specialists available",
+        sub: "Architects, shared engineers, SMEs — not double-booked during planning",
       },
     ],
   },
   {
     id: "culture",
-    label: "Culture & engagement",
-    color: "#D4537E",
+    label: "🤝 Culture & Engagement",
+    color: "#C07B3A",
     items: [
       {
-        id: "fun-parked",
-        label: "Something fun is in the agenda",
-        sub: "A moment of levity, a team activity, anything that makes it human",
+        id: "retro-done",
+        label: "Last PI retrospective completed",
+        sub: "Teams had a chance to reflect — issues aren't carrying forward silently",
       },
       {
-        id: "consultation-flagged",
-        label: "Cross-group consultations identified",
-        sub: "Anything requiring input from outside the team — before, during, or after",
+        id: "improvements-visible",
+        label: "Improvement items visible",
+        sub: "Actions from last retro are tracked and can be discussed in planning",
+      },
+      {
+        id: "teams-aligned",
+        label: "Teams understand PI goals",
+        sub: "Not just the POs — developers and QA know what we're going for",
       },
     ],
   },
   {
     id: "forward",
-    label: "Forward-looking",
-    color: "#BA7517",
+    label: "🔭 Forward-Looking",
+    color: "#6B8F71",
     items: [
       {
-        id: "ai-options",
-        label: "AI options considered per objective",
-        sub: "Where could AI tooling accelerate, automate, or enhance this work?",
+        id: "next-pi-seeded",
+        label: "Next PI has initial seeds",
+        sub: "At least a few items in the parking lot for the PI after this one",
       },
       {
-        id: "next-pi-seeds",
-        label: "Early seeds for next PI captured",
-        sub: "Anything already known for the following PI is in the parking lot",
+        id: "strategic-alignment",
+        label: "Objectives tie to strategic themes",
+        sub: "Can each objective be connected to a company or portfolio goal?",
+      },
+      {
+        id: "metrics-defined",
+        label: "Success metrics defined",
+        sub: "How will you know at end of PI whether each objective was achieved?",
       },
     ],
   },
 ];
 
-const TOTAL = BUCKETS.reduce((a, b) => a + b.items.length, 0);
-const STORAGE_PREFIX = "sage_pi_readiness_";
-
-function storageKey(pi) {
-  return STORAGE_PREFIX + pi.replace(".", "_");
-}
+const STORAGE_KEY = (pi) => `sage_pi_readiness_${pi.replace(".", "_")}`;
 
 function loadData(pi) {
   try {
-    return JSON.parse(localStorage.getItem(storageKey(pi)) || "{}");
+    return JSON.parse(localStorage.getItem(STORAGE_KEY(pi)) || "{}");
   } catch {
     return {};
   }
 }
 
 function saveData(pi, data) {
-  localStorage.setItem(storageKey(pi), JSON.stringify(data));
+  localStorage.setItem(STORAGE_KEY(pi), JSON.stringify(data));
 }
 
+// ── STATUS helpers ─────────────────────────────────────────────────
+function getStatus(data, id) { return data[id]?.status || "none"; }
+function getNote(data, id)   { return data[id]?.note   || ""; }
+function setStatus(data, id, status) {
+  return { ...data, [id]: { ...data[id], status } };
+}
+function setNote(data, id, note) {
+  return { ...data, [id]: { ...data[id], note } };
+}
+
+function statusScore(s) { return s === "yes" ? 1 : s === "partial" ? 0.5 : 0; }
+
+// ── METRICS ────────────────────────────────────────────────────────
+function calcMetrics(data) {
+  const all = BUCKETS.flatMap(b => b.items);
+  const done    = all.filter(i => getStatus(data, i.id) === "yes").length;
+  const partial = all.filter(i => getStatus(data, i.id) === "partial").length;
+  const none    = all.filter(i => getStatus(data, i.id) === "none").length;
+  const total   = all.length;
+  const pct     = Math.round(((done + partial * 0.5) / total) * 100);
+  return { done, partial, none, total, pct };
+}
+
+function bucketProgress(data, bucket) {
+  const scores = bucket.items.map(i => statusScore(getStatus(data, i.id)));
+  const pct = Math.round((scores.reduce((a, b) => a + b, 0) / bucket.items.length) * 100);
+  return pct;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// COMPONENT
+// ═══════════════════════════════════════════════════════════════════
 export default function PIReadiness({ theme }) {
   const [currentPi, setCurrentPi] = useState("2026.2");
-  const [data, setData] = useState(() => loadData("2026.2"));
-  const [openBuckets, setOpenBuckets] = useState(
-    Object.fromEntries(BUCKETS.map((b) => [b.id, true]))
-  );
+  const [data,      setData]      = useState(() => loadData("2026.2"));
+  const [open,      setOpen]      = useState({ artifacts: true }); // first bucket open by default
 
-  // Reload data when PI changes
+  // Reload when PI changes
   useEffect(() => {
     setData(loadData(currentPi));
   }, [currentPi]);
 
-  // Persist on every data change
-  useEffect(() => {
-    saveData(currentPi, data);
-  }, [data, currentPi]);
-
-  const isDark = theme?.isDark ?? false;
-
-  // ── Derived metrics ─────────────────────────────────────────
-  const allStatuses = BUCKETS.flatMap((b) =>
-    b.items.map((item) => data[item.id]?.status || "none")
-  );
-  const yesCount = allStatuses.filter((s) => s === "yes").length;
-  const partialCount = allStatuses.filter((s) => s === "partial").length;
-  const pct = Math.round(((yesCount + partialCount * 0.5) / TOTAL) * 100);
-
-  function bucketProgress(bucket) {
-    const yes = bucket.items.filter(
-      (i) => data[i.id]?.status === "yes"
-    ).length;
-    const partial = bucket.items.filter(
-      (i) => data[i.id]?.status === "partial"
-    ).length;
-    return {
-      yes,
-      partial,
-      pct: Math.round(((yes + partial * 0.5) / bucket.items.length) * 100),
-    };
-  }
-
-  function setStatus(itemId, status) {
-    setData((prev) => ({
-      ...prev,
-      [itemId]: { ...prev[itemId], status },
-    }));
-  }
-
-  function setNote(itemId, note) {
-    setData((prev) => ({
-      ...prev,
-      [itemId]: { ...prev[itemId], note },
-    }));
-  }
-
-  function toggleBucket(id) {
-    setOpenBuckets((prev) => ({ ...prev, [id]: !prev[id] }));
-  }
-
-  function resetPi() {
-    if (window.confirm(`Reset all checklist items for PI ${currentPi}?`)) {
-      setData({});
-    }
-  }
-
-  // ── Shared style helpers ─────────────────────────────────────
-  const s = {
-    section: { marginTop: "1.25rem" },
-    card: {
-      background: theme?.card || "rgba(255,255,255,0.05)",
-      border: `1px solid ${theme?.border || "rgba(255,255,255,0.1)"}`,
-      borderRadius: "16px",
-      padding: "1.25rem",
-    },
-    header: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: "1rem",
-      flexWrap: "wrap",
-      gap: "0.5rem",
-    },
-    title: {
-      fontFamily: "'Barlow', sans-serif",
-      fontSize: "0.68rem",
-      fontWeight: 700,
-      color: theme?.accent || "#9B7ED8",
-      letterSpacing: "0.12em",
-      textTransform: "uppercase",
-      margin: 0,
-    },
-    piSelect: {
-      fontFamily: "'Barlow', sans-serif",
-      fontSize: "0.78rem",
-      padding: "0.3rem 0.6rem",
-      borderRadius: "8px",
-      border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)"}`,
-      background: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)",
-      color: theme?.text || "#e8e0f0",
-      cursor: "pointer",
-      outline: "none",
-    },
-    resetBtn: {
-      fontFamily: "'Barlow', sans-serif",
-      fontSize: "0.72rem",
-      padding: "0.25rem 0.6rem",
-      borderRadius: "8px",
-      border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
-      background: "transparent",
-      color: theme?.muted || "#888",
-      cursor: "pointer",
-    },
-    // Metric cards row
-    metricRow: {
-      display: "grid",
-      gridTemplateColumns: "repeat(3, minmax(0,1fr))",
-      gap: "0.5rem",
-      marginBottom: "1rem",
-    },
-    metricCard: {
-      background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
-      borderRadius: "10px",
-      padding: "0.65rem 0.75rem",
-    },
-    metricVal: (color) => ({
-      fontFamily: "'Barlow', sans-serif",
-      fontSize: "1.4rem",
-      fontWeight: 600,
-      color,
-      lineHeight: 1,
-    }),
-    metricLbl: {
-      fontFamily: "'Barlow', sans-serif",
-      fontSize: "0.68rem",
-      color: theme?.muted || "#888",
-      marginTop: "0.2rem",
-      textTransform: "uppercase",
-      letterSpacing: "0.05em",
-    },
-    overallPct: {
-      fontFamily: "'Barlow', sans-serif",
-      fontSize: "0.78rem",
-      color: theme?.muted || "#888",
-      marginBottom: "0.5rem",
-    },
-    // Progress bar
-    progressTrack: {
-      height: "4px",
-      background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)",
-      borderRadius: "999px",
-      overflow: "hidden",
-      marginBottom: "1rem",
-    },
-    progressFill: {
-      height: "100%",
-      borderRadius: "999px",
-      background: theme?.accent || "#9B7ED8",
-      width: `${pct}%`,
-      transition: "width 0.3s ease",
-    },
-    // Bucket card
-    bucket: {
-      border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"}`,
-      borderRadius: "12px",
-      marginBottom: "0.6rem",
-      overflow: "hidden",
-    },
-    bucketHeader: {
-      display: "flex",
-      alignItems: "center",
-      gap: "0.6rem",
-      padding: "0.7rem 1rem",
-      background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)",
-      cursor: "pointer",
-      userSelect: "none",
-    },
-    bucketDot: (color) => ({
-      width: "9px",
-      height: "9px",
-      borderRadius: "50%",
-      background: color,
-      flexShrink: 0,
-    }),
-    bucketTitle: {
-      fontFamily: "'Barlow', sans-serif",
-      fontSize: "0.9rem",
-      fontWeight: 500,
-      color: theme?.text || "#e8e0f0",
-      flex: 1,
-    },
-    miniProgressWrap: {
-      width: "70px",
-      height: "3px",
-      background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)",
-      borderRadius: "999px",
-      overflow: "hidden",
-    },
-    bucketCount: {
-      fontFamily: "'Barlow', sans-serif",
-      fontSize: "0.7rem",
-      color: theme?.muted || "#888",
-    },
-    chevron: (open) => ({
-      fontSize: "0.65rem",
-      color: theme?.muted || "#888",
-      transform: open ? "rotate(180deg)" : "rotate(0deg)",
-      transition: "transform 0.2s ease",
-    }),
-    // Check row
-    itemsWrap: {
-      padding: "0.25rem 1rem 0.75rem",
-      borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,
-    },
-    checkRow: {
-      display: "flex",
-      gap: "0.75rem",
-      padding: "0.6rem 0",
-      borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}`,
-      alignItems: "flex-start",
-    },
-    checkRowLast: {
-      borderBottom: "none",
-    },
-    checkLabel: {
-      fontFamily: "'Barlow', sans-serif",
-      fontSize: "0.85rem",
-      color: theme?.text || "#e8e0f0",
-      lineHeight: 1.4,
-    },
-    checkSub: {
-      fontFamily: "'Barlow', sans-serif",
-      fontSize: "0.72rem",
-      color: theme?.muted || "#888",
-      marginTop: "0.15rem",
-      lineHeight: 1.4,
-    },
-    noteInput: {
-      marginTop: "0.35rem",
-      width: "100%",
-      background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
-      border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"}`,
-      borderRadius: "6px",
-      padding: "0.3rem 0.5rem",
-      color: theme?.text || "#e8e0f0",
-      fontFamily: "'Barlow', sans-serif",
-      fontSize: "0.75rem",
-      resize: "none",
-      outline: "none",
-    },
-    // Status buttons
-    statusBtnBase: {
-      fontFamily: "'Barlow', sans-serif",
-      fontSize: "0.68rem",
-      padding: "0.2rem 0.5rem",
-      borderRadius: "999px",
-      cursor: "pointer",
-      whiteSpace: "nowrap",
-      transition: "all 0.12s ease",
-      flexShrink: 0,
-    },
+  const update = (newData) => {
+    setData(newData);
+    saveData(currentPi, newData);
   };
 
-  function statusBtnStyle(btnStatus, currentStatus) {
-    const active = btnStatus === currentStatus;
+  const handleStatus = (id, s) => {
+    const current = getStatus(data, id);
+    const next = current === s ? "none" : s; // toggle off if already selected
+    update(setStatus(data, id, next));
+  };
+
+  const handleNote = (id, note) => {
+    update(setNote(data, id, note));
+  };
+
+  const handleReset = () => {
+    if (window.confirm(`Reset all checklist items for PI ${currentPi}?`)) {
+      update({});
+    }
+  };
+
+  const toggleBucket = (id) => setOpen(prev => ({ ...prev, [id]: !prev[id] }));
+
+  const metrics = calcMetrics(data);
+
+  // ── STYLES ──────────────────────────────────────────────────────
+  const panelStyle = {
+    background: theme.panel,
+    border: `1px solid ${theme.panelBorder}`,
+    borderRadius: 18,
+    padding: "1.25rem 1.5rem",
+    marginBottom: "1.1rem",
+  };
+
+  const statusBtnStyle = (itemId, s) => {
+    const active = getStatus(data, itemId) === s;
     const colors = {
-      yes: {
-        active: { background: "rgba(29,158,117,0.2)", color: "#1D9E75", border: "1px solid rgba(29,158,117,0.4)" },
-        idle: { background: "transparent", color: theme?.muted || "#888", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}` },
-      },
-      partial: {
-        active: { background: "rgba(186,117,23,0.2)", color: "#BA7517", border: "1px solid rgba(186,117,23,0.4)" },
-        idle: { background: "transparent", color: theme?.muted || "#888", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}` },
-      },
-      no: {
-        active: { background: "rgba(216,90,48,0.15)", color: "#D85A30", border: "1px solid rgba(216,90,48,0.35)" },
-        idle: { background: "transparent", color: theme?.muted || "#888", border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}` },
-      },
+      yes:     { bg: "#22c55e22", border: "#22c55e", text: "#16a34a" },
+      partial: { bg: "#f59e0b22", border: "#f59e0b", text: "#b45309" },
+      no:      { bg: "#f8717122", border: "#f87171", text: "#dc2626" },
     };
-    return { ...s.statusBtnBase, ...(active ? colors[btnStatus].active : colors[btnStatus].idle) };
-  }
+    const c = colors[s];
+    return {
+      background:   active ? c.bg : "transparent",
+      border:       `1px solid ${active ? c.border : theme.panelBorder}`,
+      color:        active ? c.text : theme.textMuted,
+      borderRadius: 20,
+      padding:      "0.2rem 0.65rem",
+      fontSize:     "0.68rem",
+      fontWeight:   700,
+      fontFamily:   "'Barlow', sans-serif",
+      cursor:       "pointer",
+      letterSpacing:"0.04em",
+      transition:   "all 0.15s",
+      whiteSpace:   "nowrap",
+    };
+  };
 
   return (
-    <div style={s.section}>
-    <div style={s.card}>
+    <div style={panelStyle}>
       {/* ── Header ── */}
-      <div style={s.header}>
-        <span style={s.title}>✈️ PI Readiness Check</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
+        <div>
+          <div style={{ fontSize: "0.68rem", fontWeight: 700, color: theme.textMuted, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            PI Readiness Checklist
+          </div>
+          <div style={{ fontSize: "0.75rem", color: theme.textMuted, marginTop: 2 }}>
+            Preflight check — are we actually ready to plan?
+          </div>
+        </div>
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
           <select
-            style={s.piSelect}
             value={currentPi}
-            onChange={(e) => setCurrentPi(e.target.value)}
+            onChange={e => setCurrentPi(e.target.value)}
+            style={{ background: theme.panel, color: theme.text, border: `1px solid ${theme.panelBorder}`, borderRadius: 8, padding: "5px 10px", fontFamily: "'Barlow', sans-serif", fontSize: "0.85rem", outline: "none" }}
           >
-            {PI_CYCLES.map((pi) => (
-              <option key={pi} value={pi}>PI {pi}</option>
-            ))}
+            {PI_CYCLES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <button style={s.resetBtn} onClick={resetPi}>Reset</button>
+          <button
+            onClick={handleReset}
+            style={{ background: "transparent", border: `1px solid ${theme.panelBorder}`, color: theme.textMuted, borderRadius: 8, padding: "5px 10px", fontFamily: "'Barlow', sans-serif", fontSize: "0.75rem", cursor: "pointer" }}
+          >
+            Reset
+          </button>
         </div>
       </div>
 
-      {/* ── Overall progress bar ── */}
-      <div style={s.overallPct}>{pct}% ready for PI {currentPi}</div>
-      <div style={s.progressTrack}>
-        <div style={s.progressFill} />
-      </div>
-
-      {/* ── Metric cards ── */}
-      <div style={s.metricRow}>
-        <div style={s.metricCard}>
-          <div style={s.metricVal("#1D9E75")}>{yesCount}</div>
-          <div style={s.metricLbl}>Done</div>
+      {/* ── Overall metrics bar ── */}
+      <div style={{ marginBottom: "1.25rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.4rem", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 120, background: theme.panelBorder, borderRadius: 20, height: 8, overflow: "hidden" }}>
+            <div style={{ width: `${metrics.pct}%`, background: theme.accent, height: "100%", borderRadius: 20, transition: "width 0.3s ease" }} />
+          </div>
+          <div style={{ fontWeight: 800, fontSize: "0.95rem", color: metrics.pct === 100 ? theme.accent : theme.text, minWidth: 40 }}>
+            {metrics.pct}%
+          </div>
         </div>
-        <div style={s.metricCard}>
-          <div style={s.metricVal("#BA7517")}>{partialCount}</div>
-          <div style={s.metricLbl}>In progress</div>
+        <div style={{ display: "flex", gap: "1rem", fontSize: "0.72rem" }}>
+          <span style={{ color: "#16a34a", fontWeight: 700 }}>✓ {metrics.done} done</span>
+          <span style={{ color: "#b45309", fontWeight: 700 }}>◑ {metrics.partial} partial</span>
+          <span style={{ color: theme.textMuted }}>○ {metrics.none} not started</span>
         </div>
-        <div style={s.metricCard}>
-          <div style={s.metricVal(theme?.muted || "#888")}>{TOTAL - yesCount - partialCount}</div>
-          <div style={s.metricLbl}>Not started</div>
-        </div>
+        {metrics.pct === 100 && (
+          <div style={{ marginTop: "0.5rem", color: theme.accent, fontWeight: 800, fontSize: "0.88rem" }}>
+            ✅ PI {currentPi} is go for planning!
+          </div>
+        )}
       </div>
 
       {/* ── Buckets ── */}
-      {BUCKETS.map((bucket) => {
-        const { yes, pct: bPct } = bucketProgress(bucket);
-        const isOpen = openBuckets[bucket.id];
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        {BUCKETS.map(bucket => {
+          const isOpen = !!open[bucket.id];
+          const bPct   = bucketProgress(data, bucket);
 
-        return (
-          <div key={bucket.id} style={s.bucket}>
-            {/* Bucket header */}
-            <div style={s.bucketHeader} onClick={() => toggleBucket(bucket.id)}>
-              <div style={s.bucketDot(bucket.color)} />
-              <div style={s.bucketTitle}>{bucket.label}</div>
-              <span style={s.bucketCount}>{yes}/{bucket.items.length}</span>
-              <div style={s.miniProgressWrap}>
-                <div style={{
-                  height: "100%",
-                  width: `${bPct}%`,
-                  background: bucket.color,
-                  borderRadius: "999px",
-                  transition: "width 0.3s ease",
-                }} />
+          return (
+            <div
+              key={bucket.id}
+              style={{ border: `1px solid ${theme.panelBorder}`, borderRadius: 12, overflow: "hidden" }}
+            >
+              {/* Bucket header */}
+              <div
+                onClick={() => toggleBucket(bucket.id)}
+                style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.65rem 0.9rem", cursor: "pointer", background: `${bucket.color}10`, userSelect: "none" }}
+              >
+                <span style={{ flex: 1, fontWeight: 700, fontSize: "0.88rem", color: theme.text }}>
+                  {bucket.label}
+                </span>
+
+                {/* Mini progress bar */}
+                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                  <div style={{ width: 60, height: 5, background: theme.panelBorder, borderRadius: 10, overflow: "hidden" }}>
+                    <div style={{ width: `${bPct}%`, height: "100%", background: bucket.color, borderRadius: 10, transition: "width 0.3s" }} />
+                  </div>
+                  <span style={{ fontSize: "0.68rem", color: theme.textMuted, minWidth: 28, textAlign: "right" }}>{bPct}%</span>
+                </div>
+
+                <span style={{ color: theme.textMuted, fontSize: "0.75rem", transition: "transform 0.2s", display: "inline-block", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
               </div>
-              <span style={s.chevron(isOpen)}>▼</span>
+
+              {/* Bucket items */}
+              {isOpen && (
+                <div style={{ borderTop: `1px solid ${theme.panelBorder}` }}>
+                  {bucket.items.map((item, idx) => {
+                    const status = getStatus(data, item.id);
+                    const note   = getNote(data, item.id);
+                    const isLast = idx === bucket.items.length - 1;
+
+                    return (
+                      <div
+                        key={item.id}
+                        style={{
+                          padding: "0.65rem 0.9rem",
+                          borderBottom: isLast ? "none" : `1px solid ${theme.panelBorder}`,
+                          background: status === "yes" ? "#22c55e08" : status === "partial" ? "#f59e0b08" : "transparent",
+                        }}
+                      >
+                        {/* Item label + status buttons */}
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem" }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: "0.85rem", fontWeight: 600, color: theme.text, marginBottom: 2 }}>
+                              {item.label}
+                            </div>
+                            <div style={{ fontSize: "0.72rem", color: theme.textMuted, lineHeight: 1.4 }}>
+                              {item.sub}
+                            </div>
+                          </div>
+
+                          {/* Done / Partial / No buttons */}
+                          <div style={{ display: "flex", gap: "0.3rem", flexShrink: 0, paddingTop: 1 }}>
+                            {["yes", "partial", "no"].map(s => (
+                              <button
+                                key={s}
+                                onClick={() => handleStatus(item.id, s)}
+                                style={statusBtnStyle(item.id, s)}
+                              >
+                                {s === "yes" ? "Done" : s === "partial" ? "Partial" : "No"}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Note field — shown if item has any non-none status */}
+                        {status !== "none" && (
+                          <textarea
+                            value={note}
+                            onChange={e => handleNote(item.id, e.target.value)}
+                            placeholder="Add a note…"
+                            rows={1}
+                            style={{
+                              marginTop: "0.45rem",
+                              width: "100%",
+                              background: "transparent",
+                              border: `1px solid ${theme.panelBorder}`,
+                              borderRadius: 8,
+                              color: theme.text,
+                              fontFamily: "'Barlow', sans-serif",
+                              fontSize: "0.78rem",
+                              padding: "0.35rem 0.6rem",
+                              outline: "none",
+                              resize: "vertical",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-
-            {/* Bucket items */}
-            {isOpen && (
-              <div style={s.itemsWrap}>
-                {bucket.items.map((item, idx) => {
-                  const status = data[item.id]?.status || "none";
-                  const note = data[item.id]?.note || "";
-                  const isLast = idx === bucket.items.length - 1;
-
-                  return (
-                    <div
-                      key={item.id}
-                      style={{ ...s.checkRow, ...(isLast ? s.checkRowLast : {}) }}
-                    >
-                      {/* Status buttons */}
-                      <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", paddingTop: "0.1rem", flexShrink: 0 }}>
-                        {["yes", "partial", "no"].map((btnStatus) => (
-                          <button
-                            key={btnStatus}
-                            style={statusBtnStyle(btnStatus, status)}
-                            onClick={() =>
-                              setStatus(item.id, status === btnStatus ? "none" : btnStatus)
-                            }
-                          >
-                            {btnStatus === "yes" ? "Done" : btnStatus === "partial" ? "Partial" : "No"}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Label + note */}
-                      <div style={{ flex: 1 }}>
-                        <div style={s.checkLabel}>{item.label}</div>
-                        <div style={s.checkSub}>{item.sub}</div>
-                        <textarea
-                          style={s.noteInput}
-                          rows={1}
-                          placeholder="Add a note..."
-                          value={note}
-                          onChange={(e) => setNote(item.id, e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
