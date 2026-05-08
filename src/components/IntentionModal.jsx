@@ -9,7 +9,8 @@ export default function IntentionModal({ theme, onSet, existing }) {
   const handleSkip = () => onSet("");
 
   return (
-    <LiminalModal theme={theme} onClose={handleSkip} size="md">
+    <LiminalModal theme={theme} onClose={handleSkip} size="md" botanicalBorder>
+      <div className="intention-animate">
       <div style={{ textAlign:"center", marginBottom:"1.75rem" }}>
         <div style={{
           fontSize:"0.6rem", letterSpacing:"0.22em", textTransform:"uppercase",
@@ -29,6 +30,7 @@ export default function IntentionModal({ theme, onSet, existing }) {
         <div style={{ width:40, height:1, background:`${theme.accent}50`, margin:"1rem auto 0" }}/>
       </div>
 
+      <p className="intention-prompt" style={{ color:theme.textMuted, fontFamily:"'Outfit', system-ui, sans-serif" }}>What quality do you want to embody for this cycle?</p>
       <textarea
         autoFocus
         value={text}
@@ -80,6 +82,7 @@ export default function IntentionModal({ theme, onSet, existing }) {
 
       <div style={{ textAlign:"center", marginTop:"1rem", fontSize:"0.68rem", color:theme.textMuted, fontFamily:"'Outfit', system-ui, sans-serif", fontStyle:"italic" }}>
         ⌘↵ to set · Esc to skip
+      </div>
       </div>
     </LiminalModal>
   );

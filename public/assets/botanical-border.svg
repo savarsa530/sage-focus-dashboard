@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 460" fill="none">
+  <!-- Top-left fern spiral -->
+  <g opacity="0.14" stroke="rgba(255,255,255,0.9)" stroke-width="1" stroke-linecap="round">
+    <path d="M20 20 Q28 14 36 20 Q44 26 38 34 Q32 42 24 36 Q16 30 20 20"/>
+    <path d="M20 20 L8 8"/>
+    <path d="M28 14 L18 4"/>
+    <path d="M24 10 Q22 16 28 14"/>
+    <path d="M32 6 Q28 12 34 10"/>
+    <path d="M8 8 L24 2"/>
+    <path d="M16 24 L4 20"/>
+    <path d="M14 30 L2 30"/>
+    <path d="M16 36 L6 42"/>
+  </g>
+
+  <!-- Top-right fern spiral -->
+  <g opacity="0.14" stroke="rgba(255,255,255,0.9)" stroke-width="1" stroke-linecap="round">
+    <path d="M440 20 Q432 14 424 20 Q416 26 422 34 Q428 42 436 36 Q444 30 440 20"/>
+    <path d="M440 20 L452 8"/>
+    <path d="M432 14 L442 4"/>
+    <path d="M436 10 Q438 16 432 14"/>
+    <path d="M428 6 Q432 12 426 10"/>
+    <path d="M452 8 L436 2"/>
+    <path d="M444 24 L456 20"/>
+    <path d="M446 30 L458 30"/>
+    <path d="M444 36 L454 42"/>
+  </g>
+
+  <!-- Bottom-left fern spiral -->
+  <g opacity="0.14" stroke="rgba(255,255,255,0.9)" stroke-width="1" stroke-linecap="round">
+    <path d="M20 440 Q28 446 36 440 Q44 434 38 426 Q32 418 24 424 Q16 430 20 440"/>
+    <path d="M20 440 L8 452"/>
+    <path d="M28 446 L18 456"/>
+    <path d="M24 450 Q22 444 28 446"/>
+    <path d="M32 454 Q28 448 34 450"/>
+    <path d="M8 452 L24 458"/>
+    <path d="M16 436 L4 440"/>
+    <path d="M14 430 L2 430"/>
+    <path d="M16 424 L6 418"/>
+  </g>
+
+  <!-- Bottom-right fern spiral -->
+  <g opacity="0.14" stroke="rgba(255,255,255,0.9)" stroke-width="1" stroke-linecap="round">
+    <path d="M440 440 Q432 446 424 440 Q416 434 422 426 Q428 418 436 424 Q444 430 440 440"/>
+    <path d="M440 440 L452 452"/>
+    <path d="M432 446 L442 456"/>
+    <path d="M436 450 Q438 444 432 446"/>
+    <path d="M428 454 Q432 448 426 450"/>
+    <path d="M452 452 L436 458"/>
+    <path d="M444 436 L456 440"/>
+    <path d="M446 430 L458 430"/>
+    <path d="M444 424 L454 418"/>
+  </g>
+
+  <!-- Subtle top edge fronds -->
+  <g opacity="0.07" stroke="rgba(255,255,255,0.9)" stroke-width="0.8" stroke-linecap="round">
+    <path d="M160 2 Q165 10 160 18"/>
+    <path d="M160 2 L155 8"/>
+    <path d="M160 2 L166 8"/>
+    <path d="M200 0 Q205 8 200 16"/>
+    <path d="M200 0 L195 7"/>
+    <path d="M200 0 L206 7"/>
+    <path d="M260 2 Q265 10 260 18"/>
+    <path d="M260 2 L255 8"/>
+    <path d="M260 2 L266 8"/>
+    <path d="M300 0 Q305 8 300 16"/>
+    <path d="M300 0 L295 7"/>
+    <path d="M300 0 L306 7"/>
+  </g>
+
+  <!-- Subtle bottom edge fronds -->
+  <g opacity="0.07" stroke="rgba(255,255,255,0.9)" stroke-width="0.8" stroke-linecap="round">
+    <path d="M160 458 Q165 450 160 442"/>
+    <path d="M160 458 L155 452"/>
+    <path d="M160 458 L166 452"/>
+    <path d="M200 460 Q205 452 200 444"/>
+    <path d="M200 460 L195 453"/>
+    <path d="M200 460 L206 453"/>
+    <path d="M260 458 Q265 450 260 442"/>
+    <path d="M260 458 L255 452"/>
+    <path d="M260 458 L266 452"/>
+    <path d="M300 460 Q305 452 300 444"/>
+    <path d="M300 460 L295 453"/>
+    <path d="M300 460 L306 453"/>
+  </g>
+
+  <!-- Subtle left edge fronds -->
+  <g opacity="0.07" stroke="rgba(255,255,255,0.9)" stroke-width="0.8" stroke-linecap="round">
+    <path d="M2 160 Q10 165 18 160"/>
+    <path d="M2 160 L8 155"/>
+    <path d="M2 160 L8 166"/>
+    <path d="M0 220 Q8 225 16 220"/>
+    <path d="M0 220 L7 215"/>
+    <path d="M0 220 L7 226"/>
+    <path d="M2 280 Q10 285 18 280"/>
+    <path d="M2 280 L8 275"/>
+    <path d="M2 280 L8 286"/>
+  </g>
+
+  <!-- Subtle right edge fronds -->
+  <g opacity="0.07" stroke="rgba(255,255,255,0.9)" stroke-width="0.8" stroke-linecap="round">
+    <path d="M458 160 Q450 165 442 160"/>
+    <path d="M458 160 L452 155"/>
+    <path d="M458 160 L452 166"/>
+    <path d="M460 220 Q452 225 444 220"/>
+    <path d="M460 220 L453 215"/>
+    <path d="M460 220 L453 226"/>
+    <path d="M458 280 Q450 285 442 280"/>
+    <path d="M458 280 L452 275"/>
+    <path d="M458 280 L452 286"/>
+  </g>
+</svg>
