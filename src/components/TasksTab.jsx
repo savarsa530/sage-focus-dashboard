@@ -5,7 +5,7 @@ export default function TasksTab({
   focusedTaskId, focusTask,
   taskSort, setTaskSort,
   doneToBottom, setDoneToBottom,
-  dragOverId,
+  dragId, dragOverId,
   handleDragStart, handleDragOver, handleDrop, handleDragEnd,
   toggleTask, deleteTask, cyclePriority,
   newTask, setNewTask,
@@ -87,9 +87,11 @@ export default function TasksTab({
           {sortedTasks.map(task => {
             const isFocused  = task.id === focusedTaskId;
             const isDragOver = task.id === dragOverId;
+            const isDragging = task.id === dragId;
             return (
               <div
                 key={task.id}
+                className={`task-item${isDragging ? " dragging" : ""}`}
                 draggable={canDrag && !task.done}
                 onDragStart={() => canDrag && handleDragStart(task.id)}
                 onDragOver={e => canDrag && handleDragOver(e, task.id)}
@@ -101,7 +103,7 @@ export default function TasksTab({
                   background: isFocused ? `${theme.accent}18` : task.done ? `${theme.panelBorder}40` : `${theme.accent}0a`,
                   border:`1px solid ${isDragOver ? theme.accent : isFocused ? theme.accent+"80" : task.done ? theme.panelBorder : theme.accent+"28"}`,
                   borderTop: isDragOver ? `2px solid ${theme.accent}` : undefined,
-                  boxShadow: isFocused ? `0 0 20px ${theme.accent}30, inset 0 0 10px ${theme.accent}0a` : "none",
+                  boxShadow: isFocused ? `0 0 20px ${theme.accent}30, inset 0 0 10px ${theme.accent}0a` : undefined,
                   opacity: task.done ? 0.55 : 1,
                   transition:"all 0.2s",
                   cursor: canDrag && !task.done ? "grab" : "default",
