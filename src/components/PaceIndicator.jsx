@@ -1,6 +1,10 @@
-export default function PaceIndicator({ sessionsToday, consecutiveSkips, sessionTimestamps, accent, textMuted, isDark }) {
-  const now = Date.now();
-  const recentSessions = sessionTimestamps.filter(t => now - t < 90 * 60 * 1000).length;
+import { useMemo } from "react";
+
+export default function PaceIndicator({ sessionsToday, consecutiveSkips, sessionTimestamps, accent, isDark }) {
+  const recentSessions = useMemo(
+    () => { const now = Date.now(); return sessionTimestamps.filter(t => now - t < 90 * 60 * 1000).length; },
+    [sessionTimestamps]
+  );
 
   let signal = null;
   let signalColor = accent;

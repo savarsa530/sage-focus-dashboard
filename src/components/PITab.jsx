@@ -1,5 +1,13 @@
 import { PI_CYCLES, PI_STATUSES, PI_SECTION_TYPES } from "../constants";
 
+function FieldLabel({ children, textMuted }) {
+  return (
+    <div style={{ fontSize:"0.65rem", color:textMuted, fontWeight:600, marginBottom:3, textTransform:"uppercase", letterSpacing:"0.08em", fontFamily:"'DM Mono', monospace" }}>
+      {children}
+    </div>
+  );
+}
+
 export default function PITab({
   theme,
   piCapacity, piDependencies, piRisk,
@@ -12,13 +20,6 @@ export default function PITab({
   updatePiItem, deletePiItem,
   panelStyle, btnStyle, inpStyle,
 }) {
-  const isDark = theme.isDark;
-
-  const FieldLabel = ({ children }) => (
-    <div style={{ fontSize:"0.65rem", color:theme.textMuted, fontWeight:600, marginBottom:3, textTransform:"uppercase", letterSpacing:"0.08em", fontFamily:"'DM Mono', monospace" }}>
-      {children}
-    </div>
-  );
 
   return (
     <div style={panelStyle}>
@@ -45,12 +46,12 @@ export default function PITab({
       {showAddPi === "capacity" && (
         <div style={{ background:`${PI_SECTION_TYPES.capacity.color}0d`, border:`1px solid ${PI_SECTION_TYPES.capacity.color}30`, borderRadius:12, padding:"1rem", marginBottom:"1rem" }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.6rem", marginBottom:"0.6rem" }}>
-            <div><FieldLabel>PI Cycle</FieldLabel><select value={newCapacity.pi} onChange={e=>setNewCapacity(c=>({...c,pi:e.target.value}))} style={{ width:"100%" }}>{PI_CYCLES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-            <div><FieldLabel>Impact</FieldLabel><select value={newCapacity.impactLevel} onChange={e=>setNewCapacity(c=>({...c,impactLevel:e.target.value}))} style={{ width:"100%" }}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
+            <div><FieldLabel textMuted={theme.textMuted}>PI Cycle</FieldLabel><select value={newCapacity.pi} onChange={e=>setNewCapacity(c=>({...c,pi:e.target.value}))} style={{ width:"100%" }}>{PI_CYCLES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+            <div><FieldLabel textMuted={theme.textMuted}>Impact</FieldLabel><select value={newCapacity.impactLevel} onChange={e=>setNewCapacity(c=>({...c,impactLevel:e.target.value}))} style={{ width:"100%" }}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
           </div>
-          <div style={{ marginBottom:"0.6rem" }}><FieldLabel>Title *</FieldLabel><input style={inpStyle} placeholder="What's the capacity constraint?" value={newCapacity.title} onChange={e=>setNewCapacity(c=>({...c,title:e.target.value}))}/></div>
-          <div style={{ marginBottom:"0.6rem" }}><FieldLabel>Notes</FieldLabel><textarea rows={2} style={inpStyle} placeholder="Details…" value={newCapacity.notes} onChange={e=>setNewCapacity(c=>({...c,notes:e.target.value}))}/></div>
-          <div style={{ marginBottom:"0.75rem" }}><FieldLabel>Owner</FieldLabel><input style={inpStyle} placeholder="Who owns this? (optional)" value={newCapacity.owner} onChange={e=>setNewCapacity(c=>({...c,owner:e.target.value}))}/></div>
+          <div style={{ marginBottom:"0.6rem" }}><FieldLabel textMuted={theme.textMuted}>Title *</FieldLabel><input style={inpStyle} placeholder="What's the capacity constraint?" value={newCapacity.title} onChange={e=>setNewCapacity(c=>({...c,title:e.target.value}))}/></div>
+          <div style={{ marginBottom:"0.6rem" }}><FieldLabel textMuted={theme.textMuted}>Notes</FieldLabel><textarea rows={2} style={inpStyle} placeholder="Details…" value={newCapacity.notes} onChange={e=>setNewCapacity(c=>({...c,notes:e.target.value}))}/></div>
+          <div style={{ marginBottom:"0.75rem" }}><FieldLabel textMuted={theme.textMuted}>Owner</FieldLabel><input style={inpStyle} placeholder="Who owns this? (optional)" value={newCapacity.owner} onChange={e=>setNewCapacity(c=>({...c,owner:e.target.value}))}/></div>
           <button style={btnStyle(true)} onClick={addPiCapacity}>Add Capacity Item</button>
         </div>
       )}
@@ -59,13 +60,13 @@ export default function PITab({
       {showAddPi === "dependencies" && (
         <div style={{ background:`${PI_SECTION_TYPES.dependencies.color}0d`, border:`1px solid ${PI_SECTION_TYPES.dependencies.color}30`, borderRadius:12, padding:"1rem", marginBottom:"1rem" }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.6rem", marginBottom:"0.6rem" }}>
-            <div><FieldLabel>PI Cycle</FieldLabel><select value={newDependency.pi} onChange={e=>setNewDependency(d=>({...d,pi:e.target.value}))} style={{ width:"100%" }}>{PI_CYCLES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-            <div><FieldLabel>Status</FieldLabel><select value={newDependency.status} onChange={e=>setNewDependency(d=>({...d,status:e.target.value}))} style={{ width:"100%" }}><option value="identified">Identified</option><option value="in_progress">In Progress</option><option value="resolved">Resolved</option></select></div>
+            <div><FieldLabel textMuted={theme.textMuted}>PI Cycle</FieldLabel><select value={newDependency.pi} onChange={e=>setNewDependency(d=>({...d,pi:e.target.value}))} style={{ width:"100%" }}>{PI_CYCLES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+            <div><FieldLabel textMuted={theme.textMuted}>Status</FieldLabel><select value={newDependency.status} onChange={e=>setNewDependency(d=>({...d,status:e.target.value}))} style={{ width:"100%" }}><option value="identified">Identified</option><option value="in_progress">In Progress</option><option value="resolved">Resolved</option></select></div>
           </div>
-          <div style={{ marginBottom:"0.6rem" }}><FieldLabel>Title *</FieldLabel><input style={inpStyle} placeholder="What are we dependent on?" value={newDependency.title} onChange={e=>setNewDependency(d=>({...d,title:e.target.value}))}/></div>
-          <div style={{ marginBottom:"0.6rem" }}><FieldLabel>Notes</FieldLabel><textarea rows={2} style={inpStyle} placeholder="More context…" value={newDependency.notes} onChange={e=>setNewDependency(d=>({...d,notes:e.target.value}))}/></div>
-          <div style={{ marginBottom:"0.6rem" }}><FieldLabel>Blocking Team</FieldLabel><input style={inpStyle} placeholder="Which team/system? (optional)" value={newDependency.blockingTeam} onChange={e=>setNewDependency(d=>({...d,blockingTeam:e.target.value}))}/></div>
-          <div style={{ marginBottom:"0.75rem" }}><FieldLabel>Target Resolution</FieldLabel><input style={inpStyle} placeholder="When should this resolve? (optional)" value={newDependency.targetResolution} onChange={e=>setNewDependency(d=>({...d,targetResolution:e.target.value}))}/></div>
+          <div style={{ marginBottom:"0.6rem" }}><FieldLabel textMuted={theme.textMuted}>Title *</FieldLabel><input style={inpStyle} placeholder="What are we dependent on?" value={newDependency.title} onChange={e=>setNewDependency(d=>({...d,title:e.target.value}))}/></div>
+          <div style={{ marginBottom:"0.6rem" }}><FieldLabel textMuted={theme.textMuted}>Notes</FieldLabel><textarea rows={2} style={inpStyle} placeholder="More context…" value={newDependency.notes} onChange={e=>setNewDependency(d=>({...d,notes:e.target.value}))}/></div>
+          <div style={{ marginBottom:"0.6rem" }}><FieldLabel textMuted={theme.textMuted}>Blocking Team</FieldLabel><input style={inpStyle} placeholder="Which team/system? (optional)" value={newDependency.blockingTeam} onChange={e=>setNewDependency(d=>({...d,blockingTeam:e.target.value}))}/></div>
+          <div style={{ marginBottom:"0.75rem" }}><FieldLabel textMuted={theme.textMuted}>Target Resolution</FieldLabel><input style={inpStyle} placeholder="When should this resolve? (optional)" value={newDependency.targetResolution} onChange={e=>setNewDependency(d=>({...d,targetResolution:e.target.value}))}/></div>
           <button style={btnStyle(true)} onClick={addPiDependency}>Add Dependency</button>
         </div>
       )}
@@ -74,12 +75,12 @@ export default function PITab({
       {showAddPi === "risk" && (
         <div style={{ background:`${PI_SECTION_TYPES.risk.color}0d`, border:`1px solid ${PI_SECTION_TYPES.risk.color}30`, borderRadius:12, padding:"1rem", marginBottom:"1rem" }}>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"0.6rem", marginBottom:"0.6rem" }}>
-            <div><FieldLabel>PI Cycle</FieldLabel><select value={newRisk.pi} onChange={e=>setNewRisk(r=>({...r,pi:e.target.value}))} style={{ width:"100%" }}>{PI_CYCLES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-            <div><FieldLabel>Status</FieldLabel><select value={newRisk.status} onChange={e=>setNewRisk(r=>({...r,status:e.target.value}))} style={{ width:"100%" }}>{PI_STATUSES.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select></div>
+            <div><FieldLabel textMuted={theme.textMuted}>PI Cycle</FieldLabel><select value={newRisk.pi} onChange={e=>setNewRisk(r=>({...r,pi:e.target.value}))} style={{ width:"100%" }}>{PI_CYCLES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+            <div><FieldLabel textMuted={theme.textMuted}>Status</FieldLabel><select value={newRisk.status} onChange={e=>setNewRisk(r=>({...r,status:e.target.value}))} style={{ width:"100%" }}>{PI_STATUSES.map(s=><option key={s.key} value={s.key}>{s.label}</option>)}</select></div>
           </div>
-          <div style={{ marginBottom:"0.6rem" }}><FieldLabel>Title *</FieldLabel><input style={inpStyle} placeholder="What's the risk?" value={newRisk.title} onChange={e=>setNewRisk(r=>({...r,title:e.target.value}))}/></div>
-          <div style={{ marginBottom:"0.6rem" }}><FieldLabel>Objectives</FieldLabel><textarea rows={2} style={inpStyle} placeholder="Context or mitigation strategy…" value={newRisk.objectives} onChange={e=>setNewRisk(r=>({...r,objectives:e.target.value}))}/></div>
-          <div style={{ marginBottom:"0.75rem" }}><FieldLabel>Risk Details</FieldLabel><textarea rows={2} style={inpStyle} placeholder="Details about the risk…" value={newRisk.risks} onChange={e=>setNewRisk(r=>({...r,risks:e.target.value}))}/></div>
+          <div style={{ marginBottom:"0.6rem" }}><FieldLabel textMuted={theme.textMuted}>Title *</FieldLabel><input style={inpStyle} placeholder="What's the risk?" value={newRisk.title} onChange={e=>setNewRisk(r=>({...r,title:e.target.value}))}/></div>
+          <div style={{ marginBottom:"0.6rem" }}><FieldLabel textMuted={theme.textMuted}>Objectives</FieldLabel><textarea rows={2} style={inpStyle} placeholder="Context or mitigation strategy…" value={newRisk.objectives} onChange={e=>setNewRisk(r=>({...r,objectives:e.target.value}))}/></div>
+          <div style={{ marginBottom:"0.75rem" }}><FieldLabel textMuted={theme.textMuted}>Risk Details</FieldLabel><textarea rows={2} style={inpStyle} placeholder="Details about the risk…" value={newRisk.risks} onChange={e=>setNewRisk(r=>({...r,risks:e.target.value}))}/></div>
           <button style={btnStyle(true)} onClick={addPiRisk}>Add Risk</button>
         </div>
       )}
@@ -117,9 +118,9 @@ export default function PITab({
                             </div>
                             {isOpen && (
                               <div style={{ padding:"0.75rem 0.8rem", borderTop:`1px solid ${theme.panelBorder}`, background:`${theme.accent}04` }}>
-                                <div style={{ marginBottom:"0.5rem" }}><FieldLabel>Impact Level</FieldLabel><select value={item.impactLevel || "medium"} onChange={e => updatePiItem("capacity", item.id, "impactLevel", e.target.value)} style={{ width:"100%" }}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
-                                <div style={{ marginBottom:"0.5rem" }}><FieldLabel>Notes</FieldLabel><textarea style={inpStyle} rows={2} value={item.notes || ""} onChange={e => updatePiItem("capacity", item.id, "notes", e.target.value)} placeholder="Add details…"/></div>
-                                <div><FieldLabel>Owner</FieldLabel><input style={inpStyle} value={item.owner || ""} onChange={e => updatePiItem("capacity", item.id, "owner", e.target.value)} placeholder="Who owns this?"/></div>
+                                <div style={{ marginBottom:"0.5rem" }}><FieldLabel textMuted={theme.textMuted}>Impact Level</FieldLabel><select value={item.impactLevel || "medium"} onChange={e => updatePiItem("capacity", item.id, "impactLevel", e.target.value)} style={{ width:"100%" }}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
+                                <div style={{ marginBottom:"0.5rem" }}><FieldLabel textMuted={theme.textMuted}>Notes</FieldLabel><textarea style={inpStyle} rows={2} value={item.notes || ""} onChange={e => updatePiItem("capacity", item.id, "notes", e.target.value)} placeholder="Add details…"/></div>
+                                <div><FieldLabel textMuted={theme.textMuted}>Owner</FieldLabel><input style={inpStyle} value={item.owner || ""} onChange={e => updatePiItem("capacity", item.id, "owner", e.target.value)} placeholder="Who owns this?"/></div>
                               </div>
                             )}
                           </div>
@@ -167,10 +168,10 @@ export default function PITab({
                             </div>
                             {isOpen && (
                               <div style={{ padding:"0.75rem 0.8rem", borderTop:`1px solid ${theme.panelBorder}`, background:`${theme.accent}04` }}>
-                                <div style={{ marginBottom:"0.5rem" }}><FieldLabel>Status</FieldLabel><select value={item.status || "identified"} onChange={e => updatePiItem("dependencies", item.id, "status", e.target.value)} style={{ width:"100%" }}><option value="identified">Identified</option><option value="in_progress">In Progress</option><option value="resolved">Resolved</option></select></div>
-                                <div style={{ marginBottom:"0.5rem" }}><FieldLabel>Notes</FieldLabel><textarea style={inpStyle} rows={2} value={item.notes || ""} onChange={e => updatePiItem("dependencies", item.id, "notes", e.target.value)} placeholder="Details…"/></div>
-                                <div style={{ marginBottom:"0.5rem" }}><FieldLabel>Blocking Team</FieldLabel><input style={inpStyle} value={item.blockingTeam || ""} onChange={e => updatePiItem("dependencies", item.id, "blockingTeam", e.target.value)} placeholder="Which team?"/></div>
-                                <div><FieldLabel>Target Resolution</FieldLabel><input style={inpStyle} value={item.targetResolution || ""} onChange={e => updatePiItem("dependencies", item.id, "targetResolution", e.target.value)} placeholder="When should this resolve?"/></div>
+                                <div style={{ marginBottom:"0.5rem" }}><FieldLabel textMuted={theme.textMuted}>Status</FieldLabel><select value={item.status || "identified"} onChange={e => updatePiItem("dependencies", item.id, "status", e.target.value)} style={{ width:"100%" }}><option value="identified">Identified</option><option value="in_progress">In Progress</option><option value="resolved">Resolved</option></select></div>
+                                <div style={{ marginBottom:"0.5rem" }}><FieldLabel textMuted={theme.textMuted}>Notes</FieldLabel><textarea style={inpStyle} rows={2} value={item.notes || ""} onChange={e => updatePiItem("dependencies", item.id, "notes", e.target.value)} placeholder="Details…"/></div>
+                                <div style={{ marginBottom:"0.5rem" }}><FieldLabel textMuted={theme.textMuted}>Blocking Team</FieldLabel><input style={inpStyle} value={item.blockingTeam || ""} onChange={e => updatePiItem("dependencies", item.id, "blockingTeam", e.target.value)} placeholder="Which team?"/></div>
+                                <div><FieldLabel textMuted={theme.textMuted}>Target Resolution</FieldLabel><input style={inpStyle} value={item.targetResolution || ""} onChange={e => updatePiItem("dependencies", item.id, "targetResolution", e.target.value)} placeholder="When should this resolve?"/></div>
                               </div>
                             )}
                           </div>
@@ -216,8 +217,8 @@ export default function PITab({
                             </div>
                             {isOpen && (
                               <div style={{ padding:"0.75rem 0.8rem", borderTop:`1px solid ${theme.panelBorder}`, background:`${theme.accent}04` }}>
-                                <div style={{ marginBottom:"0.5rem" }}><FieldLabel>Objectives</FieldLabel><textarea style={inpStyle} rows={2} value={item.objectives || ""} onChange={e => updatePiItem("risk", item.id, "objectives", e.target.value)} placeholder="Context…"/></div>
-                                <div><FieldLabel>Risk Details</FieldLabel><textarea style={inpStyle} rows={2} value={item.risks || ""} onChange={e => updatePiItem("risk", item.id, "risks", e.target.value)} placeholder="Details…"/></div>
+                                <div style={{ marginBottom:"0.5rem" }}><FieldLabel textMuted={theme.textMuted}>Objectives</FieldLabel><textarea style={inpStyle} rows={2} value={item.objectives || ""} onChange={e => updatePiItem("risk", item.id, "objectives", e.target.value)} placeholder="Context…"/></div>
+                                <div><FieldLabel textMuted={theme.textMuted}>Risk Details</FieldLabel><textarea style={inpStyle} rows={2} value={item.risks || ""} onChange={e => updatePiItem("risk", item.id, "risks", e.target.value)} placeholder="Details…"/></div>
                               </div>
                             )}
                           </div>

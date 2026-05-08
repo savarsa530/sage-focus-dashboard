@@ -196,8 +196,7 @@ export default function PIParkingLot({ theme }) {
       fontFamily: "'Barlow', sans-serif",
       transition: "all 0.15s ease",
     }),
-    // Item card
-    card: {
+    itemCard: {
       background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)",
       border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"}`,
       borderRadius: "12px",
@@ -549,7 +548,7 @@ export default function PIParkingLot({ theme }) {
 
         return (
           <div key={item.id} style={{
-            ...s.card,
+            ...s.itemCard,
             borderColor: isExpanded
               ? (theme?.accent || "#9B7ED8") + "55"
               : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)"),

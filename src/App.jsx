@@ -328,7 +328,7 @@ export default function App() {
 
   useEffect(() => {
     Object.keys(activeSounds).forEach(k => { if (activeSounds[k]) setVolume(k, soundVol); });
-  }, [soundVol]);
+  }, [soundVol, activeSounds]);
 
   useEffect(() => () => stopAllSounds(), []);
 
@@ -398,6 +398,7 @@ export default function App() {
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running, focusedTaskId, showSkipModal, showIntentionModal, showTaskSwap]);
 
   // ── Shared style objects ──────────────────────────────────────

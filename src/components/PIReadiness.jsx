@@ -1,23 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { PI_READINESS_CYCLES, READINESS_BUCKETS, READINESS_TOTAL } from "../constants";
 
 export default function PIReadiness({ theme }) {
   const isDark = theme.isDark;
   const [selectedPi, setSelectedPi] = useState("2026.2");
-  const [data, setData] = useState({});
-  const [openBuckets, setOpenBuckets] = useState(() =>
-    Object.fromEntries(READINESS_BUCKETS.map(b => [b.id, true]))
-  );
-
-  useEffect(() => {
+  const [data, setData] = useState(() => {
     const loaded = {};
     PI_READINESS_CYCLES.forEach(pi => {
       const raw = localStorage.getItem("sage_readiness_" + pi.replace(".", "_"));
-      if (raw) { try { loaded[pi] = JSON.parse(raw); } catch {} }
+      if (raw) { try { loaded[pi] = JSON.parse(raw); } catch { /* ignore corrupt data */ } }
       if (!loaded[pi]) loaded[pi] = {};
     });
-    setData(loaded);
-  }, []);
+    return loaded;
+  });
+  const [openBuckets, setOpenBuckets] = useState(() =>
+    Object.fromEntries(READINESS_BUCKETS.map(b => [b.id, true]))
+  );
 
   const piData = data[selectedPi] || {};
   const getStatus = (itemId) => piData[itemId]?.status || "none";

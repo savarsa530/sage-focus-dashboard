@@ -47,7 +47,7 @@ export function startSound(key, volume) {
   gain.gain.setValueAtTime(0, ctx.currentTime);
   gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + 1.2);
   gain.connect(ctx.destination);
-  let cleanup = null;
+  let cleanup;
   if (key === "binaural") {
     const { node, cleanup: c } = buildBinaural(ctx);
     node.connect(gain);
@@ -65,7 +65,7 @@ export function startSound(key, volume) {
       src.connect(gain);
     }
     src.start();
-    cleanup = () => { try { src.stop(); } catch(_){} };
+    cleanup = () => { try { src.stop(); } catch {} };
   }
   audioRefs[key] = { ctx, gain, cleanup };
 }
@@ -77,9 +77,9 @@ export function stopSound(key) {
     ref.gain.gain.linearRampToValueAtTime(0, ref.ctx.currentTime + 0.4);
     setTimeout(() => {
       ref.cleanup?.();
-      try { ref.ctx.close(); } catch(_){}
+      try { ref.ctx.close(); } catch {}
     }, 500);
-  } catch(_){}
+  } catch {}
   delete audioRefs[key];
 }
 

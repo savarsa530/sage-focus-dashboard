@@ -5,7 +5,7 @@ export default function TasksTab({
   focusedTaskId, focusTask,
   taskSort, setTaskSort,
   doneToBottom, setDoneToBottom,
-  dragId, dragOverId,
+  dragOverId,
   handleDragStart, handleDragOver, handleDrop, handleDragEnd,
   toggleTask, deleteTask, cyclePriority,
   newTask, setNewTask,
