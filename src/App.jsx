@@ -144,6 +144,7 @@ export default function App() {
   const [running,   setRunning]   = useState(false);
   const [needTask,  setNeedTask]  = useState(false);
   const [showSkipModal, setShowSkipModal] = useState(false);
+  const [showCompletionFlash, setShowCompletionFlash] = useState(false);
   const intervalRef = useRef(null);
 
   const totalSecs = phase === "work" ? workMins * 60 : brkMins * 60;
@@ -199,6 +200,8 @@ export default function App() {
         setTimeLeft(prev => {
           if (prev <= 1) {
             clearInterval(intervalRef.current);
+            setShowCompletionFlash(true);
+            setTimeout(() => setShowCompletionFlash(false), 800);
             if (phase === "work") {
               const nc = sessionsToday + 1;
               setSessionsToday(nc);
@@ -415,7 +418,7 @@ export default function App() {
       ? `linear-gradient(145deg, ${theme.panel} 0%, ${theme.bg}cc 100%)`
       : theme.panel,
     border:`1px solid ${theme.panelBorder}`,
-    boxShadow: isDark ? `inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 24px rgba(0,0,0,0.4)` : `0 2px 12px rgba(0,0,0,0.06)`,
+    boxShadow: isDark ? `inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 24px rgba(0,0,0,0.4)` : theme.shadowSoft,
     borderRadius:18, padding:"1.25rem 1.5rem", marginBottom:"1.1rem",
   };
 
@@ -486,6 +489,21 @@ export default function App() {
     .start-pulse{animation:gentlePulse 2.5s ease-in-out infinite;}
     .need-task{animation:needTaskShake 0.5s ease;}
     .intention-float{animation:intentionFloat 4s ease-in-out infinite;}
+    @keyframes thresholdFadeIn{from{opacity:0;}to{opacity:1;}}
+    .threshold-fade{opacity:0;animation:thresholdFadeIn 0.25s ease-out forwards;}
+    .vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle, transparent 40%, rgba(0,0,0,0.4));z-index:1001;}
+    @keyframes intentionFade{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+    .intention-animate{opacity:0;transform:translateY(10px);animation:intentionFade 0.3s ease-out forwards;}
+    .intention-prompt{font-size:0.9rem;opacity:0.85;margin-bottom:8px;}
+    @keyframes breathe{0%{transform:scale(1);opacity:1;}50%{transform:scale(1.015);opacity:0.95;}100%{transform:scale(1);opacity:1;}}
+    .timer-breath{animation:breathe 5s ease-in-out infinite;}
+    @keyframes flashOut{from{opacity:1;}to{opacity:0;}}
+    .completion-flash{position:fixed;inset:0;background:radial-gradient(circle, rgba(255,255,255,0.4), transparent 70%);animation:flashOut 0.8s ease-out forwards;pointer-events:none;z-index:999;}
+    .task-item{transition:transform 0.12s ease,box-shadow 0.12s ease;}
+    .task-item.dragging{transform:rotate(1deg) scale(1.02);box-shadow:0 4px 12px rgba(0,0,0,0.15);}
+    .task-item:hover{background:rgba(255,255,255,0.05)!important;box-shadow:0 0 8px rgba(255,255,255,0.08);}
+    .zen-blur{position:absolute;inset:0;filter:blur(4px);pointer-events:none;z-index:0;}
+    .zen-phrase{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.2rem;opacity:0.7;pointer-events:none;font-style:italic;white-space:nowrap;z-index:1;}
   `;
 
   // ── Zen Mode ──────────────────────────────────────────────────
@@ -493,6 +511,8 @@ export default function App() {
     return (
       <div style={{ minHeight:"100vh", background:theme.bg, fontFamily:"'Outfit', system-ui, sans-serif", color:theme.text, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
         <style>{globalStyles}</style>
+        {!running && <div className="zen-blur" style={{ background:theme.bg }}/>}
+        {!running && <p className="zen-phrase" style={{ color:theme.textMuted, fontFamily:"'Outfit', system-ui, sans-serif" }}>Dropping into the quiet.</p>}
         {running && phase==="work" && <div className="aurora-wrap"><div className="aurora-1"/><div className="aurora-2"/><div className="aurora-3"/></div>}
 
         {showSkipModal && <SkipBreakModal theme={theme} onSkip={handleSkipBreak} onTakeBreak={handleTakeBreak} sessionsToday={sessionsToday} consecutiveSkips={consecutiveSkips}/>}
@@ -511,7 +531,7 @@ export default function App() {
         </div>
         <div className={running?"timer-pulse":""}>
           <TimerRing pct={timerPct} color={phaseColor} running={running}>
-            <div style={{ fontSize:"3.2rem", fontWeight:600, letterSpacing:"-0.03em", color:theme.text, fontFamily:"'Outfit', system-ui, sans-serif" }}>{fmt(timeLeft)}</div>
+            <div className="timer-breath" style={{ fontSize:"3.2rem", fontWeight:600, letterSpacing:"-0.03em", color:theme.text, fontFamily:"'Outfit', system-ui, sans-serif" }}>{fmt(timeLeft)}</div>
             {focusedTask
               ? <div style={{ fontSize:"0.75rem", color:phaseColor, maxWidth:150, textAlign:"center", marginTop:6, fontStyle:"italic", lineHeight:1.3, fontFamily:"'Outfit', system-ui, sans-serif" }}>✦ {focusedTask.text}</div>
               : <div style={{ fontSize:"0.65rem", color:theme.textMuted, marginTop:6, fontStyle:"italic" }}>no task selected</div>
@@ -531,6 +551,7 @@ export default function App() {
           <div style={{ fontSize:"0.72rem", color:theme.textMuted, fontStyle:"italic" }}>🔥 {streakLabel} · {sessionsToday} session{sessionsToday!==1?"s":""} today</div>
         </div>
         <button onClick={()=>setZenMode(false)} style={{ position:"fixed", top:"1.25rem", right:"1.25rem", ...btn(false), fontSize:"0.72rem", padding:"0.3rem 0.7rem", opacity:0.4 }}>✦ Exit</button>
+        {showCompletionFlash && <div className="completion-flash"/>}
       </div>
     );
   }
@@ -609,7 +630,7 @@ export default function App() {
           <div style={{ display:"flex", justifyContent:"center", marginBottom:"0.75rem" }}>
             <div className={running?"timer-pulse":""}>
               <TimerRing pct={timerPct} color={phaseColor} running={running}>
-                <div style={{ fontSize:"2.6rem", fontWeight:500, letterSpacing:"-0.03em", color:theme.text, fontFamily:"'Outfit', system-ui, sans-serif" }}>{fmt(timeLeft)}</div>
+                <div className="timer-breath" style={{ fontSize:"2.6rem", fontWeight:500, letterSpacing:"-0.03em", color:theme.text, fontFamily:"'Outfit', system-ui, sans-serif" }}>{fmt(timeLeft)}</div>
                 {phase === "work" && intention && !focusedTask && (
                   <div className="intention-float" style={{ fontSize:"0.6rem", color:theme.accent, maxWidth:110, textAlign:"center", marginTop:4, fontStyle:"italic", lineHeight:1.3, opacity:0.65 }}>
                     {intention.length > 40 ? intention.slice(0,38)+"…" : intention}
@@ -708,6 +729,7 @@ export default function App() {
           space · start/pause &nbsp;·&nbsp; Z · zen &nbsp;·&nbsp; click focus on a task to begin
         </div>
       </div>
+      {showCompletionFlash && <div className="completion-flash"/>}
     </div>
   );
 }
