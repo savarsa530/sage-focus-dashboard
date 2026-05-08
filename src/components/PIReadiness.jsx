@@ -69,12 +69,12 @@ export default function PIReadiness({ theme }) {
       ? btnStatus === "yes" ? "#4ade80" : btnStatus === "partial" ? "#fbbf24" : "#f87171"
       : theme.textMuted,
     cursor: "pointer",
-    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontFamily: "'Outfit', system-ui, sans-serif",
     whiteSpace: "nowrap", transition: "all 0.12s",
   });
 
   return (
-    <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
+    <div style={{ fontFamily: "'Outfit', system-ui, sans-serif" }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1rem", flexWrap:"wrap", gap:"0.5rem" }}>
         <div>
           <div style={{ fontSize:"0.62rem", fontWeight:600, color:theme.textMuted, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:"'DM Mono', monospace" }}>PI Readiness</div>
@@ -84,13 +84,13 @@ export default function PIReadiness({ theme }) {
           <select
             value={selectedPi}
             onChange={e => setSelectedPi(e.target.value)}
-            style={{ background:theme.panel, color:theme.text, border:`1px solid ${theme.panelBorder}`, borderRadius:8, padding:"5px 9px", fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:"0.88rem", outline:"none" }}
+            style={{ background:theme.panel, color:theme.text, border:`1px solid ${theme.panelBorder}`, borderRadius:8, padding:"5px 9px", fontFamily:"'Outfit', system-ui, sans-serif", fontSize:"0.88rem", outline:"none" }}
           >
             {PI_READINESS_CYCLES.map(pi => <option key={pi} value={pi}>PI {pi}</option>)}
           </select>
           <button
             onClick={resetPi}
-            style={{ background:"transparent", border:`1px solid ${theme.panelBorder}`, borderRadius:8, padding:"5px 10px", color:theme.textMuted, fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:"0.82rem", cursor:"pointer" }}
+            style={{ background:"transparent", border:`1px solid ${theme.panelBorder}`, borderRadius:8, padding:"5px 10px", color:theme.textMuted, fontFamily:"'Outfit', system-ui, sans-serif", fontSize:"0.82rem", cursor:"pointer" }}
           >
             Reset PI
           </button>
@@ -163,7 +163,7 @@ export default function PIReadiness({ theme }) {
                           style={{
                             width:"100%", boxSizing:"border-box", background:"transparent",
                             border:`1px solid ${theme.panelBorder}`, borderRadius:6, color:theme.text,
-                            fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:"0.82rem",
+                            fontFamily:"'Outfit', system-ui, sans-serif", fontSize:"0.82rem",
                             padding:"0.3rem 0.5rem", outline:"none", resize:"vertical",
                           }}
                         />

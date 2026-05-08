@@ -15,7 +15,7 @@ export default function IntentionChip({ intention, accent, textMuted, isDark, on
     >
       <span style={{ fontSize:"0.65rem", color:accent, opacity:0.7 }}>✦</span>
       <span style={{
-        fontFamily:"'Cormorant Garamond', Georgia, serif",
+        fontFamily:"'Outfit', system-ui, sans-serif",
         fontSize:"0.82rem", fontStyle:"italic",
         color: isDark ? "#c4b5f8" : "#5b3f8a",
         overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",

@@ -15,6 +15,10 @@ import SoundscapePanel from "./components/SoundscapePanel";
 import TasksTab        from "./components/TasksTab";
 import PITab           from "./components/PITab";
 import PIReadiness     from "./components/PIReadiness";
+import MorningGate     from "./components/MorningGate";
+import DailyOps        from "./components/DailyOps";
+import ScheduleSidebar from "./components/ScheduleSidebar";
+import SprintPulse     from "./components/SprintPulse";
 
 const VERSION = "5.3.0 · 2026-04-30 · Phase 3";
 
@@ -38,12 +42,36 @@ export default function App() {
     } catch { return null; }
   });
 
+  // ── Morning Gate ──────────────────────────────────────────────
+  const [showGate, setShowGate] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("sage_gate_v1"));
+      return !saved || saved.date !== today();
+    } catch { return true; }
+  });
+
+  const handleGateChoice = (choice) => {
+    localStorage.setItem("sage_gate_v1", JSON.stringify({ date: today(), choice }));
+    setShowGate(false);
+  };
+
+  // ── Ops touched signal (for morning gate) ─────────────────────
+  const [opsTouchedToday, setOpsTouchedToday] = useState(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem("sage_daily_ops_state_v1"));
+      return s?.date === today() && s.items?.some(i => i.checked);
+    } catch { return false; }
+  });
+
+  // Fires intention modal after gate resolves (or immediately if gate already answered)
   useEffect(() => {
-    const lastSeen = localStorage.getItem("sage_intention_seen");
-    if (lastSeen !== today()) {
-      setTimeout(() => setShowIntentionModal(true), 600);
+    if (!showGate) {
+      const lastSeen = localStorage.getItem("sage_intention_seen");
+      if (lastSeen !== today()) {
+        setTimeout(() => setShowIntentionModal(true), 400);
+      }
     }
-  }, []);
+  }, [showGate]);
 
   const handleSetIntention = (text) => {
     const data = { date:today(), text };
@@ -355,9 +383,10 @@ export default function App() {
   };
 
   // ── UI state ──────────────────────────────────────────────────
-  const [activeTab,    setActiveTab]    = useState("tasks");
-  const [zenMode,      setZenMode]      = useState(false);
-  const [showPresets,  setShowPresets]  = useState(false);
+  const [activeTab,     setActiveTab]     = useState("tasks");
+  const [zenMode,       setZenMode]       = useState(false);
+  const [showPresets,   setShowPresets]   = useState(false);
+  const [showSchedule,  setShowSchedule]  = useState(false);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -381,14 +410,18 @@ export default function App() {
   const focusedTask = tasks.find(t => t.id === focusedTaskId);
 
   const panel = {
-    background: theme.panel, border:`1px solid ${theme.panelBorder}`,
+    background: isDark
+      ? `linear-gradient(145deg, ${theme.panel} 0%, ${theme.bg}cc 100%)`
+      : theme.panel,
+    border:`1px solid ${theme.panelBorder}`,
+    boxShadow: isDark ? `inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 24px rgba(0,0,0,0.4)` : `0 2px 12px rgba(0,0,0,0.06)`,
     borderRadius:18, padding:"1.25rem 1.5rem", marginBottom:"1.1rem",
   };
 
   const inp = {
     background:"transparent", border:`1px solid ${theme.panelBorder}`,
     borderRadius:10, color:theme.text,
-    fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:"0.95rem",
+    fontFamily:"'Outfit', system-ui, sans-serif", fontSize:"0.95rem",
     padding:"0.5rem 0.75rem", outline:"none", width:"100%", boxSizing:"border-box",
   };
 
@@ -397,7 +430,7 @@ export default function App() {
     color:        primary ? (isDark?"#000":"#fff") : theme.accent,
     border:       primary ? "none" : `1px solid ${theme.accent}`,
     borderRadius: 10, padding:"0.45rem 1rem",
-    fontFamily:"'Cormorant Garamond', Georgia, serif",
+    fontFamily:"'Outfit', system-ui, sans-serif",
     fontWeight:700, fontSize:"0.88rem", cursor:"pointer",
     letterSpacing:"0.03em", transition:"opacity 0.15s",
   });
@@ -406,27 +439,42 @@ export default function App() {
     background:   active ? theme.accent : `${theme.accent}18`,
     color:        active ? (isDark?"#000":"#fff") : theme.textMuted,
     border:"none", borderRadius:20, padding:"0.3rem 0.8rem",
-    fontFamily:"'Cormorant Garamond', Georgia, serif",
+    fontFamily:"'Outfit', system-ui, sans-serif",
     fontSize:"0.78rem", fontWeight:700, cursor:"pointer",
-    letterSpacing:"0.04em", transition:"all 0.15s",
+    letterSpacing:"0.04em", transition:"all 0.2s",
+    boxShadow: active ? `0 0 14px ${theme.accent}50` : "none",
   });
 
   const globalStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=DM+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+    ${theme.key === 'liminal-botany' ? `
+    :root {
+      --lb-bg-1: #2A0F24;
+      --lb-bg-2: #0F1A14;
+      --lb-surface-1: #4A2E47;
+      --lb-surface-2: #2F3A34;
+      --lb-accent-1: #D9A441;
+      --lb-accent-2: #E7C27A;
+      --lb-breath-1: #F2DCE2;
+      --lb-breath-2: #A8FFD9;
+      --lb-text-1: #F5F2F0;
+      --lb-text-2: #C7C2BD;
+      --lb-text-3: #8A837C;
+    }` : ''}
     *{box-sizing:border-box;margin:0;padding:0;}
     body{background:${theme.bg};}
-    ::placeholder{color:${theme.textMuted}70;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;}
-    input:focus,textarea:focus{border-color:${theme.accent}88!important;outline:none;}
+    ::placeholder{color:${theme.textMuted}70;font-family:'Outfit',system-ui,sans-serif;}
+    input:focus,textarea:focus{border-color:${theme.accent}99!important;box-shadow:0 0 0 3px ${theme.accent}22!important;outline:none;}
     button:hover{opacity:0.82;}
     textarea{resize:vertical;}
-    select{background:${theme.panel};color:${theme.text};border:1px solid ${theme.panelBorder};border-radius:8px;padding:6px 10px;font-family:'Cormorant Garamond',Georgia,serif;font-size:0.9rem;outline:none;}
+    select{background:${theme.panel};color:${theme.text};border:1px solid ${theme.panelBorder};border-radius:8px;padding:6px 10px;font-family:'Outfit',system-ui,sans-serif;font-size:0.9rem;outline:none;}
     ::-webkit-scrollbar{width:5px;}
     ::-webkit-scrollbar-thumb{background:${theme.panelBorder};border-radius:4px;}
-    @keyframes gentlePulse{0%,100%{box-shadow:0 0 0 0 ${theme.accent}40;}50%{box-shadow:0 0 16px 6px ${theme.accent}35;}}
+    @keyframes gentlePulse{0%,100%{box-shadow:0 0 0 0 ${theme.accent}30;}50%{box-shadow:0 0 24px 10px ${theme.accent}45;}}
     @keyframes needTaskShake{0%,100%{transform:translateX(0);}20%,60%{transform:translateX(-4px);}40%,80%{transform:translateX(4px);}}
     @keyframes auroraWave{0%{transform:translateX(-120%) skewX(-12deg);opacity:0;}20%{opacity:${isDark?0.15:0.09};}80%{opacity:${isDark?0.15:0.09};}100%{transform:translateX(220%) skewX(-12deg);opacity:0;}}
     @keyframes auroraWave2{0%{transform:translateX(220%) skewX(12deg);opacity:0;}20%{opacity:${isDark?0.11:0.07};}80%{opacity:${isDark?0.11:0.07};}100%{transform:translateX(-120%) skewX(12deg);opacity:0;}}
-    @keyframes timerGlow{0%,100%{filter:drop-shadow(0 0 6px ${phaseColor}40);}50%{filter:drop-shadow(0 0 22px ${phaseColor}66);}}
+    @keyframes timerGlow{0%,100%{filter:drop-shadow(0 0 8px ${phaseColor}55);}50%{filter:drop-shadow(0 0 32px ${phaseColor}88);}}
     @keyframes modalFadeIn{from{opacity:0;transform:scale(0.96);}to{opacity:1;transform:scale(1);}}
     @keyframes intentionFloat{0%,100%{opacity:0.85;transform:translateY(0);}50%{opacity:1;transform:translateY(-1px);}}
     .aurora-wrap{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
@@ -442,7 +490,7 @@ export default function App() {
   // ── Zen Mode ──────────────────────────────────────────────────
   if (zenMode) {
     return (
-      <div style={{ minHeight:"100vh", background:theme.bg, fontFamily:"'Cormorant Garamond', Georgia, serif", color:theme.text, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
+      <div style={{ minHeight:"100vh", background:theme.bg, fontFamily:"'Outfit', system-ui, sans-serif", color:theme.text, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
         <style>{globalStyles}</style>
         {running && phase==="work" && <div className="aurora-wrap"><div className="aurora-1"/><div className="aurora-2"/><div className="aurora-3"/></div>}
 
@@ -451,7 +499,7 @@ export default function App() {
 
         {intention && (
           <div className="intention-float" style={{ marginBottom:"1.5rem", textAlign:"center" }}>
-            <span style={{ fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:"0.85rem", fontStyle:"italic", color: isDark ? "#a78bfa" : "#7c3aed", opacity:0.7, letterSpacing:"0.04em" }}>
+            <span style={{ fontFamily:"'Outfit', system-ui, sans-serif", fontSize:"0.85rem", fontStyle:"italic", color: isDark ? "#a78bfa" : "#7c3aed", opacity:0.7, letterSpacing:"0.04em" }}>
               ✦ {intention}
             </span>
           </div>
@@ -462,9 +510,9 @@ export default function App() {
         </div>
         <div className={running?"timer-pulse":""}>
           <TimerRing pct={timerPct} color={phaseColor} running={running}>
-            <div style={{ fontSize:"3.2rem", fontWeight:600, letterSpacing:"-0.03em", color:theme.text, fontFamily:"'Cormorant Garamond', Georgia, serif" }}>{fmt(timeLeft)}</div>
+            <div style={{ fontSize:"3.2rem", fontWeight:600, letterSpacing:"-0.03em", color:theme.text, fontFamily:"'Outfit', system-ui, sans-serif" }}>{fmt(timeLeft)}</div>
             {focusedTask
-              ? <div style={{ fontSize:"0.75rem", color:phaseColor, maxWidth:150, textAlign:"center", marginTop:6, fontStyle:"italic", lineHeight:1.3, fontFamily:"'Cormorant Garamond', Georgia, serif" }}>✦ {focusedTask.text}</div>
+              ? <div style={{ fontSize:"0.75rem", color:phaseColor, maxWidth:150, textAlign:"center", marginTop:6, fontStyle:"italic", lineHeight:1.3, fontFamily:"'Outfit', system-ui, sans-serif" }}>✦ {focusedTask.text}</div>
               : <div style={{ fontSize:"0.65rem", color:theme.textMuted, marginTop:6, fontStyle:"italic" }}>no task selected</div>
             }
           </TimerRing>
@@ -488,20 +536,22 @@ export default function App() {
 
   // ── Normal Mode ───────────────────────────────────────────────
   return (
-    <div style={{ minHeight:"100vh", background:theme.bg, fontFamily:"'Cormorant Garamond', Georgia, serif", color:theme.text, transition:"background 0.4s, color 0.3s", position:"relative", overflow:"hidden" }}>
+    <div style={{ minHeight:"100vh", background:theme.bg, fontFamily:"'Outfit', system-ui, sans-serif", color:theme.text, transition:"background 0.4s, color 0.3s", position:"relative", overflow:"hidden" }}>
       <style>{globalStyles}</style>
       {running && phase==="work" && <div className="aurora-wrap"><div className="aurora-1"/><div className="aurora-2"/><div className="aurora-3"/></div>}
 
+      {showGate           && <MorningGate   theme={theme} opsTouchedToday={opsTouchedToday} onChoice={handleGateChoice}/>}
       {showIntentionModal && <IntentionModal theme={theme} onSet={handleSetIntention} existing={intention}/>}
       {showSkipModal      && <SkipBreakModal theme={theme} onSkip={handleSkipBreak} onTakeBreak={handleTakeBreak} sessionsToday={sessionsToday} consecutiveSkips={consecutiveSkips}/>}
       {showTaskSwap       && <TaskSwapModal  theme={theme} tasks={tasks} completedCount={tasks.filter(t=>t.done).length} onSelect={handleTaskSwapSelect} onSkip={handleTaskSwapSkip}/>}
+      {showSchedule       && <ScheduleSidebar theme={theme} onClose={() => setShowSchedule(false)}/>}
 
       <div style={{ maxWidth:900, margin:"0 auto", padding:"2rem 1.25rem", position:"relative", zIndex:2 }}>
 
         {/* Header */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1.75rem", flexWrap:"wrap", gap:"0.75rem" }}>
           <div>
-            <div style={{ fontWeight:600, fontSize:"1.8rem", color:theme.text, letterSpacing:"-0.02em", lineHeight:1, fontFamily:"'Cormorant Garamond', Georgia, serif" }}>Sage & Steph</div>
+            <div style={{ fontWeight:600, fontSize:"1.8rem", color:theme.text, letterSpacing:"-0.02em", lineHeight:1, fontFamily:"'Outfit', system-ui, sans-serif" }}>Sage & Steph</div>
             <div style={{ fontSize:"0.62rem", color:theme.textMuted, letterSpacing:"0.15em", textTransform:"uppercase", marginTop:3, fontFamily:"'DM Mono', monospace" }}>Focus Dashboard · v{VERSION}</div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:"0.75rem", flexWrap:"wrap" }}>
@@ -511,6 +561,7 @@ export default function App() {
                 <button key={t.key} onClick={()=>switchTheme(t)} title={t.label} style={{ width:18, height:18, borderRadius:"50%", background:t.accent, border:theme.key===t.key?`2px solid ${theme.text}`:"2px solid transparent", cursor:"pointer", padding:0, transition:"transform 0.15s", transform:theme.key===t.key?"scale(1.3)":"scale(1)" }}/>
               ))}
             </div>
+            <button style={{ ...btn(false), fontSize:"0.72rem", padding:"0.3rem 0.65rem", background: showSchedule ? `${theme.accent}22` : "transparent" }} onClick={()=>setShowSchedule(p=>!p)} title="Today's schedule">⏱ Schedule</button>
             <button style={{ ...btn(false), fontSize:"0.72rem", padding:"0.3rem 0.65rem" }} onClick={()=>setZenMode(p=>!p)} title="Zen mode (Z)">⬡ Zen</button>
             <button onClick={() => setShowIntentionModal(true)} title="Set today's intention" style={{ ...btn(false), fontSize:"0.72rem", padding:"0.3rem 0.65rem", opacity: intention ? 1 : 0.6 }}>✦ Intention</button>
           </div>
@@ -557,7 +608,7 @@ export default function App() {
           <div style={{ display:"flex", justifyContent:"center", marginBottom:"0.75rem" }}>
             <div className={running?"timer-pulse":""}>
               <TimerRing pct={timerPct} color={phaseColor} running={running}>
-                <div style={{ fontSize:"2.6rem", fontWeight:500, letterSpacing:"-0.03em", color:theme.text, fontFamily:"'Cormorant Garamond', Georgia, serif" }}>{fmt(timeLeft)}</div>
+                <div style={{ fontSize:"2.6rem", fontWeight:500, letterSpacing:"-0.03em", color:theme.text, fontFamily:"'Outfit', system-ui, sans-serif" }}>{fmt(timeLeft)}</div>
                 {phase === "work" && intention && !focusedTask && (
                   <div className="intention-float" style={{ fontSize:"0.6rem", color:theme.accent, maxWidth:110, textAlign:"center", marginTop:4, fontStyle:"italic", lineHeight:1.3, opacity:0.65 }}>
                     {intention.length > 40 ? intention.slice(0,38)+"…" : intention}
@@ -598,6 +649,9 @@ export default function App() {
         {/* Soundscape Panel */}
         <SoundscapePanel theme={theme} activeSounds={activeSounds} soundVol={soundVol} onToggle={toggleSound} onVolumeChange={setSoundVol} panelStyle={panel}/>
 
+        {/* Sprint Pulse */}
+        <SprintPulse theme={theme} panelStyle={panel} btnStyle={btn} inpStyle={inp}/>
+
         {/* Tab Bar */}
         <div style={{ display:"flex", gap:"0.4rem", marginBottom:"1rem", flexWrap:"wrap" }}>
           {[["tasks","📋 Tasks"],["pi","🗂 PI Parking Lot"],["readiness","🧭 PI Readiness"]].map(([k,l])=>(
@@ -607,6 +661,11 @@ export default function App() {
 
         {/* Tasks Tab */}
         {activeTab==="tasks" && (
+          <>
+          <DailyOps
+            theme={theme} panelStyle={panel} btnStyle={btn} inpStyle={inp}
+            onTouched={() => setOpsTouchedToday(true)}
+          />
           <TasksTab
             theme={theme} tasks={tasks} saveTasks={saveTasks}
             focusedTaskId={focusedTaskId} focusTask={focusTask}
@@ -621,6 +680,7 @@ export default function App() {
             addQuest={addQuest} deleteQuest={deleteQuest} promoteQuest={promoteQuest}
             panelStyle={panel} btnStyle={btn} pillStyle={pill} inpStyle={inp}
           />
+          </>
         )}
 
         {/* PI Parking Lot Tab */}

@@ -99,10 +99,11 @@ export default function TasksTab({
                   display:"flex", alignItems:"center", gap:"0.6rem",
                   padding:"0.5rem 0.6rem", borderRadius:10,
                   background: isFocused ? `${theme.accent}18` : task.done ? `${theme.panelBorder}40` : `${theme.accent}0a`,
-                  border:`1px solid ${isDragOver ? theme.accent : isFocused ? theme.accent+"60" : task.done ? theme.panelBorder : theme.accent+"28"}`,
+                  border:`1px solid ${isDragOver ? theme.accent : isFocused ? theme.accent+"80" : task.done ? theme.panelBorder : theme.accent+"28"}`,
                   borderTop: isDragOver ? `2px solid ${theme.accent}` : undefined,
+                  boxShadow: isFocused ? `0 0 20px ${theme.accent}30, inset 0 0 10px ${theme.accent}0a` : "none",
                   opacity: task.done ? 0.55 : 1,
-                  transition:"all 0.15s",
+                  transition:"all 0.2s",
                   cursor: canDrag && !task.done ? "grab" : "default",
                 }}
               >

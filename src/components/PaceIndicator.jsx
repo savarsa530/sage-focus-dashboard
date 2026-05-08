@@ -31,7 +31,7 @@ export default function PaceIndicator({ sessionsToday, consecutiveSkips, session
     }}>
       <span style={{ fontSize:"0.85rem" }}>{signal.icon}</span>
       <span style={{
-        fontFamily:"'Cormorant Garamond', Georgia, serif",
+        fontFamily:"'Outfit', system-ui, sans-serif",
         fontSize:"0.82rem", fontStyle:"italic",
         color: isDark ? "#c4b5f8" : "#5b3f8a",
         lineHeight:1.3,

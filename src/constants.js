@@ -1,9 +1,10 @@
 export const THEMES = [
-  { key:"obsidian", label:"Obsidian", accent:"#c084fc", bg:"#0d0b14", panel:"#18152a", panelBorder:"#2a2440", text:"#e8e2f8", textMuted:"#7c6fa0", timerRing:"#c084fc", auroraColors:["#c084fc","#818cf8","#a78bfa"], isDark:true },
-  { key:"solar",    label:"Solar",    accent:"#f97316", bg:"#fefaf4", panel:"#fff7ed", panelBorder:"#fde8cc", text:"#431407", textMuted:"#9a7151", timerRing:"#f97316", auroraColors:["#fbbf24","#f97316","#fcd34d"], isDark:false },
-  { key:"electric", label:"Electric", accent:"#38bdf8", bg:"#f0f9ff", panel:"#e0f2fe", panelBorder:"#bae6fd", text:"#0c2a42", textMuted:"#4b7fa3", timerRing:"#38bdf8", auroraColors:["#38bdf8","#818cf8","#7dd3fc"], isDark:false },
-  { key:"sage",     label:"Sage",     accent:"#4ade80", bg:"#f2f7f2", panel:"#e8f5e8", panelBorder:"#c3e6c3", text:"#0f2d0f", textMuted:"#4a7a4a", timerRing:"#4ade80", auroraColors:["#4ade80","#86efac","#34d399"], isDark:false },
-  { key:"bloom",    label:"Bloom 🌸", accent:"#f472b6", bg:"#fff0f7", panel:"#fce7f3", panelBorder:"#fbcfe8", text:"#500724", textMuted:"#9d4068", timerRing:"#f472b6", auroraColors:["#f472b6","#f9a8d4","#fb7185"], isDark:false },
+  { key:"liminal",        label:"Liminal",        accent:"#c8923a", bg:"#0c0816", panel:"#1c1338", panelBorder:"#30204e", text:"#ecdff7", textMuted:"#9580b8", timerRing:"#c8923a", auroraColors:["#c8923a","#9b7dbd","#4ecdc0"], isDark:true  },
+  { key:"liminal-botany", label:"Liminal Botany", accent:"#D9A441", bg:"#2A0F24", panel:"#4A2E47", panelBorder:"#5A3A57", text:"#F5F2F0", textMuted:"#8A837C", timerRing:"#D9A441", auroraColors:["#D9A441","#A8FFD9","#F2DCE2"], isDark:true  },
+  { key:"dusk",      label:"Dusk",      accent:"#e89a2a", bg:"#0e0a06", panel:"#201610", panelBorder:"#3c2a18", text:"#f2e6d2", textMuted:"#8c7262", timerRing:"#e89a2a", auroraColors:["#e89a2a","#c46830","#d4a840"], isDark:true  },
+  { key:"forest",    label:"Forest",    accent:"#4ecdc0", bg:"#060c0a", panel:"#0e1a14", panelBorder:"#1c3226", text:"#d6f0e8", textMuted:"#68a090", timerRing:"#4ecdc0", auroraColors:["#4ecdc0","#48a068","#8de8d0"], isDark:true  },
+  { key:"dawn",      label:"Dawn",      accent:"#b85c72", bg:"#faf4f0", panel:"#f2e8e2", panelBorder:"#e0cec4", text:"#281a14", textMuted:"#8a6858", timerRing:"#b85c72", auroraColors:["#b85c72","#c8923a","#9b7dbd"], isDark:false },
+  { key:"amethyst",  label:"Amethyst",  accent:"#6e3eaa", bg:"#f4eefa", panel:"#ece0f8", panelBorder:"#d0bce8", text:"#1c0e2e", textMuted:"#7a6494", timerRing:"#6e3eaa", auroraColors:["#6e3eaa","#b85c72","#c8923a"], isDark:false },
 ];
 
 export const PRESETS = [

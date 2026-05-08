@@ -18,7 +18,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
       <div style={{ textAlign:"center", marginBottom:"1.5rem" }}>
         <div style={{
           fontSize:"0.6rem", letterSpacing:"0.22em", textTransform:"uppercase",
-          color:theme.accent, fontFamily:"'Cormorant Garamond', Georgia, serif",
+          color:theme.accent, fontFamily:"'Outfit', system-ui, sans-serif",
           fontStyle:"italic", marginBottom:"0.5rem", opacity:0.85,
         }}>
           task complete
@@ -28,7 +28,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
           background: isDark ? `${theme.accent}14` : `${theme.accent}12`,
           border:`1px solid ${theme.accent}35`,
           borderRadius:20, padding:"0.3rem 1rem",
-          fontFamily:"'Cormorant Garamond', Georgia, serif",
+          fontFamily:"'Outfit', system-ui, sans-serif",
           fontSize:"1rem", fontStyle:"italic",
           color: isDark ? "#c4b5f8" : "#5b3f8a",
         }}>
@@ -36,7 +36,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
           <span>{completedCount} completed this session</span>
         </div>
         <h2 style={{
-          fontFamily:"'Cormorant Garamond', Georgia, serif",
+          fontFamily:"'Outfit', system-ui, sans-serif",
           fontSize:"1.55rem", fontWeight:600,
           color: isDark ? "#e8e0f8" : "#2d1854",
           letterSpacing:"-0.01em", lineHeight:1.2, margin:"1rem 0 0",
@@ -64,7 +64,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
           >
             <span style={{ width:8, height:8, borderRadius:"50%", background: pColor(suggested.priority), flexShrink:0, boxShadow:`0 0 6px ${pColor(suggested.priority)}88` }}/>
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:"1rem", fontWeight:600, color: isDark ? "#e8e0f8" : "#2d1854", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+              <div style={{ fontFamily:"'Outfit', system-ui, sans-serif", fontSize:"1rem", fontWeight:600, color: isDark ? "#e8e0f8" : "#2d1854", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                 {suggested.text}
               </div>
               {(suggested.focusSecs||0) > 0 && (
@@ -73,7 +73,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
                 </div>
               )}
             </div>
-            <span style={{ fontSize:"0.72rem", color: isDark ? "#000" : "#fff", background:theme.accent, borderRadius:8, padding:"0.2rem 0.6rem", flexShrink:0, fontFamily:"'Cormorant Garamond', Georgia, serif", fontWeight:700 }}>
+            <span style={{ fontSize:"0.72rem", color: isDark ? "#000" : "#fff", background:theme.accent, borderRadius:8, padding:"0.2rem 0.6rem", flexShrink:0, fontFamily:"'Outfit', system-ui, sans-serif", fontWeight:700 }}>
               Select →
             </span>
           </button>
@@ -99,7 +99,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
                 }}
               >
                 <span style={{ width:6, height:6, borderRadius:"50%", background:pColor(t.priority), flexShrink:0 }}/>
-                <span style={{ flex:1, fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:"0.92rem", color: isDark ? "#c4b5f8" : "#4a2d7a", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                <span style={{ flex:1, fontFamily:"'Outfit', system-ui, sans-serif", fontSize:"0.92rem", color: isDark ? "#c4b5f8" : "#4a2d7a", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                   {t.text}
                 </span>
               </button>
@@ -113,7 +113,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
           onClick={onSkip}
           style={{
             background:"transparent", border:"none", color:theme.textMuted, cursor:"pointer",
-            fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:"0.88rem", fontStyle:"italic",
+            fontFamily:"'Outfit', system-ui, sans-serif", fontSize:"0.88rem", fontStyle:"italic",
             textDecoration:"underline dotted", padding:"0.25rem 0.5rem",
           }}
         >

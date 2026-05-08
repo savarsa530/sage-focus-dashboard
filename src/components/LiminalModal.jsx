@@ -22,12 +22,14 @@ export default function LiminalModal({ children, onClose, theme, size = "md" }) 
     }}>
       <div style={{
         maxWidth:maxW, width:"100%",
-        background: isDark ? "#1a1428" : "#f8f3f0",
-        border:`1px solid ${isDark ? "#3d2f5a" : "#c9b8d8"}`,
+        background: isDark
+          ? `linear-gradient(145deg, ${theme.panel} 0%, ${theme.bg}dd 100%)`
+          : theme.panel,
+        border:`1px solid ${isDark ? theme.panelBorder : theme.panelBorder}`,
         borderRadius:20,
         boxShadow: isDark
-          ? "0 0 60px rgba(192,132,252,0.12), 0 4px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)"
-          : "0 0 60px rgba(139,92,246,0.1), 0 8px 40px rgba(80,30,100,0.18)",
+          ? `0 0 80px ${theme.accent}28, 0 4px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)`
+          : `0 0 60px ${theme.accent}20, 0 8px 40px rgba(0,0,0,0.12)`,
         padding:"2rem 2.2rem",
         position:"relative",
         overflow:"hidden",

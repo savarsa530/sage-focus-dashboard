@@ -10,7 +10,7 @@ export default function LiveClock({ color }) {
     return () => clearInterval(iv);
   }, []);
   return (
-    <span style={{ fontFamily:"'Cormorant Garamond', Georgia, serif", fontSize:"0.9rem", color, letterSpacing:"0.08em", fontStyle:"italic" }}>
+    <span style={{ fontFamily:"'Outfit', system-ui, sans-serif", fontSize:"0.9rem", color, letterSpacing:"0.08em", fontStyle:"italic" }}>
       {t}
     </span>
   );
