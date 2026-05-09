@@ -22,17 +22,11 @@ export default function LiminalModal({ children, onClose, theme, size = "md", bo
     }}>
       <div style={{
         maxWidth:maxW, width:"100%",
-        background: isDark
-          ? `linear-gradient(145deg, ${theme.panel} 0%, ${theme.bg}dd 100%)`
-          : theme.panel,
+        background: botanicalBorder
+          ? `url('${import.meta.env.BASE_URL}assets/botanical-border.svg') center/cover no-repeat, ${isDark ? `linear-gradient(145deg, ${theme.panel} 0%, ${theme.bg}dd 100%)` : theme.panel}`
+          : isDark ? `linear-gradient(145deg, ${theme.panel} 0%, ${theme.bg}dd 100%)` : theme.panel,
         border:`1px solid ${isDark ? theme.panelBorder : theme.panelBorder}`,
         borderRadius:20,
-        ...(botanicalBorder ? {
-          backgroundImage:"url('/assets/botanical-border.svg')",
-          backgroundSize:"cover",
-          backgroundRepeat:"no-repeat",
-          backgroundPosition:"center",
-        } : {}),
         boxShadow: isDark
           ? `0 0 80px ${theme.accent}28, 0 4px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)`
           : `0 0 60px ${theme.accent}20, 0 8px 40px rgba(0,0,0,0.12)`,

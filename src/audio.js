@@ -93,3 +93,32 @@ export function setVolume(key, vol) {
 export function stopAllSounds() {
   Object.keys(audioRefs).forEach(stopSound);
 }
+
+export function playDing() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const master = ctx.createGain();
+    master.connect(ctx.destination);
+
+    const partials = [
+      { freq: 880, gain: 0.5, decay: 1.8 },
+      { freq: 1109, gain: 0.25, decay: 1.2 },
+      { freq: 1318, gain: 0.12, decay: 0.8 },
+    ];
+
+    partials.forEach(({ freq, gain, decay }) => {
+      const osc = ctx.createOscillator();
+      const g   = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      g.gain.setValueAtTime(gain, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + decay);
+      osc.connect(g);
+      g.connect(master);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + decay);
+    });
+
+    setTimeout(() => { try { ctx.close(); } catch {} }, 2500);
+  } catch {}
+}

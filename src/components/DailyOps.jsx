@@ -24,7 +24,7 @@ function saveTemplate(template) {
   localStorage.setItem(TEMPLATE_KEY, JSON.stringify(template));
 }
 
-export default function DailyOps({ theme, panelStyle, btnStyle, inpStyle, onTouched }) {
+export default function DailyOps({ theme, panelStyle, btnStyle, inpStyle, onTouched, highlight = false }) {
   const isDark = theme.isDark;
   const [collapsed, setCollapsed] = useState(false);
   const [newItem,   setNewItem]   = useState("");
@@ -81,7 +81,7 @@ export default function DailyOps({ theme, panelStyle, btnStyle, inpStyle, onTouc
   const allDone = items.length > 0 && checked === items.length;
 
   return (
-    <div style={{ ...panelStyle, marginBottom:"0.75rem" }}>
+    <div style={{ ...panelStyle, marginBottom:"0.75rem", transition:"box-shadow 0.4s ease", ...(highlight ? { boxShadow:`0 0 0 2px ${theme.accent}, 0 0 24px ${theme.accent}40` } : {}) }}>
       {/* Header row */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: collapsed ? 0 : "0.9rem" }}>
         <div style={{ display:"flex", alignItems:"center", gap:"0.55rem" }}>

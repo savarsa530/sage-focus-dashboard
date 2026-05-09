@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { THEMES, PRESETS } from "./constants";
 import { fmt, uuid, today } from "./utils";
-import { startSound, stopSound, setVolume, stopAllSounds } from "./audio";
+import { startSound, stopSound, setVolume, stopAllSounds, playDing } from "./audio";
 import LiveClock       from "./components/LiveClock";
 import TimerRing       from "./components/TimerRing";
 import IntentionChip   from "./components/IntentionChip";
@@ -20,7 +20,7 @@ import DailyOps        from "./components/DailyOps";
 import ScheduleSidebar from "./components/ScheduleSidebar";
 import SprintPulse     from "./components/SprintPulse";
 
-const VERSION = "5.3.0 · 2026-04-30 · Phase 3";
+const VERSION = "5.5.0 · 2026-05-08";
 
 export default function App() {
 
@@ -50,8 +50,12 @@ export default function App() {
     } catch { return true; }
   });
 
+  const [orientPending,   setOrientPending]   = useState(false);
+  const [orientHighlight, setOrientHighlight] = useState(false);
+
   const handleGateChoice = (choice) => {
     localStorage.setItem("sage_gate_v1", JSON.stringify({ date: today(), choice }));
+    if (choice === "orient") setOrientPending(true);
     setShowGate(false);
   };
 
@@ -79,6 +83,13 @@ export default function App() {
     localStorage.setItem("sage_intention_seen", today());
     setIntention(text || null);
     setShowIntentionModal(false);
+    if (orientPending) {
+      setOrientPending(false);
+      setTimeout(() => {
+        setOrientHighlight(true);
+        setTimeout(() => setOrientHighlight(false), 2500);
+      }, 200);
+    }
   };
 
   // ── Humanistic tracking ───────────────────────────────────────
@@ -202,6 +213,7 @@ export default function App() {
             clearInterval(intervalRef.current);
             setShowCompletionFlash(true);
             setTimeout(() => setShowCompletionFlash(false), 800);
+            playDing();
             if (phase === "work") {
               const nc = sessionsToday + 1;
               setSessionsToday(nc);
@@ -501,9 +513,6 @@ export default function App() {
     .completion-flash{position:fixed;inset:0;background:radial-gradient(circle, rgba(255,255,255,0.4), transparent 70%);animation:flashOut 0.8s ease-out forwards;pointer-events:none;z-index:999;}
     .task-item{transition:transform 0.12s ease,box-shadow 0.12s ease;}
     .task-item.dragging{transform:rotate(1deg) scale(1.02);box-shadow:0 4px 12px rgba(0,0,0,0.15);}
-    .task-item:hover{background:rgba(255,255,255,0.05)!important;box-shadow:0 0 8px rgba(255,255,255,0.08);}
-    .zen-blur{position:absolute;inset:0;filter:blur(4px);pointer-events:none;z-index:0;}
-    .zen-phrase{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.2rem;opacity:0.7;pointer-events:none;font-style:italic;white-space:nowrap;z-index:1;}
   `;
 
   // ── Zen Mode ──────────────────────────────────────────────────
@@ -511,8 +520,6 @@ export default function App() {
     return (
       <div style={{ minHeight:"100vh", background:theme.bg, fontFamily:"'Outfit', system-ui, sans-serif", color:theme.text, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
         <style>{globalStyles}</style>
-        {!running && <div className="zen-blur" style={{ background:theme.bg }}/>}
-        {!running && <p className="zen-phrase" style={{ color:theme.textMuted, fontFamily:"'Outfit', system-ui, sans-serif" }}>Dropping into the quiet.</p>}
         {running && phase==="work" && <div className="aurora-wrap"><div className="aurora-1"/><div className="aurora-2"/><div className="aurora-3"/></div>}
 
         {showSkipModal && <SkipBreakModal theme={theme} onSkip={handleSkipBreak} onTakeBreak={handleTakeBreak} sessionsToday={sessionsToday} consecutiveSkips={consecutiveSkips}/>}
@@ -546,7 +553,12 @@ export default function App() {
           <button style={{ ...btn(false), padding:"0.7rem 1.2rem" }} onClick={handleReset}>↺</button>
         </div>
         {needTask && <div className="need-task" style={{ marginTop:"1rem", color:"#f87171", fontSize:"0.88rem", fontStyle:"italic" }}>Choose a task from the Tasks tab first.</div>}
-        <div style={{ marginTop:"2rem", display:"flex", flexDirection:"column", alignItems:"center", gap:"0.4rem" }}>
+        {!running && (
+          <p style={{ marginTop:"1.5rem", fontSize:"0.85rem", fontStyle:"italic", color:theme.textMuted, opacity:0.65, fontFamily:"'Outfit', system-ui, sans-serif", textAlign:"center" }}>
+            Dropping into the quiet.
+          </p>
+        )}
+        <div style={{ marginTop:"1rem", display:"flex", flexDirection:"column", alignItems:"center", gap:"0.4rem" }}>
           <div style={{ fontSize:"0.65rem", color:theme.textMuted, letterSpacing:"0.12em", fontFamily:"'DM Mono', monospace" }}>Z · exit &nbsp;·&nbsp; space · start/pause</div>
           <div style={{ fontSize:"0.72rem", color:theme.textMuted, fontStyle:"italic" }}>🔥 {streakLabel} · {sessionsToday} session{sessionsToday!==1?"s":""} today</div>
         </div>
@@ -687,6 +699,7 @@ export default function App() {
           <DailyOps
             theme={theme} panelStyle={panel} btnStyle={btn} inpStyle={inp}
             onTouched={() => setOpsTouchedToday(true)}
+            highlight={orientHighlight}
           />
           <TasksTab
             theme={theme} tasks={tasks} saveTasks={saveTasks}
