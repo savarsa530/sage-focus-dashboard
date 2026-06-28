@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { uuid } from "../utils";
+import { uuid, safeGetJSON, safeSet } from "../utils";
 
 const STORE_KEY = "sage_sprint_v1";
 
@@ -31,7 +31,7 @@ function emptyDraft() {
 export default function SprintPulse({ theme, panelStyle, btnStyle, inpStyle }) {
   const isDark = theme.isDark;
 
-  const [sprint,     setSprint]     = useState(() => { try { return JSON.parse(localStorage.getItem(STORE_KEY)); } catch { return null; } });
+  const [sprint,     setSprint]     = useState(() => safeGetJSON(STORE_KEY));
   const [collapsed,  setCollapsed]  = useState(false);
   const [editing,    setEditing]    = useState(false);
   const [newBlocker, setNewBlocker] = useState("");
@@ -41,7 +41,7 @@ export default function SprintPulse({ theme, panelStyle, btnStyle, inpStyle }) {
 
   const persist = (updated) => {
     setSprint(updated);
-    localStorage.setItem(STORE_KEY, JSON.stringify(updated));
+    safeSet(STORE_KEY, updated);
   };
 
   const saveDraft = () => {

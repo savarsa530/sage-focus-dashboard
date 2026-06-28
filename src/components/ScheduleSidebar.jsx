@@ -1,18 +1,16 @@
 import { useState } from "react";
-import { uuid, today } from "../utils";
+import { uuid, today, safeGetJSON, safeSet } from "../utils";
 
 const STORE_KEY = "sage_schedule_v1";
 
 function loadAnchors() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORE_KEY));
-    if (saved?.date === today()) return saved.anchors || [];
-  } catch {}
+  const saved = safeGetJSON(STORE_KEY);
+  if (saved?.date === today()) return saved.anchors || [];
   return [];
 }
 
 function persist(anchors) {
-  localStorage.setItem(STORE_KEY, JSON.stringify({ date: today(), anchors }));
+  safeSet(STORE_KEY, { date: today(), anchors });
 }
 
 function fmtTime(t) {
@@ -54,9 +52,8 @@ export default function ScheduleSidebar({ theme, onClose }) {
   };
 
   return (
-    <div style={{
+    <div className="schedule-sidebar" style={{
       position:"fixed", top:0, right:0, bottom:0, zIndex:500,
-      width:272,
       background: isDark
         ? `linear-gradient(160deg, ${theme.panel} 0%, ${theme.bg}f2 100%)`
         : theme.panel,

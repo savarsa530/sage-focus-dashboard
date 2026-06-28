@@ -65,7 +65,7 @@ export function startSound(key, volume) {
       src.connect(gain);
     }
     src.start();
-    cleanup = () => { try { src.stop(); } catch {} };
+    cleanup = () => { try { src.stop(); } catch { /* already stopped */ } };
   }
   audioRefs[key] = { ctx, gain, cleanup };
 }
@@ -77,9 +77,9 @@ export function stopSound(key) {
     ref.gain.gain.linearRampToValueAtTime(0, ref.ctx.currentTime + 0.4);
     setTimeout(() => {
       ref.cleanup?.();
-      try { ref.ctx.close(); } catch {}
+      try { ref.ctx.close(); } catch { /* already closed */ }
     }, 500);
-  } catch {}
+  } catch { /* best-effort teardown */ }
   delete audioRefs[key];
 }
 
@@ -119,6 +119,6 @@ export function playDing() {
       osc.stop(ctx.currentTime + decay);
     });
 
-    setTimeout(() => { try { ctx.close(); } catch {} }, 2500);
-  } catch {}
+    setTimeout(() => { try { ctx.close(); } catch { /* already closed */ } }, 2500);
+  } catch { /* audio unavailable */ }
 }

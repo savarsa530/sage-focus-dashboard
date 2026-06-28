@@ -6,23 +6,24 @@ Enhancements and ideas captured as we build. Items move from **Backlog → In Pr
 
 ## Done
 
+- [x] **Timer reliability overhaul — persistence, accuracy & auto-cycle (v5.6.0)** *(2026-06-28)*
+  Rebuilt the timer on a wall-clock `endsAt` model so it survives refresh **and** background-tab throttling; focus seconds now credit by real elapsed time. Recovers conservatively on reload — resumes if time remains, otherwise credits exactly one session and lands paused. Added an **auto-cycle** toggle (default on) that flows focus → break → focus automatically with a completion chime, keeping the reflective skip-break reachable as a non-blocking link; toggling off restores the original blocking flow. Restored the `playDing()` completion sound + completion flash.
+
+- [x] **LocalStorage error handling** *(2026-06-28)*
+  Added `safeGet`/`safeGetJSON`/`safeSet` wrappers in `utils.js` and migrated all storage access across App + components, so a full, blocked, or corrupt store degrades gracefully instead of crashing.
+
+- [x] **Error boundary** *(2026-06-28)*
+  New `ErrorBoundary` component wraps the app root **and** each risky widget (ambience, sprint pulse, all three tabs); a crash in one panel shows a retryable fallback instead of blanking the whole screen.
+
+- [x] **Quick-win cleanups (v5.6.0)** *(2026-06-28)*
+  Cleared all 6 ESLint errors (empty catches + `PaceIndicator` render purity) plus a `border`/`borderTop` React warning in tasks, bumped the displayed version to 5.6.0, fixed the dead default theme key (`obsidian` → `liminal`), made the Schedule sidebar full-width on mobile, and resolved all `npm audit` vulnerabilities.
+
 - [x] **Refactor: Split monolithic App.jsx into components** *(2026-05-01)*
   Split 2,187-line App.jsx into 14 focused files across `src/components/`, `src/constants.js`, `src/utils.js`, and `src/audio.js`. QA passed fully.
 
 ---
 
 ## Backlog
-
-### Quality / Reliability
-
-- [ ] **Timer state persistence on refresh**
-  Currently the timer resets to default on page refresh. Enhancement would save `phase`, `timeLeft`, and a timestamp so a mid-session refresh recovers correctly, accounting for elapsed time while the page was closed.
-
-- [ ] **LocalStorage error handling**
-  If localStorage is full or corrupt, things silently break. Add a safe wrapper so the app degrades gracefully instead of crashing.
-
-- [ ] **Error boundary**
-  Wrap the app in a React error boundary so a crash in one widget (e.g. audio, PI tab) doesn't blank the whole screen.
 
 ### User Experience
 
@@ -36,7 +37,7 @@ Enhancements and ideas captured as we build. Items move from **Backlog → In Pr
   Quick key to toggle the last-used soundscape on/off without reaching for the mouse.
 
 - [ ] **Mobile layout polish**
-  Review and tighten spacing, tap targets, and overflow behavior on small screens.
+  Review and tighten spacing, tap targets, and overflow behavior on small screens. *(Schedule sidebar full-width on mobile shipped in v5.6.0; broader spacing/tap-target pass still open.)*
 
 ### PI Planning
 
