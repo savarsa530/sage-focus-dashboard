@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { uuid, today } from "../utils";
+import { uuid, today, safeGet, safeGetJSON, safeSet } from "../utils";
 
 const DEFAULT_TEMPLATE = [
   "Email scan",
@@ -14,32 +14,27 @@ const DATE_KEY     = "sage_daily_ops_date_v1";
 const STATE_KEY    = "sage_daily_ops_state_v1";
 
 function loadTemplate() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(TEMPLATE_KEY));
-    return Array.isArray(saved) && saved.length > 0 ? saved : DEFAULT_TEMPLATE;
-  } catch { return DEFAULT_TEMPLATE; }
+  const saved = safeGetJSON(TEMPLATE_KEY);
+  return Array.isArray(saved) && saved.length > 0 ? saved : DEFAULT_TEMPLATE;
 }
 
 function saveTemplate(template) {
-  localStorage.setItem(TEMPLATE_KEY, JSON.stringify(template));
+  safeSet(TEMPLATE_KEY, template);
 }
 
-export default function DailyOps({ theme, panelStyle, btnStyle, inpStyle, onTouched }) {
+export default function DailyOps({ theme, panelStyle, btnStyle, inpStyle, onTouched, highlight = false }) {
   const isDark = theme.isDark;
   const [collapsed, setCollapsed] = useState(false);
   const [newItem,   setNewItem]   = useState("");
 
   const [items, setItems] = useState(() => {
-    const lastDate = localStorage.getItem(DATE_KEY);
-    if (lastDate === today()) {
-      try {
-        const state = JSON.parse(localStorage.getItem(STATE_KEY));
-        if (state?.date === today() && Array.isArray(state.items)) return state.items;
-      } catch {}
+    if (safeGet(DATE_KEY) === today()) {
+      const state = safeGetJSON(STATE_KEY);
+      if (state?.date === today() && Array.isArray(state.items)) return state.items;
     }
     const fresh = loadTemplate().map(text => ({ id: uuid(), text, checked: false }));
-    localStorage.setItem(DATE_KEY, today());
-    localStorage.setItem(STATE_KEY, JSON.stringify({ date: today(), items: fresh }));
+    safeSet(DATE_KEY, today());
+    safeSet(STATE_KEY, { date: today(), items: fresh });
     return fresh;
   });
 
@@ -50,7 +45,7 @@ export default function DailyOps({ theme, panelStyle, btnStyle, inpStyle, onTouc
 
   const persist = (updated) => {
     setItems(updated);
-    localStorage.setItem(STATE_KEY, JSON.stringify({ date: today(), items: updated }));
+    safeSet(STATE_KEY, { date: today(), items: updated });
   };
 
   const toggleItem = (id) => {
@@ -81,7 +76,7 @@ export default function DailyOps({ theme, panelStyle, btnStyle, inpStyle, onTouc
   const allDone = items.length > 0 && checked === items.length;
 
   return (
-    <div style={{ ...panelStyle, marginBottom:"0.75rem" }}>
+    <div style={{ ...panelStyle, marginBottom:"0.75rem", transition:"box-shadow 0.4s ease", ...(highlight ? { boxShadow:`0 0 0 2px ${theme.accent}, 0 0 24px ${theme.accent}40` } : {}) }}>
       {/* Header row */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: collapsed ? 0 : "0.9rem" }}>
         <div style={{ display:"flex", alignItems:"center", gap:"0.55rem" }}>

@@ -6,7 +6,10 @@ export default function MorningGate({ theme, opsTouchedToday, onChoice }) {
   const greeting = hour < 10 ? "Good morning" : hour < 12 ? "Morning" : "Hey";
 
   return (
-    <LiminalModal theme={theme} onClose={() => onChoice("jump-in")} size="md">
+    <>
+      <div className="vignette"/>
+      <LiminalModal theme={theme} onClose={() => onChoice("jump-in")} size="md">
+      <div className="threshold-fade">
       <div style={{ textAlign:"center", marginBottom:"2rem" }}>
         <div style={{
           fontSize:"0.6rem", letterSpacing:"0.22em", textTransform:"uppercase",
@@ -52,7 +55,7 @@ export default function MorningGate({ theme, opsTouchedToday, onChoice }) {
         >
           <div>Orient First</div>
           <div style={{ fontSize:"0.75rem", color:theme.textMuted, fontWeight:400, marginTop:"0.2rem" }}>
-            Review your ops, then start
+            Set your emotional stance before you act.
           </div>
         </button>
 
@@ -71,7 +74,7 @@ export default function MorningGate({ theme, opsTouchedToday, onChoice }) {
         >
           <div style={{ color: isDark ? "#e8e0f8" : "#2d1854" }}>Jump In</div>
           <div style={{ fontSize:"0.75rem", color:theme.textMuted, fontWeight:400, marginTop:"0.2rem", opacity:0.7 }}>
-            I know what I&apos;m here for
+            Begin with momentum.
           </div>
         </button>
       </div>
@@ -79,6 +82,8 @@ export default function MorningGate({ theme, opsTouchedToday, onChoice }) {
       <div style={{ textAlign:"center", marginTop:"1.25rem", fontSize:"0.65rem", color:theme.textMuted, fontStyle:"italic" }}>
         Esc or clicking away counts as Jump In
       </div>
+      </div>
     </LiminalModal>
+    </>
   );
 }

@@ -1,9 +1,17 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 export default function PaceIndicator({ sessionsToday, consecutiveSkips, sessionTimestamps, accent, isDark }) {
+  // `nowTick` keeps the "recent sessions" window fresh without calling
+  // Date.now() during render (which is impure). Seeded once, refreshed each minute.
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const recentSessions = useMemo(
-    () => { const now = Date.now(); return sessionTimestamps.filter(t => now - t < 90 * 60 * 1000).length; },
-    [sessionTimestamps]
+    () => sessionTimestamps.filter(t => nowTick - t < 90 * 60 * 1000).length,
+    [sessionTimestamps, nowTick]
   );
 
   let signal = null;

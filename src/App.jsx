@@ -1,9 +1,10 @@
-// Sage & Steph Focus Dashboard — v5.3.0 · Phase 3
+// Sage & Steph Focus Dashboard — v5.6.0
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { THEMES, PRESETS } from "./constants";
-import { fmt, uuid, today } from "./utils";
-import { startSound, stopSound, setVolume, stopAllSounds } from "./audio";
+import { fmt, uuid, today, safeGet, safeGetJSON, safeSet } from "./utils";
+import { startSound, stopSound, setVolume, stopAllSounds, playDing } from "./audio";
+import ErrorBoundary   from "./components/ErrorBoundary";
 import LiveClock       from "./components/LiveClock";
 import TimerRing       from "./components/TimerRing";
 import IntentionChip   from "./components/IntentionChip";
@@ -20,53 +21,52 @@ import DailyOps        from "./components/DailyOps";
 import ScheduleSidebar from "./components/ScheduleSidebar";
 import SprintPulse     from "./components/SprintPulse";
 
-const VERSION = "5.3.0 · 2026-04-30 · Phase 3";
+const VERSION = "5.6.0 · 2026-06-28";
 
 export default function App() {
 
+  // Restored timer snapshot (read once) — rehydrates the timer across refresh.
+  const [timer0] = useState(() => safeGetJSON("sage_timer_v1") || {});
+
   // ── Theme ─────────────────────────────────────────────────────
   const [theme, setTheme] = useState(() => {
-    const k = localStorage.getItem("sage_theme_v5") || "obsidian";
+    const k = safeGet("sage_theme_v5", "liminal");
     return THEMES.find(t => t.key === k) || THEMES[0];
   });
-  const switchTheme = (t) => { setTheme(t); localStorage.setItem("sage_theme_v5", t.key); };
+  const switchTheme = (t) => { setTheme(t); safeSet("sage_theme_v5", t.key); };
 
   // ── Daily Intention ───────────────────────────────────────────
   const [showIntentionModal, setShowIntentionModal] = useState(false);
   const [intention, setIntention] = useState(() => {
-    const saved = localStorage.getItem("sage_intention_v5");
-    if (!saved) return null;
-    try {
-      const parsed = JSON.parse(saved);
-      return parsed.date === today() ? parsed.text : null;
-    } catch { return null; }
+    const parsed = safeGetJSON("sage_intention_v5");
+    return parsed && parsed.date === today() ? parsed.text : null;
   });
 
   // ── Morning Gate ──────────────────────────────────────────────
   const [showGate, setShowGate] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem("sage_gate_v1"));
-      return !saved || saved.date !== today();
-    } catch { return true; }
+    const saved = safeGetJSON("sage_gate_v1");
+    return !saved || saved.date !== today();
   });
 
+  const [orientPending,   setOrientPending]   = useState(false);
+  const [orientHighlight, setOrientHighlight] = useState(false);
+
   const handleGateChoice = (choice) => {
-    localStorage.setItem("sage_gate_v1", JSON.stringify({ date: today(), choice }));
+    safeSet("sage_gate_v1", { date: today(), choice });
+    if (choice === "orient") setOrientPending(true);
     setShowGate(false);
   };
 
   // ── Ops touched signal (for morning gate) ─────────────────────
   const [opsTouchedToday, setOpsTouchedToday] = useState(() => {
-    try {
-      const s = JSON.parse(localStorage.getItem("sage_daily_ops_state_v1"));
-      return s?.date === today() && s.items?.some(i => i.checked);
-    } catch { return false; }
+    const s = safeGetJSON("sage_daily_ops_state_v1");
+    return !!(s?.date === today() && s.items?.some(i => i.checked));
   });
 
   // Fires intention modal after gate resolves (or immediately if gate already answered)
   useEffect(() => {
     if (!showGate) {
-      const lastSeen = localStorage.getItem("sage_intention_seen");
+      const lastSeen = safeGet("sage_intention_seen");
       if (lastSeen !== today()) {
         setTimeout(() => setShowIntentionModal(true), 400);
       }
@@ -75,36 +75,40 @@ export default function App() {
 
   const handleSetIntention = (text) => {
     const data = { date:today(), text };
-    localStorage.setItem("sage_intention_v5", JSON.stringify(data));
-    localStorage.setItem("sage_intention_seen", today());
+    safeSet("sage_intention_v5", data);
+    safeSet("sage_intention_seen", today());
     setIntention(text || null);
     setShowIntentionModal(false);
+    if (orientPending) {
+      setOrientPending(false);
+      setTimeout(() => {
+        setOrientHighlight(true);
+        setTimeout(() => setOrientHighlight(false), 2500);
+      }, 200);
+    }
   };
 
   // ── Humanistic tracking ───────────────────────────────────────
-  const [consecutiveSkips, setConsecutiveSkips] = useState(() => {
-    const d = localStorage.getItem("sage_skip_streak_date");
-    return d === today() ? Number(localStorage.getItem("sage_skip_streak")||0) : 0;
-  });
+  const [consecutiveSkips, setConsecutiveSkips] = useState(() =>
+    safeGet("sage_skip_streak_date") === today() ? Number(safeGet("sage_skip_streak", 0)) : 0
+  );
 
   const [sessionTimestamps, setSessionTimestamps] = useState(() => {
-    const d = localStorage.getItem("sage_session_ts_date");
-    if (d !== today()) return [];
-    try { return JSON.parse(localStorage.getItem("sage_session_timestamps")||"[]"); } catch { return []; }
+    if (safeGet("sage_session_ts_date") !== today()) return [];
+    return safeGetJSON("sage_session_timestamps", []) || [];
   });
 
   const [skipLog, setSkipLog] = useState(() => {
-    const d = localStorage.getItem("sage_skip_log_date");
-    if (d !== today()) return [];
-    try { return JSON.parse(localStorage.getItem("sage_skip_log")||"[]"); } catch { return []; }
+    if (safeGet("sage_skip_log_date") !== today()) return [];
+    return safeGetJSON("sage_skip_log", []) || [];
   });
 
   const recordSessionTimestamp = useCallback(() => {
     const now = Date.now();
     setSessionTimestamps(prev => {
       const updated = [...prev, now];
-      localStorage.setItem("sage_session_ts_date", today());
-      localStorage.setItem("sage_session_timestamps", JSON.stringify(updated));
+      safeSet("sage_session_ts_date", today());
+      safeSet("sage_session_timestamps", updated);
       return updated;
     });
   }, []);
@@ -112,133 +116,238 @@ export default function App() {
   const recordSkip = (reason) => {
     const newSkips = consecutiveSkips + 1;
     setConsecutiveSkips(newSkips);
-    localStorage.setItem("sage_skip_streak", String(newSkips));
-    localStorage.setItem("sage_skip_streak_date", today());
+    safeSet("sage_skip_streak", String(newSkips));
+    safeSet("sage_skip_streak_date", today());
     const entry = { reason, time:Date.now() };
     const updated = [...skipLog, entry];
     setSkipLog(updated);
-    localStorage.setItem("sage_skip_log", JSON.stringify(updated));
-    localStorage.setItem("sage_skip_log_date", today());
+    safeSet("sage_skip_log", updated);
+    safeSet("sage_skip_log_date", today());
   };
 
   const resetSkipStreak = () => {
     setConsecutiveSkips(0);
-    localStorage.setItem("sage_skip_streak", "0");
-    localStorage.setItem("sage_skip_streak_date", today());
+    safeSet("sage_skip_streak", "0");
+    safeSet("sage_skip_streak_date", today());
   };
 
   // ── Tasks ─────────────────────────────────────────────────────
-  const [focusedTaskId, setFocusedTaskId] = useState(null);
-  const [tasks, setTasks] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("sage_tasks_v5")||"[]"); } catch { return []; }
-  });
-  const saveTasks = (list) => { setTasks(list); localStorage.setItem("sage_tasks_v5", JSON.stringify(list)); };
+  const [focusedTaskId, setFocusedTaskId] = useState(() => timer0.focusedTaskId ?? null);
+  const [tasks, setTasks] = useState(() => safeGetJSON("sage_tasks_v5", []) || []);
+  const saveTasks = (list) => { setTasks(list); safeSet("sage_tasks_v5", list); };
 
   // ── Timer ─────────────────────────────────────────────────────
-  const [workMins,  setWorkMins]  = useState(25);
-  const [brkMins,   setBrkMins]   = useState(5);
+  const TIMER_KEY = "sage_timer_v1";
+  const [workMins,  setWorkMins]  = useState(() => timer0.workMins ?? 25);
+  const [brkMins,   setBrkMins]   = useState(() => timer0.brkMins  ?? 5);
   const [customW,   setCustomW]   = useState("");
   const [customB,   setCustomB]   = useState("");
-  const [phase,     setPhase]     = useState("work");
-  const [timeLeft,  setTimeLeft]  = useState(25 * 60);
+  const [phase,     setPhase]     = useState(() => timer0.phase ?? "work");
+  const [timeLeft,  setTimeLeft]  = useState(() => timer0.timeLeft ?? (timer0.workMins ?? 25) * 60);
   const [running,   setRunning]   = useState(false);
   const [needTask,  setNeedTask]  = useState(false);
   const [showSkipModal, setShowSkipModal] = useState(false);
+  const [showCompletionFlash, setShowCompletionFlash] = useState(false);
+  const [autoCycle, setAutoCycle] = useState(() => {
+    const v = safeGet("sage_autocycle_v1");
+    return v == null ? true : v === "true";
+  });
   const intervalRef = useRef(null);
+  const endsAtRef   = useRef(timer0.endsAt ?? null);  // epoch ms the running phase ends
+  const lastTickRef = useRef(Date.now());             // for real-elapsed focus crediting
+
+  const toggleAutoCycle = () => setAutoCycle(p => { const n = !p; safeSet("sage_autocycle_v1", String(n)); return n; });
 
   const totalSecs = phase === "work" ? workMins * 60 : brkMins * 60;
   const timerPct  = totalSecs > 0 ? timeLeft / totalSecs : 0;
 
   const applyPreset = (p) => {
+    endsAtRef.current = null;
     setWorkMins(p.work); setBrkMins(p.brk);
     setPhase("work"); setTimeLeft(p.work * 60); setRunning(false);
   };
 
   const applyCustom = () => {
     const w = parseInt(customW), b = parseInt(customB);
-    if (w > 0) { setWorkMins(w); setPhase("work"); setTimeLeft(w * 60); setRunning(false); }
+    if (w > 0) { endsAtRef.current = null; setWorkMins(w); setPhase("work"); setTimeLeft(w * 60); setRunning(false); }
     if (b > 0) setBrkMins(b);
     setCustomW(""); setCustomB("");
   };
 
   // ── Sessions & streak ─────────────────────────────────────────
-  const [sessionsToday, setSessionsToday] = useState(() => {
-    const d = localStorage.getItem("sage_sessions_date");
-    return d === today() ? Number(localStorage.getItem("sage_sessions_count")||0) : 0;
-  });
+  const [sessionsToday, setSessionsToday] = useState(() =>
+    safeGet("sage_sessions_date") === today() ? Number(safeGet("sage_sessions_count", 0)) : 0
+  );
 
   const bumpStreak = () => {
     const yesterday = new Date(Date.now()-86400000).toDateString();
-    const last = localStorage.getItem("sage_streak_date");
-    const cur  = Number(localStorage.getItem("sage_streak")||0);
+    const last = safeGet("sage_streak_date");
+    const cur  = Number(safeGet("sage_streak", 0));
     const next = last === yesterday ? cur+1 : last === today() ? cur : 1;
-    localStorage.setItem("sage_streak", String(next));
-    localStorage.setItem("sage_streak_date", today());
+    safeSet("sage_streak", String(next));
+    safeSet("sage_streak_date", today());
   };
 
-  const onWorkSessionComplete = useCallback(() => {
-    setPhase("break");
-    setTimeLeft(brkMins * 60);
-    setRunning(false);
-    setShowSkipModal(true);
-    recordSessionTimestamp();
-  }, [brkMins, recordSessionTimestamp]);
+  // ── Wall-clock timer engine ───────────────────────────────────
+  // Source of truth while running is `endsAtRef` (epoch ms). The interval
+  // recomputes remaining time from it, so a backgrounded or refreshed tab
+  // self-corrects instead of silently losing ticks. Latest state is mirrored
+  // into refs so the single long-lived interval closure always sees fresh values.
+  const phaseRef     = useRef(phase);          phaseRef.current     = phase;
+  const focusedIdRef = useRef(focusedTaskId);  focusedIdRef.current = focusedTaskId;
+  const sessionsRef  = useRef(sessionsToday);  sessionsRef.current  = sessionsToday;
+  const autoCycleRef = useRef(autoCycle);      autoCycleRef.current = autoCycle;
+  const workMinsRef  = useRef(workMins);       workMinsRef.current  = workMins;
+  const brkMinsRef   = useRef(brkMins);        brkMinsRef.current   = brkMins;
+
+  const accrueFocus = (seconds) => {
+    const id = focusedIdRef.current;
+    if (!id || seconds <= 0) return;
+    setTasks(prev => {
+      const updated = prev.map(t => t.id === id ? { ...t, focusSecs: (t.focusSecs || 0) + seconds } : t);
+      safeSet("sage_tasks_v5", updated);
+      return updated;
+    });
+  };
+
+  const handlePhaseComplete = () => {
+    endsAtRef.current = null;
+    playDing();
+    setShowCompletionFlash(true);
+    setTimeout(() => setShowCompletionFlash(false), 800);
+
+    if (phaseRef.current === "work") {
+      const nc = sessionsRef.current + 1;
+      setSessionsToday(nc);
+      safeSet("sage_sessions_date", today());
+      safeSet("sage_sessions_count", String(nc));
+      bumpStreak();
+      recordSessionTimestamp();
+      const dur = brkMinsRef.current * 60;
+      setPhase("break"); setTimeLeft(dur);
+      if (autoCycleRef.current) {
+        endsAtRef.current = Date.now() + dur * 1000;
+        lastTickRef.current = Date.now();
+        setRunning(true);            // flow straight into the break
+      } else {
+        setRunning(false);
+        setShowSkipModal(true);      // reflective pause
+      }
+    } else {
+      const dur = workMinsRef.current * 60;
+      setPhase("work"); setTimeLeft(dur);
+      if (autoCycleRef.current && focusedIdRef.current) {
+        endsAtRef.current = Date.now() + dur * 1000;
+        lastTickRef.current = Date.now();
+        setRunning(true);            // resume focus on the same task
+      } else {
+        setRunning(false);
+      }
+    }
+  };
+
+  // Reassigned each render so the interval always invokes the latest logic.
+  const tickRef = useRef(() => {});
+  tickRef.current = () => {
+    const now = Date.now();
+    if (phaseRef.current === "work") {
+      const delta = Math.round((now - lastTickRef.current) / 1000);
+      lastTickRef.current = now;
+      if (delta >= 1) accrueFocus(delta);   // credits real elapsed time, incl. background catch-up
+    } else {
+      lastTickRef.current = now;
+    }
+    if (endsAtRef.current == null) return;
+    const remaining = Math.round((endsAtRef.current - now) / 1000);
+    if (remaining <= 0) { setTimeLeft(0); handlePhaseComplete(); }
+    else setTimeLeft(remaining);
+  };
 
   useEffect(() => {
-    if (running) {
-      intervalRef.current = setInterval(() => {
-        if (phase === "work") {
-          setTasks(prev => {
-            const updated = prev.map(t =>
-              t.id === focusedTaskId ? { ...t, focusSecs: (t.focusSecs||0) + 1 } : t
-            );
-            localStorage.setItem("sage_tasks_v5", JSON.stringify(updated));
-            return updated;
-          });
-        }
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(intervalRef.current);
-            if (phase === "work") {
-              const nc = sessionsToday + 1;
-              setSessionsToday(nc);
-              localStorage.setItem("sage_sessions_date", today());
-              localStorage.setItem("sage_sessions_count", String(nc));
-              bumpStreak();
-              onWorkSessionComplete();
-            } else {
-              setPhase("work"); setTimeLeft(workMins * 60); setRunning(false);
-            }
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else {
-      clearInterval(intervalRef.current);
-    }
+    if (!running) { clearInterval(intervalRef.current); return; }
+    if (endsAtRef.current == null) endsAtRef.current = Date.now() + timeLeft * 1000;
+    lastTickRef.current = Date.now();
+    intervalRef.current = setInterval(() => tickRef.current(), 1000);
     return () => clearInterval(intervalRef.current);
-  }, [running, phase, workMins, brkMins, focusedTaskId, sessionsToday, onWorkSessionComplete]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running]);
+
+  // Persist a timer snapshot on every change (incl. each tick) for refresh recovery.
+  useEffect(() => {
+    safeSet(TIMER_KEY, {
+      phase, running, timeLeft, workMins, brkMins,
+      focusedTaskId, endsAt: endsAtRef.current, savedAt: Date.now(),
+    });
+  }, [phase, running, timeLeft, workMins, brkMins, focusedTaskId]);
+
+  // Recover a session that was running when the tab was closed/refreshed.
+  const recoveredRef = useRef(false);
+  useEffect(() => {
+    if (recoveredRef.current) return;
+    recoveredRef.current = true;
+    if (!timer0.running || timer0.endsAt == null) return;
+    const now = Date.now();
+    const remaining = Math.round((timer0.endsAt - now) / 1000);
+    if (remaining > 0) {
+      setPhase(timer0.phase || "work");
+      setTimeLeft(remaining);
+      endsAtRef.current = timer0.endsAt;
+      lastTickRef.current = now;
+      setRunning(true);                         // seamless resume
+      return;
+    }
+    // Phase ended while away: credit exactly one completion, then land paused.
+    endsAtRef.current = null;
+    if (timer0.phase === "work") {
+      const missed = Math.max(0, Math.round((timer0.endsAt - (timer0.savedAt || timer0.endsAt)) / 1000));
+      if (missed > 0 && timer0.focusedTaskId) {
+        setTasks(prev => {
+          const updated = prev.map(x => x.id === timer0.focusedTaskId ? { ...x, focusSecs:(x.focusSecs||0)+missed } : x);
+          safeSet("sage_tasks_v5", updated);
+          return updated;
+        });
+      }
+      const nc = sessionsRef.current + 1;
+      setSessionsToday(nc);
+      safeSet("sage_sessions_date", today());
+      safeSet("sage_sessions_count", String(nc));
+      bumpStreak();
+      recordSessionTimestamp();
+      setPhase("break"); setTimeLeft((timer0.brkMins ?? 5) * 60); setRunning(false);
+    } else {
+      setPhase("work"); setTimeLeft((timer0.workMins ?? 25) * 60); setRunning(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Anchor the running phase to wall-clock time, then start ticking.
+  const startRunning = () => {
+    endsAtRef.current = Date.now() + timeLeft * 1000;
+    lastTickRef.current = Date.now();
+    setRunning(true);
+  };
 
   const handleSkipBreak = (reason) => {
     recordSkip(reason);
     setShowSkipModal(false);
+    endsAtRef.current = null;
     setPhase("work"); setTimeLeft(workMins * 60); setRunning(false);
   };
 
   const handleTakeBreak = () => {
     resetSkipStreak();
     setShowSkipModal(false);
-    setRunning(true);
+    startRunning();
   };
 
   // ── Task focus ────────────────────────────────────────────────
   const focusTask = (taskId) => {
     if (focusedTaskId === taskId) {
+      endsAtRef.current = null;
       setFocusedTaskId(null); setRunning(false);
     } else {
       setFocusedTaskId(taskId); setNeedTask(false);
-      if (phase === "work" && !running) setRunning(true);
+      if (phase === "work" && !running) startRunning();
     }
   };
 
@@ -248,11 +357,15 @@ export default function App() {
       setTimeout(() => setNeedTask(false), 3000);
       return;
     }
-    setRunning(true);
+    startRunning();
   };
 
-  const handlePause = () => setRunning(false);
-  const handleReset = () => { setRunning(false); setPhase("work"); setTimeLeft(workMins * 60); };
+  const handlePause = () => {
+    if (endsAtRef.current != null) setTimeLeft(Math.max(0, Math.round((endsAtRef.current - Date.now()) / 1000)));
+    endsAtRef.current = null;
+    setRunning(false);
+  };
+  const handleReset = () => { endsAtRef.current = null; setRunning(false); setPhase("work"); setTimeLeft(workMins * 60); };
 
   // ── Task swap modal ───────────────────────────────────────────
   const [showTaskSwap, setShowTaskSwap] = useState(false);
@@ -264,6 +377,7 @@ export default function App() {
     const updatedTasks = tasks.map(t => t.id === id ? {...t, done: nowDone} : t);
     saveTasks(updatedTasks);
     if (nowDone && id === focusedTaskId && phase === "work") {
+      endsAtRef.current = null;
       const remainingUnchecked = updatedTasks.filter(t => !t.done);
       if (remainingUnchecked.length > 0) {
         setRunning(false); setFocusedTaskId(null); setShowTaskSwap(true);
@@ -273,13 +387,13 @@ export default function App() {
     }
   };
 
-  const deleteTask    = (id) => { if (focusedTaskId===id) { setFocusedTaskId(null); setRunning(false); } saveTasks(tasks.filter(t=>t.id!==id)); };
+  const deleteTask    = (id) => { if (focusedTaskId===id) { endsAtRef.current = null; setFocusedTaskId(null); setRunning(false); } saveTasks(tasks.filter(t=>t.id!==id)); };
   const cyclePriority = (id) => {
     const o = ["low","medium","high"];
     saveTasks(tasks.map(t => t.id===id ? {...t, priority:o[(o.indexOf(t.priority)+1)%3]} : t));
   };
 
-  const handleTaskSwapSelect = (taskId) => { setFocusedTaskId(taskId); setShowTaskSwap(false); setRunning(true); };
+  const handleTaskSwapSelect = (taskId) => { setFocusedTaskId(taskId); setShowTaskSwap(false); startRunning(); };
   const handleTaskSwapSkip   = () => setShowTaskSwap(false);
 
   // ── Drag & drop ───────────────────────────────────────────────
@@ -306,9 +420,9 @@ export default function App() {
   };
 
   // ── Side Quests ───────────────────────────────────────────────
-  const [quests,    setQuests]    = useState(() => { try { return JSON.parse(localStorage.getItem("sage_quests_v5")||"[]"); } catch { return []; } });
+  const [quests,    setQuests]    = useState(() => safeGetJSON("sage_quests_v5", []) || []);
   const [newQuest,  setNewQuest]  = useState("");
-  const saveQuests  = (list) => { setQuests(list); localStorage.setItem("sage_quests_v5", JSON.stringify(list)); };
+  const saveQuests  = (list) => { setQuests(list); safeSet("sage_quests_v5", list); };
   const addQuest    = () => { if (!newQuest.trim()) return; saveQuests([...quests, { id:uuid(), text:newQuest.trim(), createdAt:Date.now() }]); setNewQuest(""); };
   const deleteQuest = (id) => saveQuests(quests.filter(q=>q.id!==id));
   const promoteQuest= (q)  => { saveTasks([...tasks, { id:uuid(), text:q.text, done:false, priority:"medium", createdAt:Date.now() }]); saveQuests(quests.filter(x=>x.id!==q.id)); };
@@ -333,13 +447,13 @@ export default function App() {
   useEffect(() => () => stopAllSounds(), []);
 
   // ── PI Parking Lot ────────────────────────────────────────────
-  const [piCapacity,     setPiCapacity]     = useState(() => { try { return JSON.parse(localStorage.getItem("sage_pi_capacity_v5")||"[]"); } catch { return []; } });
-  const [piDependencies, setPiDependencies] = useState(() => { try { return JSON.parse(localStorage.getItem("sage_pi_dependencies_v5")||"[]"); } catch { return []; } });
-  const [piRisk,         setPiRisk]         = useState(() => { try { return JSON.parse(localStorage.getItem("sage_pi_risk_v5")||"[]"); } catch { return []; } });
+  const [piCapacity,     setPiCapacity]     = useState(() => safeGetJSON("sage_pi_capacity_v5", []) || []);
+  const [piDependencies, setPiDependencies] = useState(() => safeGetJSON("sage_pi_dependencies_v5", []) || []);
+  const [piRisk,         setPiRisk]         = useState(() => safeGetJSON("sage_pi_risk_v5", []) || []);
 
-  const savePiCapacity     = (list) => { setPiCapacity(list);     localStorage.setItem("sage_pi_capacity_v5",     JSON.stringify(list)); };
-  const savePiDependencies = (list) => { setPiDependencies(list); localStorage.setItem("sage_pi_dependencies_v5", JSON.stringify(list)); };
-  const savePiRisk         = (list) => { setPiRisk(list);         localStorage.setItem("sage_pi_risk_v5",         JSON.stringify(list)); };
+  const savePiCapacity     = (list) => { setPiCapacity(list);     safeSet("sage_pi_capacity_v5",     list); };
+  const savePiDependencies = (list) => { setPiDependencies(list); safeSet("sage_pi_dependencies_v5", list); };
+  const savePiRisk         = (list) => { setPiRisk(list);         safeSet("sage_pi_risk_v5",         list); };
 
   const [piExpanded, setPiExpanded] = useState(null);
   const [showAddPi,  setShowAddPi]  = useState("");
@@ -406,7 +520,7 @@ export default function App() {
   const auroraC   = theme.auroraColors;
   const phaseLabel = phase==="work" ? "Focus" : "Break";
   const phaseColor = phase==="work" ? theme.timerRing : "#86efac";
-  const streak     = Number(localStorage.getItem("sage_streak")||0);
+  const streak     = Number(safeGet("sage_streak", 0));
   const streakLabel = streak===0 ? "Start your streak!" : streak===1 ? "1 day 🌱" : `${streak} days 🔥`;
   const focusedTask = tasks.find(t => t.id === focusedTaskId);
 
@@ -415,7 +529,7 @@ export default function App() {
       ? `linear-gradient(145deg, ${theme.panel} 0%, ${theme.bg}cc 100%)`
       : theme.panel,
     border:`1px solid ${theme.panelBorder}`,
-    boxShadow: isDark ? `inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 24px rgba(0,0,0,0.4)` : `0 2px 12px rgba(0,0,0,0.06)`,
+    boxShadow: isDark ? `inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 24px rgba(0,0,0,0.4)` : theme.shadowSoft,
     borderRadius:18, padding:"1.25rem 1.5rem", marginBottom:"1.1rem",
   };
 
@@ -486,6 +600,20 @@ export default function App() {
     .start-pulse{animation:gentlePulse 2.5s ease-in-out infinite;}
     .need-task{animation:needTaskShake 0.5s ease;}
     .intention-float{animation:intentionFloat 4s ease-in-out infinite;}
+    @keyframes thresholdFadeIn{from{opacity:0;}to{opacity:1;}}
+    .threshold-fade{opacity:0;animation:thresholdFadeIn 0.25s ease-out forwards;}
+    .vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle, transparent 40%, rgba(0,0,0,0.4));z-index:1001;}
+    @keyframes intentionFade{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+    .intention-animate{opacity:0;transform:translateY(10px);animation:intentionFade 0.3s ease-out forwards;}
+    .intention-prompt{font-size:0.9rem;opacity:0.85;margin-bottom:8px;}
+    @keyframes breathe{0%{transform:scale(1);opacity:1;}50%{transform:scale(1.015);opacity:0.95;}100%{transform:scale(1);opacity:1;}}
+    .timer-breath{animation:breathe 5s ease-in-out infinite;}
+    @keyframes flashOut{from{opacity:1;}to{opacity:0;}}
+    .completion-flash{position:fixed;inset:0;background:radial-gradient(circle, rgba(255,255,255,0.4), transparent 70%);animation:flashOut 0.8s ease-out forwards;pointer-events:none;z-index:999;}
+    .task-item{transition:transform 0.12s ease,box-shadow 0.12s ease;}
+    .task-item.dragging{transform:rotate(1deg) scale(1.02);box-shadow:0 4px 12px rgba(0,0,0,0.15);}
+    .schedule-sidebar{width:272px;}
+    @media(max-width:480px){.schedule-sidebar{width:100%;}}
   `;
 
   // ── Zen Mode ──────────────────────────────────────────────────
@@ -511,7 +639,7 @@ export default function App() {
         </div>
         <div className={running?"timer-pulse":""}>
           <TimerRing pct={timerPct} color={phaseColor} running={running}>
-            <div style={{ fontSize:"3.2rem", fontWeight:600, letterSpacing:"-0.03em", color:theme.text, fontFamily:"'Outfit', system-ui, sans-serif" }}>{fmt(timeLeft)}</div>
+            <div className="timer-breath" style={{ fontSize:"3.2rem", fontWeight:600, letterSpacing:"-0.03em", color:theme.text, fontFamily:"'Outfit', system-ui, sans-serif" }}>{fmt(timeLeft)}</div>
             {focusedTask
               ? <div style={{ fontSize:"0.75rem", color:phaseColor, maxWidth:150, textAlign:"center", marginTop:6, fontStyle:"italic", lineHeight:1.3, fontFamily:"'Outfit', system-ui, sans-serif" }}>✦ {focusedTask.text}</div>
               : <div style={{ fontSize:"0.65rem", color:theme.textMuted, marginTop:6, fontStyle:"italic" }}>no task selected</div>
@@ -526,11 +654,17 @@ export default function App() {
           <button style={{ ...btn(false), padding:"0.7rem 1.2rem" }} onClick={handleReset}>↺</button>
         </div>
         {needTask && <div className="need-task" style={{ marginTop:"1rem", color:"#f87171", fontSize:"0.88rem", fontStyle:"italic" }}>Choose a task from the Tasks tab first.</div>}
-        <div style={{ marginTop:"2rem", display:"flex", flexDirection:"column", alignItems:"center", gap:"0.4rem" }}>
+        {!running && (
+          <p style={{ marginTop:"1.5rem", fontSize:"0.85rem", fontStyle:"italic", color:theme.textMuted, opacity:0.65, fontFamily:"'Outfit', system-ui, sans-serif", textAlign:"center" }}>
+            Dropping into the quiet.
+          </p>
+        )}
+        <div style={{ marginTop:"1rem", display:"flex", flexDirection:"column", alignItems:"center", gap:"0.4rem" }}>
           <div style={{ fontSize:"0.65rem", color:theme.textMuted, letterSpacing:"0.12em", fontFamily:"'DM Mono', monospace" }}>Z · exit &nbsp;·&nbsp; space · start/pause</div>
           <div style={{ fontSize:"0.72rem", color:theme.textMuted, fontStyle:"italic" }}>🔥 {streakLabel} · {sessionsToday} session{sessionsToday!==1?"s":""} today</div>
         </div>
         <button onClick={()=>setZenMode(false)} style={{ position:"fixed", top:"1.25rem", right:"1.25rem", ...btn(false), fontSize:"0.72rem", padding:"0.3rem 0.7rem", opacity:0.4 }}>✦ Exit</button>
+        {showCompletionFlash && <div className="completion-flash"/>}
       </div>
     );
   }
@@ -609,7 +743,7 @@ export default function App() {
           <div style={{ display:"flex", justifyContent:"center", marginBottom:"0.75rem" }}>
             <div className={running?"timer-pulse":""}>
               <TimerRing pct={timerPct} color={phaseColor} running={running}>
-                <div style={{ fontSize:"2.6rem", fontWeight:500, letterSpacing:"-0.03em", color:theme.text, fontFamily:"'Outfit', system-ui, sans-serif" }}>{fmt(timeLeft)}</div>
+                <div className="timer-breath" style={{ fontSize:"2.6rem", fontWeight:500, letterSpacing:"-0.03em", color:theme.text, fontFamily:"'Outfit', system-ui, sans-serif" }}>{fmt(timeLeft)}</div>
                 {phase === "work" && intention && !focusedTask && (
                   <div className="intention-float" style={{ fontSize:"0.6rem", color:theme.accent, maxWidth:110, textAlign:"center", marginTop:4, fontStyle:"italic", lineHeight:1.3, opacity:0.65 }}>
                     {intention.length > 40 ? intention.slice(0,38)+"…" : intention}
@@ -631,7 +765,18 @@ export default function App() {
               : <button style={{ ...btn(true), fontSize:"0.95rem", padding:"0.55rem 1.6rem" }} onClick={handlePause}>⏸ Pause</button>
             }
             <button style={{ ...btn(false), padding:"0.55rem 1rem" }} onClick={handleReset}>↺ Reset</button>
+            <button style={{ ...pill(autoCycle), padding:"0.4rem 0.9rem" }} onClick={toggleAutoCycle} title="Auto-cycle: flow focus → break → focus automatically">
+              {autoCycle ? "🔁 Auto-cycle: on" : "🔁 Auto-cycle: off"}
+            </button>
           </div>
+
+          {autoCycle && phase==="break" && running && (
+            <div style={{ textAlign:"center", marginTop:"0.6rem" }}>
+              <span onClick={() => { handlePause(); setShowSkipModal(true); }} style={{ fontSize:"0.8rem", color:theme.accent, cursor:"pointer", fontStyle:"italic" }}>
+                🌿 skip break
+              </span>
+            </div>
+          )}
 
           <div style={{ textAlign:"center", marginTop:"0.75rem" }}>
             <div style={{ fontSize:"0.75rem", color:theme.textMuted, fontStyle:"italic" }}>
@@ -648,10 +793,14 @@ export default function App() {
         </div>
 
         {/* Soundscape Panel */}
-        <SoundscapePanel theme={theme} activeSounds={activeSounds} soundVol={soundVol} onToggle={toggleSound} onVolumeChange={setSoundVol} panelStyle={panel}/>
+        <ErrorBoundary label="ambience">
+          <SoundscapePanel theme={theme} activeSounds={activeSounds} soundVol={soundVol} onToggle={toggleSound} onVolumeChange={setSoundVol} panelStyle={panel}/>
+        </ErrorBoundary>
 
         {/* Sprint Pulse */}
-        <SprintPulse theme={theme} panelStyle={panel} btnStyle={btn} inpStyle={inp}/>
+        <ErrorBoundary label="sprint pulse">
+          <SprintPulse theme={theme} panelStyle={panel} btnStyle={btn} inpStyle={inp}/>
+        </ErrorBoundary>
 
         {/* Tab Bar */}
         <div style={{ display:"flex", gap:"0.4rem", marginBottom:"1rem", flexWrap:"wrap" }}>
@@ -662,10 +811,11 @@ export default function App() {
 
         {/* Tasks Tab */}
         {activeTab==="tasks" && (
-          <>
+          <ErrorBoundary label="tasks">
           <DailyOps
             theme={theme} panelStyle={panel} btnStyle={btn} inpStyle={inp}
             onTouched={() => setOpsTouchedToday(true)}
+            highlight={orientHighlight}
           />
           <TasksTab
             theme={theme} tasks={tasks} saveTasks={saveTasks}
@@ -681,11 +831,12 @@ export default function App() {
             addQuest={addQuest} deleteQuest={deleteQuest} promoteQuest={promoteQuest}
             panelStyle={panel} btnStyle={btn} pillStyle={pill} inpStyle={inp}
           />
-          </>
+          </ErrorBoundary>
         )}
 
         {/* PI Parking Lot Tab */}
         {activeTab==="pi" && (
+          <ErrorBoundary label="PI parking lot">
           <PITab
             theme={theme}
             piCapacity={piCapacity} piDependencies={piDependencies} piRisk={piRisk}
@@ -698,16 +849,22 @@ export default function App() {
             updatePiItem={updatePiItem} deletePiItem={deletePiItem}
             panelStyle={panel} btnStyle={btn} inpStyle={inp}
           />
+          </ErrorBoundary>
         )}
 
         {/* PI Readiness Tab */}
-        {activeTab==="readiness" && <PIReadiness theme={theme}/>}
+        {activeTab==="readiness" && (
+          <ErrorBoundary label="PI readiness">
+            <PIReadiness theme={theme}/>
+          </ErrorBoundary>
+        )}
 
         {/* Footer */}
         <div style={{ textAlign:"center", marginTop:"1.5rem", fontSize:"0.6rem", color:theme.textMuted, letterSpacing:"0.1em", fontFamily:"'DM Mono', monospace" }}>
           space · start/pause &nbsp;·&nbsp; Z · zen &nbsp;·&nbsp; click focus on a task to begin
         </div>
       </div>
+      {showCompletionFlash && <div className="completion-flash"/>}
     </div>
   );
 }

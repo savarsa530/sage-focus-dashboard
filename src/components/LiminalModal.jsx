@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { FernSpiral, SeedPod } from "./Botanicals";
 
-export default function LiminalModal({ children, onClose, theme, size = "md" }) {
+export default function LiminalModal({ children, onClose, theme, size = "md", botanicalBorder = false }) {
   const maxW = size === "sm" ? 380 : size === "lg" ? 560 : 460;
   const isDark = theme.isDark;
 
@@ -22,9 +22,9 @@ export default function LiminalModal({ children, onClose, theme, size = "md" }) 
     }}>
       <div style={{
         maxWidth:maxW, width:"100%",
-        background: isDark
-          ? `linear-gradient(145deg, ${theme.panel} 0%, ${theme.bg}dd 100%)`
-          : theme.panel,
+        background: botanicalBorder
+          ? `url('${import.meta.env.BASE_URL}assets/botanical-border.svg') center/cover no-repeat, ${isDark ? `linear-gradient(145deg, ${theme.panel} 0%, ${theme.bg}dd 100%)` : theme.panel}`
+          : isDark ? `linear-gradient(145deg, ${theme.panel} 0%, ${theme.bg}dd 100%)` : theme.panel,
         border:`1px solid ${isDark ? theme.panelBorder : theme.panelBorder}`,
         borderRadius:20,
         boxShadow: isDark

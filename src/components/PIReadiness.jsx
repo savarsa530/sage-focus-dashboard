@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { PI_READINESS_CYCLES, READINESS_BUCKETS, READINESS_TOTAL } from "../constants";
+import { safeGetJSON, safeSet } from "../utils";
+
+const readinessKey = (pi) => "sage_readiness_" + pi.replace(".", "_");
 
 export default function PIReadiness({ theme }) {
   const isDark = theme.isDark;
@@ -7,9 +10,7 @@ export default function PIReadiness({ theme }) {
   const [data, setData] = useState(() => {
     const loaded = {};
     PI_READINESS_CYCLES.forEach(pi => {
-      const raw = localStorage.getItem("sage_readiness_" + pi.replace(".", "_"));
-      if (raw) { try { loaded[pi] = JSON.parse(raw); } catch { /* ignore corrupt data */ } }
-      if (!loaded[pi]) loaded[pi] = {};
+      loaded[pi] = safeGetJSON(readinessKey(pi), {}) || {};
     });
     return loaded;
   });
@@ -24,7 +25,7 @@ export default function PIReadiness({ theme }) {
   const setStatus = (itemId, status) => {
     setData(prev => {
       const updated = { ...prev, [selectedPi]: { ...prev[selectedPi], [itemId]: { ...prev[selectedPi]?.[itemId], status } } };
-      localStorage.setItem("sage_readiness_" + selectedPi.replace(".", "_"), JSON.stringify(updated[selectedPi]));
+      safeSet(readinessKey(selectedPi), updated[selectedPi]);
       return updated;
     });
   };
@@ -32,7 +33,7 @@ export default function PIReadiness({ theme }) {
   const setNote = (itemId, note) => {
     setData(prev => {
       const updated = { ...prev, [selectedPi]: { ...prev[selectedPi], [itemId]: { ...prev[selectedPi]?.[itemId], note } } };
-      localStorage.setItem("sage_readiness_" + selectedPi.replace(".", "_"), JSON.stringify(updated[selectedPi]));
+      safeSet(readinessKey(selectedPi), updated[selectedPi]);
       return updated;
     });
   };
@@ -40,7 +41,7 @@ export default function PIReadiness({ theme }) {
   const resetPi = () => {
     setData(prev => {
       const updated = { ...prev, [selectedPi]: {} };
-      localStorage.setItem("sage_readiness_" + selectedPi.replace(".", "_"), "{}");
+      safeSet(readinessKey(selectedPi), {});
       return updated;
     });
   };

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { uuid } from "../utils";
 
 export default function TasksTab({
@@ -5,15 +6,21 @@ export default function TasksTab({
   focusedTaskId, focusTask,
   taskSort, setTaskSort,
   doneToBottom, setDoneToBottom,
-  dragOverId,
+  dragId, dragOverId,
   handleDragStart, handleDragOver, handleDrop, handleDragEnd,
   toggleTask, deleteTask, cyclePriority,
   newTask, setNewTask,
   quests, newQuest, setNewQuest, addQuest, deleteQuest, promoteQuest,
   panelStyle, btnStyle, pillStyle, inpStyle,
 }) {
+  const [hoveredId, setHoveredId] = useState(null);
   const canDrag = taskSort.by === "default";
   const pColor  = (p) => ({ high:"#f87171", medium:theme.accent, low:theme.textMuted }[p]);
+  const hoverGlow = (task) => {
+    if (task.done || task.id !== hoveredId) return undefined;
+    const alphaHex = task.priority === "high" ? "59" : task.priority === "medium" ? "38" : "1e";
+    return `0 0 10px ${pColor(task.priority)}${alphaHex}`;
+  };
   const pLabel  = (p) => ({ high:"H · High priority", medium:"M · Medium priority", low:"L · Low priority" }[p]);
   const pNum    = (p) => ({ high:3, medium:2, low:1 }[p]);
   const fmtMins = (s) => s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s/60)}m` : `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
@@ -87,10 +94,14 @@ export default function TasksTab({
           {sortedTasks.map(task => {
             const isFocused  = task.id === focusedTaskId;
             const isDragOver = task.id === dragOverId;
+            const isDragging = task.id === dragId;
             return (
               <div
                 key={task.id}
+                className={`task-item${isDragging ? " dragging" : ""}`}
                 draggable={canDrag && !task.done}
+                onMouseEnter={() => setHoveredId(task.id)}
+                onMouseLeave={() => setHoveredId(null)}
                 onDragStart={() => canDrag && handleDragStart(task.id)}
                 onDragOver={e => canDrag && handleDragOver(e, task.id)}
                 onDrop={e => canDrag && handleDrop(e, task.id)}
@@ -100,8 +111,9 @@ export default function TasksTab({
                   padding:"0.5rem 0.6rem", borderRadius:10,
                   background: isFocused ? `${theme.accent}18` : task.done ? `${theme.panelBorder}40` : `${theme.accent}0a`,
                   border:`1px solid ${isDragOver ? theme.accent : isFocused ? theme.accent+"80" : task.done ? theme.panelBorder : theme.accent+"28"}`,
-                  borderTop: isDragOver ? `2px solid ${theme.accent}` : undefined,
-                  boxShadow: isFocused ? `0 0 20px ${theme.accent}30, inset 0 0 10px ${theme.accent}0a` : "none",
+                  outline: isDragOver ? `2px solid ${theme.accent}` : "none",
+                  outlineOffset: -1,
+                  boxShadow: isFocused ? `0 0 20px ${theme.accent}30, inset 0 0 10px ${theme.accent}0a` : hoverGlow(task),
                   opacity: task.done ? 0.55 : 1,
                   transition:"all 0.2s",
                   cursor: canDrag && !task.done ? "grab" : "default",
