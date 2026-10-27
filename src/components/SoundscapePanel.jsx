@@ -9,15 +9,15 @@ export default function SoundscapePanel({ theme, activeSounds, soundVol, onToggl
           const on = !!activeSounds[key];
           return (
             <button key={key} onClick={() => onToggle(key)} style={{
-              padding:"0.35rem 0.85rem", borderRadius:20, fontSize:"0.82rem", fontWeight:600, cursor:"pointer",
-              fontFamily:"var(--font-body)", letterSpacing:"0.03em",
+              padding:"0.35rem 0.85rem", borderRadius: theme.deckRoom ? 0 : 20, fontSize: theme.deckRoom ? "0.68rem" : "0.82rem", fontWeight: theme.deckRoom ? 400 : 600, cursor:"pointer",
+              fontFamily: theme.deckRoom ? "var(--font-caps)" : "var(--font-body)", letterSpacing: theme.deckRoom ? "0.16em" : "0.03em", textTransform: theme.deckRoom ? "uppercase" : "none",
               background: on ? `${def.color}22` : "transparent",
               border: `1px solid ${on ? def.color : theme.panelBorder}`,
               color: on ? def.color : theme.textMuted,
               boxShadow: on ? `0 0 16px ${def.color}55, inset 0 0 8px ${def.color}18` : "none",
               transition:"all 0.25s",
             }}>
-              {def.label}
+              {theme.deckRoom ? def.label.replace(/^\S+\s/, "") : def.label}
             </button>
           );
         })}

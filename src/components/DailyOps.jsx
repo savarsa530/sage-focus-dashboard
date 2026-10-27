@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { uuid, today, safeGet, safeGetJSON, safeSet } from "../utils";
+import { LineIcon } from "./Witchy";
 
 const DEFAULT_TEMPLATE = [
   "Email scan",
@@ -22,7 +23,10 @@ function saveTemplate(template) {
   safeSet(TEMPLATE_KEY, template);
 }
 
-export default function DailyOps({ theme, panelStyle, btnStyle, inpStyle, onTouched, highlight = false }) {
+// Daily ops are starter tasks: a fresh checklist each day, and any op can be
+// focused, which pops it into the task list so its time is tracked.
+export default function DailyOps({ theme, panelStyle, btnStyle, pillStyle, inpStyle, tasks = [], focusedTaskId, onFocusOp, onToggleLinked }) {
+  const DR = !!theme.deckRoom;
   const isDark = theme.isDark;
   const [collapsed, setCollapsed] = useState(false);
   const [newItem,   setNewItem]   = useState("");
@@ -38,20 +42,20 @@ export default function DailyOps({ theme, panelStyle, btnStyle, inpStyle, onTouc
     return fresh;
   });
 
-  // Signal parent if ops already touched on load
-  useEffect(() => {
-    if (items.some(i => i.checked)) onTouched?.();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const persist = (updated) => {
     setItems(updated);
     safeSet(STATE_KEY, { date: today(), items: updated });
   };
 
+  const linkedTask = (item) => tasks.find(t => t.opId === item.id);
+  const isChecked  = (item) => { const t = linkedTask(item); return t ? t.done : item.checked; };
+
   const toggleItem = (id) => {
-    const updated = items.map(i => i.id === id ? { ...i, checked: !i.checked } : i);
-    persist(updated);
-    if (updated.find(i => i.id === id).checked) onTouched?.();
+    const item = items.find(i => i.id === id);
+    const next = !isChecked(item);
+    persist(items.map(i => i.id === id ? { ...i, checked: next } : i));
+    const t = linkedTask(item);
+    if (t && t.done !== next) onToggleLinked?.(t.id);   // keep the popped-in task in step
   };
 
   const addItem = () => {
@@ -72,27 +76,28 @@ export default function DailyOps({ theme, panelStyle, btnStyle, inpStyle, onTouc
     persist(items.filter(i => i.id !== id));
   };
 
-  const checked = items.filter(i => i.checked).length;
+  const checked = items.filter(isChecked).length;
+  const fmtMins = (s) => s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s/60)}m` : `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
   const allDone = items.length > 0 && checked === items.length;
 
   return (
-    <div style={{ ...panelStyle, marginBottom:"0.75rem", transition:"box-shadow 0.4s ease", ...(highlight ? { boxShadow:`0 0 0 2px ${theme.accent}, 0 0 24px ${theme.accent}40` } : {}) }}>
+    <div style={{ ...panelStyle, marginBottom:"0.75rem" }}>
       {/* Header row */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: collapsed ? 0 : "0.9rem" }}>
         <div style={{ display:"flex", alignItems:"center", gap:"0.55rem" }}>
-          <span style={{ fontSize:"0.65rem", letterSpacing:"0.16em", textTransform:"uppercase", color:theme.textMuted, fontFamily:"var(--font-caps)" }}>
-            Daily Ops
+          <span style={{ fontSize:"0.65rem", letterSpacing:"0.16em", textTransform:"uppercase", color:theme.textMuted, fontFamily:"var(--font-caps)", display:"inline-flex", alignItems:"center", gap:"0.4rem" }}>
+            {DR && <LineIcon name="candle" size={14} style={{ color:theme.accentInk }}/>}Daily Ops
           </span>
           {items.length > 0 && (
             <span style={{
               fontSize:"0.65rem", fontFamily:"var(--font-caps)", fontWeight:700,
-              color: allDone ? "#4ade80" : theme.accent,
+              color: allDone ? (theme.breakColor || "#4ade80") : theme.accent,
             }}>
               {checked}/{items.length}
             </span>
           )}
           {allDone && (
-            <span style={{ fontSize:"0.72rem", color:"#4ade80" }}>✓</span>
+            <span style={{ fontSize:"0.72rem", color:theme.breakColor || "#4ade80" }}>✓</span>
           )}
         </div>
         <button
@@ -107,41 +112,62 @@ export default function DailyOps({ theme, panelStyle, btnStyle, inpStyle, onTouc
         <>
           {/* Checklist */}
           <div style={{ display:"flex", flexDirection:"column", gap:"0.45rem", marginBottom:"0.8rem" }}>
-            {items.map(item => (
-              <div key={item.id} style={{ display:"flex", alignItems:"center", gap:"0.6rem" }}>
+            {items.map(item => {
+              const done    = isChecked(item);
+              const linked  = linkedTask(item);
+              const focused = linked && linked.id === focusedTaskId;
+              return (
+              <div key={item.id} style={{ display:"flex", alignItems:"center", gap:"0.6rem", padding: DR ? "0.15rem 0" : 0 }}>
                 <button
                   onClick={() => toggleItem(item.id)}
+                  aria-label={done ? `Uncheck ${item.text}` : `Check ${item.text}`}
                   style={{
-                    width:17, height:17, borderRadius:5, flexShrink:0,
-                    background: item.checked ? theme.accent : "transparent",
-                    border:`1.5px solid ${item.checked ? theme.accent : theme.panelBorder}`,
+                    width:18, height:18, borderRadius: DR ? 2 : 5, flexShrink:0,
+                    background: done ? (DR ? "transparent" : theme.accent) : "transparent",
+                    border:`1.5px solid ${done ? theme.accent : (DR ? theme.accentInk : theme.panelBorder)}`,
                     cursor:"pointer", padding:0,
                     display:"flex", alignItems:"center", justifyContent:"center",
                     transition:"all 0.15s",
                   }}
                 >
-                  {item.checked && (
-                    <span style={{ color: isDark ? "#000" : "#fff", fontSize:"0.62rem", lineHeight:1, fontWeight:700 }}>✓</span>
+                  {done && (
+                    <span style={{ color: DR ? theme.accentInk : (isDark ? "#000" : "#fff"), fontSize:"0.65rem", lineHeight:1, fontWeight:700 }}>✓</span>
                   )}
                 </button>
                 <span style={{
-                  fontSize:"0.88rem", flex:1,
-                  fontFamily:"var(--font-body)",
-                  color: item.checked ? theme.textMuted : theme.text,
-                  textDecoration: item.checked ? "line-through" : "none",
-                  opacity: item.checked ? 0.5 : 1,
+                  fontSize: DR ? "1rem" : "0.88rem", flex:1, minWidth:0,
+                  fontFamily: DR ? "var(--font-display)" : "var(--font-body)",
+                  color: done ? theme.textMuted : theme.text,
+                  textDecoration: done ? "line-through" : "none",
+                  opacity: done ? 0.5 : 1,
                   transition:"all 0.15s",
                 }}>
                   {item.text}
+                  {(linked?.focusSecs || 0) > 0 && (
+                    <span style={{ marginLeft:"0.5rem", fontSize:"0.62rem", color:theme.accentInk || theme.accent, fontFamily:"var(--font-caps)", letterSpacing:"0.12em", textDecoration:"none", display:"inline-block" }}>
+                      {fmtMins(linked.focusSecs)}
+                    </span>
+                  )}
                 </span>
+                {!done && (
+                  <button
+                    onClick={() => onFocusOp?.(item)}
+                    title={focused ? "Unfocus" : "Focus on this op — it joins your task list"}
+                    style={{ ...pillStyle(focused), fontSize:"0.66rem", padding:"0.2rem 0.6rem", flexShrink:0 }}
+                  >
+                    {focused ? "★ focused" : "focus"}
+                  </button>
+                )}
                 <button
                   onClick={() => removeItem(item.id)}
+                  aria-label={`Remove ${item.text} from daily ops`}
                   style={{ background:"none", border:"none", color:theme.textMuted, cursor:"pointer", fontSize:"0.72rem", opacity:0.35, padding:"0 0.2rem", lineHeight:1 }}
                 >
                   ×
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Add item */}

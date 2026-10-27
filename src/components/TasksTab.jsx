@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { uuid } from "../utils";
+import { Emblem, LineIcon } from "./Witchy";
 
 export default function TasksTab({
   theme, tasks, saveTasks,
@@ -13,6 +14,7 @@ export default function TasksTab({
   quests, newQuest, setNewQuest, addQuest, deleteQuest, promoteQuest,
   panelStyle, btnStyle, pillStyle, inpStyle,
 }) {
+  const DR = !!theme.deckRoom;
   const [hoveredId, setHoveredId] = useState(null);
   const canDrag = taskSort.by === "default";
   const pColor  = (p) => ({ high:"#f87171", medium:theme.accent, low:theme.textMuted }[p]);
@@ -85,9 +87,17 @@ export default function TasksTab({
         )}
 
         {sortedTasks.length === 0 && (
+          DR ? (
+            <div style={{ textAlign:"center", padding:"1.25rem 0", display:"flex", flexDirection:"column", alignItems:"center", gap:"0.5rem" }}>
+              <Emblem name="crystal-bundle" size={60}/>
+              <div style={{ fontFamily:"var(--font-display)", fontSize:"1.2rem", color:theme.text }}>The table is quiet</div>
+              <div style={{ fontStyle:"italic", color:theme.textMuted, fontSize:"0.88rem" }}>Add a task above, or focus a daily op to begin.</div>
+            </div>
+          ) : (
           <div style={{ textAlign:"center", padding:"1.5rem 0", color:theme.textMuted, fontSize:"0.9rem", fontStyle:"italic" }}>
             Add a task above, then click <strong>focus</strong> to begin ☝
           </div>
+          )
         )}
 
         <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
@@ -108,7 +118,7 @@ export default function TasksTab({
                 onDragEnd={handleDragEnd}
                 style={{
                   display:"flex", alignItems:"center", gap:"0.6rem",
-                  padding:"0.5rem 0.6rem", borderRadius:10,
+                  padding:"0.5rem 0.6rem", borderRadius: DR ? 0 : 10,
                   background: isFocused ? `${theme.accent}18` : task.done ? `${theme.panelBorder}40` : `${theme.accent}0a`,
                   border:`1px solid ${isDragOver ? theme.accent : isFocused ? theme.accent+"80" : task.done ? theme.panelBorder : theme.accent+"28"}`,
                   outline: isDragOver ? `2px solid ${theme.accent}` : "none",
@@ -126,6 +136,7 @@ export default function TasksTab({
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:"0.9rem", fontStyle: task.done ? "italic" : "normal", textDecoration:task.done?"line-through":"none", color:theme.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                     {task.text}
+                    {task.opId && <span style={{ marginLeft:"0.5rem", fontSize:"0.55rem", letterSpacing:"0.2em", textTransform:"uppercase", color:theme.textMuted, fontFamily:"var(--font-caps)" }}>daily op</span>}
                   </div>
                   {(task.focusSecs||0) > 0 && !task.done && (
                     <div style={{ fontSize:"0.65rem", color:theme.accent, marginTop:1, fontWeight:600, fontFamily:"var(--font-caps)" }}>
@@ -156,16 +167,16 @@ export default function TasksTab({
 
       {/* Side Quests */}
       <div style={panelStyle}>
-        <div style={{ fontSize:"0.62rem", fontWeight:600, color:theme.textMuted, letterSpacing:"0.12em", textTransform:"uppercase", marginBottom:"0.4rem", fontFamily:"var(--font-caps)" }}>⚡ Side Quests</div>
+        <div style={{ fontSize:"0.62rem", fontWeight:600, color:theme.textMuted, letterSpacing:"0.12em", textTransform:"uppercase", marginBottom:"0.4rem", fontFamily:"var(--font-caps)", display:"flex", alignItems:"center", gap:"0.4rem" }}>{DR ? <LineIcon name="sprig" size={14} style={{ color:theme.accentInk }}/> : "⚡"} Side Quests</div>
         <div style={{ fontSize:"0.82rem", color:theme.textMuted, marginBottom:"0.75rem", fontStyle:"italic" }}>Stray thoughts go here. Don't break flow — park it.</div>
         <div style={{ display:"flex", gap:"0.5rem", marginBottom:"0.75rem" }}>
           <input style={inpStyle} placeholder="Park a distraction…" value={newQuest} onChange={e=>setNewQuest(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addQuest()}/>
           <button style={btnStyle(true)} onClick={addQuest}>Park</button>
         </div>
-        {quests.length === 0 && <div style={{ textAlign:"center", color:theme.textMuted, fontSize:"0.85rem", padding:"0.5rem 0", fontStyle:"italic" }}>No distractions parked 🌿</div>}
+        {quests.length === 0 && <div style={{ textAlign:"center", color:theme.textMuted, fontSize:"0.85rem", padding:"0.5rem 0", fontStyle:"italic" }}>{DR ? "Nothing parked. The mind is clear." : "No distractions parked 🌿"}</div>}
         <div style={{ display:"flex", flexDirection:"column", gap:"0.35rem" }}>
           {quests.map(q => (
-            <div key={q.id} style={{ display:"flex", alignItems:"center", gap:"0.6rem", padding:"0.45rem 0.6rem", borderRadius:8, background:`${theme.accent}08`, border:`1px solid ${theme.panelBorder}` }}>
+            <div key={q.id} style={{ display:"flex", alignItems:"center", gap:"0.6rem", padding:"0.45rem 0.6rem", borderRadius: DR ? 0 : 8, background:`${theme.accent}08`, border:`1px solid ${theme.panelBorder}` }}>
               <span style={{ flex:1, fontSize:"0.9rem", color:theme.text }}>{q.text}</span>
               <button onClick={()=>promoteQuest(q)} style={{ background:"none", border:"none", cursor:"pointer", color:theme.accent, fontSize:"0.78rem", fontWeight:700 }}>→ Task</button>
               <button onClick={()=>deleteQuest(q.id)} style={{ background:"none", border:"none", cursor:"pointer", color:theme.textMuted, fontSize:"0.82rem" }}>✕</button>

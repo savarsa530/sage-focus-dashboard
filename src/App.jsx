@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { THEMES, PRESETS } from "./constants";
-import { fmt, uuid, today, safeGet, safeGetJSON, safeSet } from "./utils";
+import { fmt, uuid, today, safeGet, safeGetJSON, safeSet, loadLedger, creditLedger, countLedgerSession } from "./utils";
 import { startSound, stopSound, setVolume, stopAllSounds, playDing } from "./audio";
 import ErrorBoundary   from "./components/ErrorBoundary";
 import LiveClock       from "./components/LiveClock";
@@ -14,6 +14,9 @@ import SoundscapePanel from "./components/SoundscapePanel";
 import TasksTab        from "./components/TasksTab";
 import PITab           from "./components/PITab";
 import DailyOps        from "./components/DailyOps";
+import LedgerTab       from "./components/LedgerTab";
+import { Emblem, LineIcon, MoonPhase, OrnateCorners, StarDivider } from "./components/Witchy";
+import { moonOf } from "./moon";
 
 const VERSION = "6.0.0 · 2026-10-27";
 
@@ -85,8 +88,13 @@ export default function App() {
 
   // ── Tasks ─────────────────────────────────────────────────────
   const [focusedTaskId, setFocusedTaskId] = useState(() => timer0.focusedTaskId ?? null);
-  const [tasks, setTasks] = useState(() => safeGetJSON("sage_tasks_v5", []) || []);
+  const [tasks, setTasks] = useState(() => {
+    const list = safeGetJSON("sage_tasks_v5", []) || [];
+    loadLedger(list);   // first run: carry existing focus time into the ledger
+    return list;
+  });
   const saveTasks = (list) => { setTasks(list); safeSet("sage_tasks_v5", list); };
+  const tasksRef = useRef(tasks); tasksRef.current = tasks;
 
   // ── Timer ─────────────────────────────────────────────────────
   const TIMER_KEY = "sage_timer_v1";
@@ -155,6 +163,7 @@ export default function App() {
   const accrueFocus = (seconds) => {
     const id = focusedIdRef.current;
     if (!id || seconds <= 0) return;
+    creditLedger(tasksRef.current.find(t => t.id === id), seconds);
     setTasks(prev => {
       const updated = prev.map(t => t.id === id ? { ...t, focusSecs: (t.focusSecs || 0) + seconds } : t);
       safeSet("sage_tasks_v5", updated);
@@ -175,6 +184,7 @@ export default function App() {
       safeSet("sage_sessions_count", String(nc));
       bumpStreak();
       recordSessionTimestamp();
+      countLedgerSession();
       const dur = brkMinsRef.current * 60;
       setPhase("break"); setTimeLeft(dur);
       if (autoCycleRef.current) {
@@ -253,6 +263,7 @@ export default function App() {
     if (timer0.phase === "work") {
       const missed = Math.max(0, Math.round((timer0.endsAt - (timer0.savedAt || timer0.endsAt)) / 1000));
       if (missed > 0 && timer0.focusedTaskId) {
+        creditLedger(tasksRef.current.find(t => t.id === timer0.focusedTaskId), missed);
         setTasks(prev => {
           const updated = prev.map(x => x.id === timer0.focusedTaskId ? { ...x, focusSecs:(x.focusSecs||0)+missed } : x);
           safeSet("sage_tasks_v5", updated);
@@ -265,6 +276,7 @@ export default function App() {
       safeSet("sage_sessions_count", String(nc));
       bumpStreak();
       recordSessionTimestamp();
+      countLedgerSession();
       setPhase("break"); setTimeLeft((timer0.brkMins ?? 5) * 60); setRunning(false);
     } else {
       setPhase("work"); setTimeLeft((timer0.workMins ?? 25) * 60); setRunning(false);
@@ -301,6 +313,19 @@ export default function App() {
       setFocusedTaskId(taskId); setNeedTask(false);
       if (phase === "work" && !running) startRunning();
     }
+  };
+
+  // Daily ops are starter tasks: focusing one pops it into the task list, focused.
+  const focusOp = (op) => {
+    let t = tasks.find(x => x.opId === op.id);
+    if (!t) {
+      const minOrder = tasks.reduce((m, x) => Math.min(m, x.order || 0), 0);
+      t = { id:uuid(), text:op.text, done:false, priority:"medium", focusSecs:0, order:minOrder - 1, opId:op.id, createdAt:Date.now() };
+      saveTasks([t, ...tasks]);
+    } else if (t.done) {
+      saveTasks(tasks.map(x => x.id === t.id ? { ...x, done:false } : x));
+    }
+    focusTask(t.id);
   };
 
   const handleStart = () => {
@@ -473,12 +498,15 @@ export default function App() {
   const phaseColor = phase==="work" ? theme.timerRing : (theme.breakColor || "#86efac");
   const DR         = !!theme.deckRoom;   // The Deck Room design system
   const streak     = Number(safeGet("sage_streak", 0));
-  const streakLabel = streak===0 ? "Start your streak!" : streak===1 ? "1 day 🌱" : `${streak} days 🔥`;
+  const streakLabel = streak===0 ? (DR ? "A new streak begins" : "Start your streak!") : streak===1 ? (DR ? "1 day" : "1 day 🌱") : (DR ? `${streak} days running` : `${streak} days 🔥`);
   const focusedTask = tasks.find(t => t.id === focusedTaskId);
 
   // Deck Room: paper is flat, square and framed with double rules; brass is what you press.
+  const GRAIN = isDark
+    ? "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.12'/></svg>\")"
+    : "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .25  0 0 0 0 .12  0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.18'/></svg>\")";
   const panel = DR ? {
-    background: theme.panel,
+    background: `${GRAIN}, ${theme.panel}`,
     border:`3px double ${theme.line}`,
     borderRadius:0, padding:"1.5rem 1.75rem", marginBottom:"1.25rem",
   } : {
@@ -672,27 +700,36 @@ export default function App() {
 
         {/* Header */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1.75rem", flexWrap:"wrap", gap:"0.75rem" }}>
-          <div>
+          <div style={{ display:"flex", alignItems:"center", gap:"0.7rem" }}>
+            {DR && <Emblem name="moon-face" size={52}/>}
+            <div>
             <div style={{ fontWeight:DR?400:600, fontSize:DR?"2.1rem":"1.8rem", color:theme.text, letterSpacing:DR?"0":"-0.02em", lineHeight:1, fontFamily:"var(--font-display)" }}>Sage & Steph</div>
             <div style={{ fontSize:"0.62rem", color:DR?theme.accentInk:theme.textMuted, letterSpacing:DR?"0.22em":"0.15em", textTransform:"uppercase", marginTop:DR?6:3, fontFamily:"var(--font-caps)" }}>Focus Dashboard · v{VERSION}</div>
+            </div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:"0.75rem", flexWrap:"wrap" }}>
+            {DR && (
+              <span style={{ display:"inline-flex", alignItems:"center", gap:"0.45rem", fontStyle:"italic", color:theme.textMuted, fontSize:"0.85rem" }}>
+                <MoonPhase theme={theme} size={16}/>{moonOf(new Date()).name}
+              </span>
+            )}
             <LiveClock color={theme.textMuted}/>
             <div style={{ display:"flex", gap:"0.35rem", alignItems:"center" }}>
               {THEMES.map(t => (
                 <button key={t.key} onClick={()=>switchTheme(t)} title={t.label} style={{ width:18, height:18, borderRadius:"50%", background:t.accent, border:theme.key===t.key?`2px solid ${theme.text}`:"2px solid transparent", cursor:"pointer", padding:0, transition:"transform 0.15s", transform:theme.key===t.key?"scale(1.3)":"scale(1)" }}/>
               ))}
             </div>
-            <button style={{ ...btn(false), fontSize:"0.72rem", padding:"0.3rem 0.65rem" }} onClick={()=>setZenMode(p=>!p)} title="Zen mode (Z)">⬡ Zen</button>
+            <button style={{ ...btn(false), fontSize:"0.72rem", padding:"0.3rem 0.65rem" }} onClick={()=>setZenMode(p=>!p)} title="Zen mode (Z)">{DR ? <span style={{ display:"inline-flex", alignItems:"center", gap:"0.4rem" }}><LineIcon name="eye" size={15}/>Zen</span> : "⬡ Zen"}</button>
           </div>
         </div>
 
-        {/* Timer Panel */}
-        <div style={panel}>
+        {/* Timer Panel — the featured thing on the view */}
+        <div style={{ ...panel, position:"relative" }}>
+          {DR && <OrnateCorners color={theme.accentInk}/>}
           <div style={{ display:"flex", justifyContent:"center", marginBottom:"0.75rem" }}>
             {DR
               ? <span className="dr-rule" style={{ width:"min(320px, 80%)", fontFamily:"var(--font-caps)", fontSize:"0.72rem", letterSpacing:"0.22em", textTransform:"uppercase", color:theme.accentInk }}>
-                  <span aria-hidden="true">✦</span>{phaseLabel}<span aria-hidden="true">✦</span>
+                  <LineIcon name={phase==="work" ? "star" : "crescent"} size={13}/>{phaseLabel}<LineIcon name={phase==="work" ? "star" : "crescent"} size={13}/>
                 </span>
               : <span style={{ background:`${phaseColor}22`, color:phaseColor, borderRadius:20, padding:"0.2rem 0.9rem", fontSize:"0.65rem", fontWeight:700, letterSpacing:"0.15em", textTransform:"uppercase", fontFamily:"var(--font-caps)" }}>
                   {phaseLabel}
@@ -748,21 +785,23 @@ export default function App() {
             }
             <button style={{ ...btn(false), padding:"0.55rem 1rem" }} onClick={handleReset}>↺ Reset</button>
             <button style={{ ...pill(autoCycle), padding:"0.4rem 0.9rem" }} onClick={toggleAutoCycle} title="Auto-cycle: flow focus → break → focus automatically">
-              {autoCycle ? "🔁 Auto-cycle: on" : "🔁 Auto-cycle: off"}
+              {DR
+                ? <span style={{ display:"inline-flex", alignItems:"center", gap:"0.4rem" }}><LineIcon name="crescent" size={14}/>Auto-cycle: {autoCycle ? "on" : "off"}</span>
+                : (autoCycle ? "🔁 Auto-cycle: on" : "🔁 Auto-cycle: off")}
             </button>
           </div>
 
           {autoCycle && phase==="break" && running && (
             <div style={{ textAlign:"center", marginTop:"0.6rem" }}>
               <span onClick={() => { handlePause(); setShowSkipModal(true); }} style={{ fontSize:"0.8rem", color:theme.accent, cursor:"pointer", fontStyle:"italic" }}>
-                🌿 skip break
+                {DR ? <><LineIcon name="sprig" size={14}/> skip break</> : "🌿 skip break"}
               </span>
             </div>
           )}
 
           <div style={{ textAlign:"center", marginTop:"0.75rem" }}>
             <div style={{ fontSize:"0.75rem", color:theme.textMuted, fontStyle:"italic" }}>
-              🔥 {streakLabel} · {sessionsToday} session{sessionsToday!==1?"s":""} today
+              {DR ? <LineIcon name="candle" size={14} style={{ color:theme.accentInk }}/> : "🔥"} {streakLabel} · {sessionsToday} session{sessionsToday!==1?"s":""} today
             </div>
           </div>
 
@@ -780,8 +819,13 @@ export default function App() {
 
         {/* Tab Bar */}
         <div style={{ display:"flex", gap:"0.4rem", marginBottom:"1rem", flexWrap:"wrap" }}>
-          {[["tasks","📋 Tasks"],["pi","🗂 PI Parking Lot"]].map(([k,l])=>(
-            <button key={k} style={{ ...pill(activeTab===k), fontSize:"0.82rem", padding:"0.4rem 1rem" }} onClick={()=>setActiveTab(k)}>{l}</button>
+          {(DR
+            ? [["tasks","cards","Tasks"],["pi","crystal","PI Parking Lot"],["ledger","planchette","Ledger"]]
+            : [["tasks",null,"📋 Tasks"],["pi",null,"🗂 PI Parking Lot"],["ledger",null,"📜 Ledger"]]
+          ).map(([k,icon,l])=>(
+            <button key={k} style={{ ...pill(activeTab===k), fontSize:DR?"0.7rem":"0.82rem", padding:"0.45rem 1rem", display:"inline-flex", alignItems:"center", gap:"0.45rem" }} onClick={()=>setActiveTab(k)}>
+              {icon && <LineIcon name={icon} size={15} style={{ color:theme.accentInk }}/>}{l}
+            </button>
           ))}
         </div>
 
@@ -789,7 +833,9 @@ export default function App() {
         {activeTab==="tasks" && (
           <ErrorBoundary label="tasks">
           <DailyOps
-            theme={theme} panelStyle={panel} btnStyle={btn} inpStyle={inp}
+            theme={theme} panelStyle={panel} btnStyle={btn} pillStyle={pill} inpStyle={inp}
+            tasks={tasks} focusedTaskId={focusedTaskId}
+            onFocusOp={focusOp} onToggleLinked={toggleTask}
           />
           <TasksTab
             theme={theme} tasks={tasks} saveTasks={saveTasks}
@@ -826,7 +872,15 @@ export default function App() {
           </ErrorBoundary>
         )}
 
+        {/* Ledger Tab */}
+        {activeTab==="ledger" && (
+          <ErrorBoundary label="ledger">
+            <LedgerTab theme={theme} panelStyle={panel} pillStyle={pill}/>
+          </ErrorBoundary>
+        )}
+
         {/* Footer */}
+        {DR && <StarDivider color={theme.accentInk} width={90} style={{ marginTop:"1.75rem" }}/>}
         <div style={{ textAlign:"center", marginTop:"1.5rem", fontSize:"0.6rem", color:theme.textMuted, letterSpacing:"0.1em", fontFamily:"var(--font-caps)" }}>
           space · start/pause &nbsp;·&nbsp; Z · zen &nbsp;·&nbsp; click focus on a task to begin
         </div>
