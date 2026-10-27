@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { moonOf } from "../moon";
+import { emblemUrl } from "../glyphs";
 
 // Ornament from The Deck Room design system: line icons, painted emblems,
 // the real moon, corner flourishes and the star divider.
@@ -37,10 +39,20 @@ export function LineIcon({ name, size = 16, weight = 1.3, style }) {
 }
 
 // Painted emblems live in /public/emblems. Never shown below 24px.
+// If a load fails it retries once; if that fails too it shows a quiet star
+// instead of a broken-image box.
 export function Emblem({ name, size = 40, alt = "", style }) {
+  const [tries, setTries] = useState(0);
+  if (tries > 1) {
+    return (
+      <span role={alt ? "img" : undefined} aria-label={alt || undefined} style={{ width:size, height:size, display:"inline-flex", alignItems:"center", justifyContent:"center", flex:"none", color:"#c9a35b", opacity:.7, ...style }}>
+        <LineIcon name="star" size={Math.max(16, Math.round(size * 0.35))}/>
+      </span>
+    );
+  }
   return (
-    <img src={`${import.meta.env.BASE_URL}emblems/${name}.webp`} alt={alt}
-      width={size} height={size}
+    <img key={tries} src={emblemUrl(name) + (tries ? `?retry=${tries}` : "")} alt={alt}
+      width={size} height={size} onError={() => setTries(t => t + 1)}
       style={{ objectFit:"contain", flex:"none", filter:"drop-shadow(0 2px 3px rgba(0,0,0,.45))", ...style }}/>
   );
 }

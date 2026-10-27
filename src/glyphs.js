@@ -17,3 +17,6 @@ export function taskStage(task, focused) {
   if ((task.focusSecs || 0) > 0) return { icon:"sprout", label:"Sprouting — time tended" };
   return { icon:"seed", label:"A seed — not tended yet" };
 }
+
+// Where a painted emblem lives (public/emblems).
+export const emblemUrl = (name) => `${import.meta.env.BASE_URL}emblems/${name}.webp`;

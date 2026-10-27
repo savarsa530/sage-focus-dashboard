@@ -16,8 +16,9 @@ import PITab           from "./components/PITab";
 import DailyOps        from "./components/DailyOps";
 import LedgerTab       from "./components/LedgerTab";
 import SessionPull     from "./components/SessionPull";
-import { drawCard, recordPull } from "./deck";
+import { DECK, drawCard, recordPull } from "./deck";
 import { Emblem, LineIcon, MoonPhase, OrnateCorners, StarDivider } from "./components/Witchy";
+import { emblemUrl } from "./glyphs";
 import { moonOf } from "./moon";
 
 const VERSION = "6.1.0 · 2026-10-27";
@@ -114,6 +115,11 @@ export default function App() {
   // ?pull or #pull in the URL offers a practice card on load, to try it without a session.
   const [pullCard, setPullCard] = useState(() => (typeof location !== "undefined" && (/[?&]pull\b/.test(location.search) || location.hash === "#pull")) ? drawCard() : null);
   const pullTaskRef = useRef(null);
+  // Fetch every card's art when the dashboard opens, so the face is already
+  // in the browser cache when a card turns 25 minutes later.
+  useEffect(() => {
+    ["moon-wreath", ...new Set(DECK.map(c => c.art))].forEach(a => { const i = new Image(); i.src = emblemUrl(a); });
+  }, []);
   const [autoCycle, setAutoCycle] = useState(() => {
     const v = safeGet("sage_autocycle_v1");
     return v == null ? true : v === "true";
