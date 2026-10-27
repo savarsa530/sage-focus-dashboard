@@ -6,6 +6,10 @@ Enhancements and ideas captured as we build. Items move from **Backlog → In Pr
 
 ## Done
 
+- [x] **Deck Room theme + calmer start (v6.0.0)** *(2026-10-27)*
+  New default themes **Candlelight** and **Daylight** from The Deck Room design system: Cinzel / IM Fell English / Spectral type (Barlow removed), square double-ruled panels, brass-framed plaque buttons (parchment "Begin Focus" invitation), rose underline on the active chip, focus ring in amethyst. The six classic themes (Liminal, Liminal Botany, Dusk, Forest, Dawn, Amethyst) were retired; the swatch row is now the Deck Room crescent toggle between Candlelight and Daylight. Removed the Morning Gate and the intention pop-up — today's intention is now an optional inline field right beneath the timer. Removed Sprint Pulse, PI Readiness, the Pace Indicator and the Schedule pop-out.
+  Deck Room ornament: moon-face emblem by the wordmark, the real moon phase in the header, corner flourishes on the timer, star dividers, line icons in place of emoji, grain on panels, crystal-bundle and lantern emblems for empty and ledger states. **Daily Ops are starter tasks** — "focus" on an op pops it into the task list, focused, and the two checkboxes stay in step. New **Ledger** tab: focus time by task and by day (today / 7 / 30 days / all time), sessions, and the Daily Ops share; time logged before the ledger is kept as undated "earlier" time.
+
 - [x] **Timer reliability overhaul — persistence, accuracy & auto-cycle (v5.6.0)** *(2026-06-28)*
   Rebuilt the timer on a wall-clock `endsAt` model so it survives refresh **and** background-tab throttling; focus seconds now credit by real elapsed time. Recovers conservatively on reload — resumes if time remains, otherwise credits exactly one session and lands paused. Added an **auto-cycle** toggle (default on) that flows focus → break → focus automatically with a completion chime, keeping the reflective skip-break reachable as a non-blocking link; toggling off restores the original blocking flow. Restored the `playDing()` completion sound + completion flash.
 

@@ -14,13 +14,13 @@ export default function SkipBreakModal({ theme, onSkip, onTakeBreak, sessionsTod
       <div style={{ textAlign:"center", marginBottom:"1.5rem" }}>
         <div style={{
           fontSize:"0.6rem", letterSpacing:"0.22em", textTransform:"uppercase",
-          color: theme.accent, fontFamily:"'Outfit', system-ui, sans-serif",
+          color: theme.accent, fontFamily:"var(--font-body)",
           fontStyle:"italic", marginBottom:"0.5rem", opacity:0.85,
         }}>
           session complete — {sessionsToday} today
         </div>
         <h2 style={{
-          fontFamily:"'Outfit', system-ui, sans-serif",
+          fontFamily:"var(--font-body)",
           fontSize:"1.6rem", fontWeight:600,
           color: isDark ? "#e8e0f8" : "#2d1854",
           letterSpacing:"-0.01em", lineHeight:1.2, margin:"0 0 0.5rem",
@@ -30,7 +30,7 @@ export default function SkipBreakModal({ theme, onSkip, onTakeBreak, sessionsTod
         {overloaded && (
           <div style={{
             fontSize:"0.8rem", color: isDark ? "#a78bfa" : "#7c3aed",
-            fontFamily:"'Outfit', system-ui, sans-serif",
+            fontFamily:"var(--font-body)",
             fontStyle:"italic", marginTop:"0.25rem",
             background: isDark ? "rgba(167,139,250,0.08)" : "rgba(124,58,237,0.06)",
             borderRadius:8, padding:"0.5rem 0.75rem",
@@ -44,7 +44,7 @@ export default function SkipBreakModal({ theme, onSkip, onTakeBreak, sessionsTod
       <div style={{ marginBottom:"1.25rem" }}>
         <div style={{
           fontSize:"0.68rem", color:theme.textMuted, letterSpacing:"0.1em",
-          textTransform:"uppercase", fontFamily:"'Outfit', system-ui, sans-serif",
+          textTransform:"uppercase", fontFamily:"var(--font-body)",
           marginBottom:"0.65rem",
         }}>
           Why skip the break?
@@ -59,7 +59,7 @@ export default function SkipBreakModal({ theme, onSkip, onTakeBreak, sessionsTod
                 border:`1px solid ${reason === r.key ? theme.accent + "60" : isDark ? "#3d2f5a" : "#c9b8d8"}`,
                 borderRadius:10, color: reason === r.key ? theme.accent : theme.text,
                 padding:"0.55rem 0.9rem", textAlign:"left",
-                fontFamily:"'Outfit', system-ui, sans-serif",
+                fontFamily:"var(--font-body)",
                 fontSize:"0.95rem", cursor:"pointer", transition:"all 0.15s", letterSpacing:"0.01em",
               }}
             >
@@ -75,7 +75,7 @@ export default function SkipBreakModal({ theme, onSkip, onTakeBreak, sessionsTod
           style={{
             background: theme.accent, color: isDark ? "#000" : "#fff",
             border:"none", borderRadius:12, padding:"0.6rem 1.6rem",
-            fontFamily:"'Outfit', system-ui, sans-serif",
+            fontFamily:"var(--font-body)",
             fontSize:"1rem", fontWeight:700, cursor:"pointer", letterSpacing:"0.03em",
           }}
         >
@@ -89,7 +89,7 @@ export default function SkipBreakModal({ theme, onSkip, onTakeBreak, sessionsTod
             color: reason ? theme.textMuted : `${theme.textMuted}50`,
             border:`1px solid ${reason ? (isDark ? "#3d2f5a" : "#c9b8d8") : isDark ? "#2a2440" : "#e5ddef"}`,
             borderRadius:12, padding:"0.6rem 1.2rem",
-            fontFamily:"'Outfit', system-ui, sans-serif",
+            fontFamily:"var(--font-body)",
             fontSize:"0.9rem", cursor: reason ? "pointer" : "default", letterSpacing:"0.03em",
           }}
         >

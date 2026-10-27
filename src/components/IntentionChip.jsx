@@ -1,29 +1,57 @@
-export default function IntentionChip({ intention, accent, textMuted, isDark, onEdit }) {
-  if (!intention) return null;
+import { useState } from "react";
+
+// Optional daily intention, shown inline beneath the timer.
+// Nothing pops up: if no intention is set, a quiet field invites one.
+export default function IntentionChip({ intention, theme, onSet }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(intention || "");
+
+  const save = () => { onSet(draft.trim()); setEditing(false); };
+  const cancel = () => { setDraft(intention || ""); setEditing(false); };
+
+  const label = {
+    fontFamily:"var(--font-caps)", fontSize:"0.62rem", letterSpacing:"0.22em",
+    textTransform:"uppercase", color: theme.accentInk || theme.accent,
+  };
+
+  if (!intention || editing) {
+    return (
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:"0.35rem", width:"100%", maxWidth:420, margin:"0 auto" }}>
+        <span style={label}>Today's intention · optional</span>
+        <input
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") cancel(); }}
+          onBlur={() => { if (draft.trim() !== (intention || "")) save(); else setEditing(false); }}
+          autoFocus={editing}
+          placeholder="What would make today feel well spent?"
+          aria-label="Today's intention (optional)"
+          style={{
+            width:"100%", textAlign:"center", background:"transparent",
+            border:`1px solid ${theme.line || theme.panelBorder}`,
+            borderRadius: theme.deckRoom ? 3 : 10,
+            color:theme.text, padding:"0.45rem 0.75rem", outline:"none",
+            fontFamily:"var(--font-display)", fontSize:"1rem",
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div
-      onClick={onEdit}
-      title="Click to edit today's intention"
+    <button
+      onClick={() => { setDraft(intention); setEditing(true); }}
+      title="Edit today's intention"
       style={{
-        display:"flex", alignItems:"center", gap:"0.4rem",
-        background: isDark ? "rgba(192,132,252,0.08)" : "rgba(139,92,246,0.07)",
-        border:`1px solid ${accent}30`,
-        borderRadius:20, padding:"0.25rem 0.75rem",
-        cursor:"pointer", maxWidth:280,
-        transition:"all 0.2s",
+        display:"flex", flexDirection:"column", alignItems:"center", gap:"0.2rem",
+        background:"transparent", border:"none", cursor:"pointer",
+        margin:"0 auto", maxWidth:420, padding:"0.25rem 0.5rem",
       }}
     >
-      <span style={{ fontSize:"0.65rem", color:accent, opacity:0.7 }}>✦</span>
-      <span style={{
-        fontFamily:"'Outfit', system-ui, sans-serif",
-        fontSize:"0.82rem", fontStyle:"italic",
-        color: isDark ? "#c4b5f8" : "#5b3f8a",
-        overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
-        flex:1,
-      }}>
+      <span style={label}>Today's intention</span>
+      <span style={{ fontFamily:"var(--font-display)", fontSize:"1.05rem", fontStyle:"italic", color:theme.text, lineHeight:1.35 }}>
         {intention}
       </span>
-      <span style={{ fontSize:"0.58rem", color:textMuted, opacity:0.5 }}>✎</span>
-    </div>
+    </button>
   );
 }

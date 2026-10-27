@@ -1,27 +1,24 @@
-// Sage & Steph Focus Dashboard — v5.6.0
+// Sage & Steph Focus Dashboard — v6.0.0
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { THEMES, PRESETS } from "./constants";
-import { fmt, uuid, today, safeGet, safeGetJSON, safeSet } from "./utils";
+import { fmt, uuid, today, safeGet, safeGetJSON, safeSet, loadLedger, creditLedger, countLedgerSession } from "./utils";
 import { startSound, stopSound, setVolume, stopAllSounds, playDing } from "./audio";
 import ErrorBoundary   from "./components/ErrorBoundary";
 import LiveClock       from "./components/LiveClock";
 import TimerRing       from "./components/TimerRing";
 import IntentionChip   from "./components/IntentionChip";
-import PaceIndicator   from "./components/PaceIndicator";
-import IntentionModal  from "./components/IntentionModal";
 import SkipBreakModal  from "./components/SkipBreakModal";
 import TaskSwapModal   from "./components/TaskSwapModal";
 import SoundscapePanel from "./components/SoundscapePanel";
 import TasksTab        from "./components/TasksTab";
 import PITab           from "./components/PITab";
-import PIReadiness     from "./components/PIReadiness";
-import MorningGate     from "./components/MorningGate";
 import DailyOps        from "./components/DailyOps";
-import ScheduleSidebar from "./components/ScheduleSidebar";
-import SprintPulse     from "./components/SprintPulse";
+import LedgerTab       from "./components/LedgerTab";
+import { Emblem, LineIcon, MoonPhase, OrnateCorners, StarDivider } from "./components/Witchy";
+import { moonOf } from "./moon";
 
-const VERSION = "5.6.0 · 2026-06-28";
+const VERSION = "6.0.0 · 2026-10-27";
 
 export default function App() {
 
@@ -30,62 +27,20 @@ export default function App() {
 
   // ── Theme ─────────────────────────────────────────────────────
   const [theme, setTheme] = useState(() => {
-    const k = safeGet("sage_theme_v5", "liminal");
+    const k = safeGet("sage_theme_v6", "candlelight");
     return THEMES.find(t => t.key === k) || THEMES[0];
   });
-  const switchTheme = (t) => { setTheme(t); safeSet("sage_theme_v5", t.key); };
+  const switchTheme = (t) => { setTheme(t); safeSet("sage_theme_v6", t.key); };
 
-  // ── Daily Intention ───────────────────────────────────────────
-  const [showIntentionModal, setShowIntentionModal] = useState(false);
+  // ── Daily Intention (optional, inline beneath the timer) ──────
   const [intention, setIntention] = useState(() => {
     const parsed = safeGetJSON("sage_intention_v5");
     return parsed && parsed.date === today() ? parsed.text : null;
   });
 
-  // ── Morning Gate ──────────────────────────────────────────────
-  const [showGate, setShowGate] = useState(() => {
-    const saved = safeGetJSON("sage_gate_v1");
-    return !saved || saved.date !== today();
-  });
-
-  const [orientPending,   setOrientPending]   = useState(false);
-  const [orientHighlight, setOrientHighlight] = useState(false);
-
-  const handleGateChoice = (choice) => {
-    safeSet("sage_gate_v1", { date: today(), choice });
-    if (choice === "orient") setOrientPending(true);
-    setShowGate(false);
-  };
-
-  // ── Ops touched signal (for morning gate) ─────────────────────
-  const [opsTouchedToday, setOpsTouchedToday] = useState(() => {
-    const s = safeGetJSON("sage_daily_ops_state_v1");
-    return !!(s?.date === today() && s.items?.some(i => i.checked));
-  });
-
-  // Fires intention modal after gate resolves (or immediately if gate already answered)
-  useEffect(() => {
-    if (!showGate) {
-      const lastSeen = safeGet("sage_intention_seen");
-      if (lastSeen !== today()) {
-        setTimeout(() => setShowIntentionModal(true), 400);
-      }
-    }
-  }, [showGate]);
-
   const handleSetIntention = (text) => {
-    const data = { date:today(), text };
-    safeSet("sage_intention_v5", data);
-    safeSet("sage_intention_seen", today());
+    safeSet("sage_intention_v5", { date:today(), text });
     setIntention(text || null);
-    setShowIntentionModal(false);
-    if (orientPending) {
-      setOrientPending(false);
-      setTimeout(() => {
-        setOrientHighlight(true);
-        setTimeout(() => setOrientHighlight(false), 2500);
-      }, 200);
-    }
   };
 
   // ── Humanistic tracking ───────────────────────────────────────
@@ -93,7 +48,7 @@ export default function App() {
     safeGet("sage_skip_streak_date") === today() ? Number(safeGet("sage_skip_streak", 0)) : 0
   );
 
-  const [sessionTimestamps, setSessionTimestamps] = useState(() => {
+  const [, setSessionTimestamps] = useState(() => {
     if (safeGet("sage_session_ts_date") !== today()) return [];
     return safeGetJSON("sage_session_timestamps", []) || [];
   });
@@ -133,8 +88,13 @@ export default function App() {
 
   // ── Tasks ─────────────────────────────────────────────────────
   const [focusedTaskId, setFocusedTaskId] = useState(() => timer0.focusedTaskId ?? null);
-  const [tasks, setTasks] = useState(() => safeGetJSON("sage_tasks_v5", []) || []);
+  const [tasks, setTasks] = useState(() => {
+    const list = safeGetJSON("sage_tasks_v5", []) || [];
+    loadLedger(list);   // first run: carry existing focus time into the ledger
+    return list;
+  });
   const saveTasks = (list) => { setTasks(list); safeSet("sage_tasks_v5", list); };
+  const tasksRef = useRef(tasks); tasksRef.current = tasks;
 
   // ── Timer ─────────────────────────────────────────────────────
   const TIMER_KEY = "sage_timer_v1";
@@ -203,6 +163,7 @@ export default function App() {
   const accrueFocus = (seconds) => {
     const id = focusedIdRef.current;
     if (!id || seconds <= 0) return;
+    creditLedger(tasksRef.current.find(t => t.id === id), seconds);
     setTasks(prev => {
       const updated = prev.map(t => t.id === id ? { ...t, focusSecs: (t.focusSecs || 0) + seconds } : t);
       safeSet("sage_tasks_v5", updated);
@@ -223,6 +184,7 @@ export default function App() {
       safeSet("sage_sessions_count", String(nc));
       bumpStreak();
       recordSessionTimestamp();
+      countLedgerSession();
       const dur = brkMinsRef.current * 60;
       setPhase("break"); setTimeLeft(dur);
       if (autoCycleRef.current) {
@@ -301,6 +263,7 @@ export default function App() {
     if (timer0.phase === "work") {
       const missed = Math.max(0, Math.round((timer0.endsAt - (timer0.savedAt || timer0.endsAt)) / 1000));
       if (missed > 0 && timer0.focusedTaskId) {
+        creditLedger(tasksRef.current.find(t => t.id === timer0.focusedTaskId), missed);
         setTasks(prev => {
           const updated = prev.map(x => x.id === timer0.focusedTaskId ? { ...x, focusSecs:(x.focusSecs||0)+missed } : x);
           safeSet("sage_tasks_v5", updated);
@@ -313,6 +276,7 @@ export default function App() {
       safeSet("sage_sessions_count", String(nc));
       bumpStreak();
       recordSessionTimestamp();
+      countLedgerSession();
       setPhase("break"); setTimeLeft((timer0.brkMins ?? 5) * 60); setRunning(false);
     } else {
       setPhase("work"); setTimeLeft((timer0.workMins ?? 25) * 60); setRunning(false);
@@ -349,6 +313,19 @@ export default function App() {
       setFocusedTaskId(taskId); setNeedTask(false);
       if (phase === "work" && !running) startRunning();
     }
+  };
+
+  // Daily ops are starter tasks: focusing one pops it into the task list, focused.
+  const focusOp = (op) => {
+    let t = tasks.find(x => x.opId === op.id);
+    if (!t) {
+      const minOrder = tasks.reduce((m, x) => Math.min(m, x.order || 0), 0);
+      t = { id:uuid(), text:op.text, done:false, priority:"medium", focusSecs:0, order:minOrder - 1, opId:op.id, createdAt:Date.now() };
+      saveTasks([t, ...tasks]);
+    } else if (t.done) {
+      saveTasks(tasks.map(x => x.id === t.id ? { ...x, done:false } : x));
+    }
+    focusTask(t.id);
   };
 
   const handleStart = () => {
@@ -500,31 +477,39 @@ export default function App() {
   const [activeTab,     setActiveTab]     = useState("tasks");
   const [zenMode,       setZenMode]       = useState(false);
   const [showPresets,   setShowPresets]   = useState(false);
-  const [showSchedule,  setShowSchedule]  = useState(false);
 
   // Keyboard shortcuts
   useEffect(() => {
     const h = (e) => {
       if (e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT") return;
-      if (showSkipModal || showIntentionModal || showTaskSwap) return;
+      if (showSkipModal || showTaskSwap) return;
       if (e.key===" ")  { e.preventDefault(); running ? handlePause() : handleStart(); }
       if (e.key==="z"||e.key==="Z") setZenMode(p=>!p);
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running, focusedTaskId, showSkipModal, showIntentionModal, showTaskSwap]);
+  }, [running, focusedTaskId, showSkipModal, showTaskSwap]);
 
   // ── Shared style objects ──────────────────────────────────────
   const isDark    = theme.isDark;
   const auroraC   = theme.auroraColors;
   const phaseLabel = phase==="work" ? "Focus" : "Break";
-  const phaseColor = phase==="work" ? theme.timerRing : "#86efac";
+  const phaseColor = phase==="work" ? theme.timerRing : (theme.breakColor || "#86efac");
+  const DR         = !!theme.deckRoom;   // The Deck Room design system
   const streak     = Number(safeGet("sage_streak", 0));
-  const streakLabel = streak===0 ? "Start your streak!" : streak===1 ? "1 day 🌱" : `${streak} days 🔥`;
+  const streakLabel = streak===0 ? (DR ? "A new streak begins" : "Start your streak!") : streak===1 ? (DR ? "1 day" : "1 day 🌱") : (DR ? `${streak} days running` : `${streak} days 🔥`);
   const focusedTask = tasks.find(t => t.id === focusedTaskId);
 
-  const panel = {
+  // Deck Room: paper is flat, square and framed with double rules; brass is what you press.
+  const GRAIN = isDark
+    ? "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.12'/></svg>\")"
+    : "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .25  0 0 0 0 .12  0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.18'/></svg>\")";
+  const panel = DR ? {
+    background: `${GRAIN}, ${theme.panel}`,
+    border:`3px double ${theme.line}`,
+    borderRadius:0, padding:"1.5rem 1.75rem", marginBottom:"1.25rem",
+  } : {
     background: isDark
       ? `linear-gradient(145deg, ${theme.panel} 0%, ${theme.bg}cc 100%)`
       : theme.panel,
@@ -534,55 +519,73 @@ export default function App() {
   };
 
   const inp = {
-    background:"transparent", border:`1px solid ${theme.panelBorder}`,
-    borderRadius:10, color:theme.text,
-    fontFamily:"'Outfit', system-ui, sans-serif", fontSize:"0.95rem",
+    background:"transparent", border:`1px solid ${DR ? theme.line : theme.panelBorder}`,
+    borderRadius: DR ? 3 : 10, color:theme.text,
+    fontFamily: DR ? "var(--font-display)" : "var(--font-body)", fontSize:"0.95rem",
     padding:"0.5rem 0.75rem", outline:"none", width:"100%", boxSizing:"border-box",
   };
 
-  const btn = (primary=true) => ({
-    background:   primary ? theme.accent : "transparent",
-    color:        primary ? (isDark?"#000":"#fff") : theme.accent,
-    border:       primary ? "none" : `1px solid ${theme.accent}`,
-    borderRadius: 10, padding:"0.45rem 1rem",
-    fontFamily:"'Outfit', system-ui, sans-serif",
-    fontWeight:700, fontSize:"0.88rem", cursor:"pointer",
-    letterSpacing:"0.03em", transition:"opacity 0.15s",
-  });
+  // btn(true) = commit plaque (velvet in a brass frame), btn("invite") = the one
+  // parchment plaque per view, btn(false) = quiet outlined control.
+  const btn = (primary=true) => {
+    if (!DR) return {
+      background:   primary ? theme.accent : "transparent",
+      color:        primary ? (isDark?"#000":"#fff") : theme.accent,
+      border:       primary ? "none" : `1px solid ${theme.accent}`,
+      borderRadius: 10, padding:"0.45rem 1rem",
+      fontFamily:"var(--font-body)",
+      fontWeight:700, fontSize:"0.88rem", cursor:"pointer",
+      letterSpacing:"0.03em", transition:"opacity 0.15s",
+    };
+    const caps = { fontFamily:"var(--font-caps)", textTransform:"uppercase", letterSpacing:"0.14em", fontWeight:500, fontSize:"0.8rem", cursor:"pointer", transition:"transform 0.1s, filter 0.15s" };
+    if (primary === "invite") return { ...caps,
+      background:`linear-gradient(180deg, ${theme.parchment} 0%, ${theme.parchmentLo} 100%)`,
+      color:theme.parchmentInk, border:`2px solid ${theme.brass}`,
+      outline:`1px solid ${theme.brassLo}`, outlineOffset:-4,
+      borderRadius:10, boxShadow:theme.shadowMetal, padding:"0.55rem 1.4rem" };
+    if (primary) return { ...caps,
+      background:`linear-gradient(180deg, ${theme.velvetHi} 0%, ${theme.velvet} 100%)`,
+      color:theme.cream, border:`2px solid ${theme.brass}`,
+      borderRadius:10, boxShadow:theme.shadowMetal, padding:"0.5rem 1.2rem" };
+    return { ...caps,
+      background:"transparent", color:theme.accentInk, border:`1px solid ${theme.line}`,
+      borderRadius:0, padding:"0.4rem 0.9rem", fontSize:"0.7rem" };
+  };
 
-  const pill = (active) => ({
+  // Chips: rose marks only the active item, as a 2px underline.
+  const pill = (active) => DR ? {
+    background: active ? theme.card : "transparent",
+    color:      active ? theme.text : theme.textMuted,
+    border:`1px solid ${theme.line}`, borderRadius:0,
+    borderBottom: active ? `2px solid ${theme.rose}` : `1px solid ${theme.line}`,
+    padding:"0.35rem 0.85rem",
+    fontFamily:"var(--font-caps)", textTransform:"uppercase",
+    fontSize:"0.68rem", fontWeight:400, letterSpacing:"0.18em", cursor:"pointer",
+    transition:"background 0.2s, color 0.2s",
+  } : {
     background:   active ? theme.accent : `${theme.accent}18`,
     color:        active ? (isDark?"#000":"#fff") : theme.textMuted,
     border:"none", borderRadius:20, padding:"0.3rem 0.8rem",
-    fontFamily:"'Outfit', system-ui, sans-serif",
+    fontFamily:"var(--font-body)",
     fontSize:"0.78rem", fontWeight:700, cursor:"pointer",
     letterSpacing:"0.04em", transition:"all 0.2s",
     boxShadow: active ? `0 0 14px ${theme.accent}50` : "none",
-  });
+  };
 
   const globalStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
-    ${theme.key === 'liminal-botany' ? `
-    :root {
-      --lb-bg-1: #2A0F24;
-      --lb-bg-2: #0F1A14;
-      --lb-surface-1: #4A2E47;
-      --lb-surface-2: #2F3A34;
-      --lb-accent-1: #D9A441;
-      --lb-accent-2: #E7C27A;
-      --lb-breath-1: #F2DCE2;
-      --lb-breath-2: #A8FFD9;
-      --lb-text-1: #F5F2F0;
-      --lb-text-2: #C7C2BD;
-      --lb-text-3: #8A837C;
-    }` : ''}
+    :root{--font-body:${theme.fonts.body};--font-caps:${theme.fonts.caps};--font-display:${theme.fonts.display};}
     *{box-sizing:border-box;margin:0;padding:0;}
     body{background:${theme.bg};}
-    ::placeholder{color:${theme.textMuted}70;font-family:'Outfit',system-ui,sans-serif;}
+    ::placeholder{color:${theme.textMuted}70;font-family:var(--font-body);}
     input:focus,textarea:focus{border-color:${theme.accent}99!important;box-shadow:0 0 0 3px ${theme.accent}22!important;outline:none;}
-    button:hover{opacity:0.82;}
+    button:hover{opacity:${DR?1:0.82};${DR?"filter:brightness(1.08);":""}}
+    ${DR ? `button:active{transform:translateY(1px);}
+    button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid ${theme.primary}!important;outline-offset:2px;}
+    .dr-rule{display:flex;align-items:center;gap:10px;color:${theme.accent};}
+    .dr-rule::before,.dr-rule::after{content:"";height:1px;flex:1;background:${theme.line};}
+    @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;}}` : ""}
     textarea{resize:vertical;}
-    select{background:${theme.panel};color:${theme.text};border:1px solid ${theme.panelBorder};border-radius:8px;padding:6px 10px;font-family:'Outfit',system-ui,sans-serif;font-size:0.9rem;outline:none;}
+    select{background:${theme.panel};color:${theme.text};border:1px solid ${theme.panelBorder};border-radius:8px;padding:6px 10px;font-family:var(--font-body);font-size:0.9rem;outline:none;}
     ::-webkit-scrollbar{width:5px;}
     ::-webkit-scrollbar-thumb{background:${theme.panelBorder};border-radius:4px;}
     @keyframes gentlePulse{0%,100%{box-shadow:0 0 0 0 ${theme.accent}30;}50%{box-shadow:0 0 24px 10px ${theme.accent}45;}}
@@ -619,7 +622,7 @@ export default function App() {
   // ── Zen Mode ──────────────────────────────────────────────────
   if (zenMode) {
     return (
-      <div style={{ minHeight:"100vh", background:theme.bg, fontFamily:"'Outfit', system-ui, sans-serif", color:theme.text, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
+      <div style={{ minHeight:"100vh", background:theme.bg, fontFamily:"var(--font-body)", color:theme.text, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
         <style>{globalStyles}</style>
         {running && phase==="work" && <div className="aurora-wrap"><div className="aurora-1"/><div className="aurora-2"/><div className="aurora-3"/></div>}
 
@@ -628,39 +631,39 @@ export default function App() {
 
         {intention && (
           <div className="intention-float" style={{ marginBottom:"1.5rem", textAlign:"center" }}>
-            <span style={{ fontFamily:"'Outfit', system-ui, sans-serif", fontSize:"0.85rem", fontStyle:"italic", color: isDark ? "#a78bfa" : "#7c3aed", opacity:0.7, letterSpacing:"0.04em" }}>
+            <span style={{ fontFamily:"var(--font-body)", fontSize:"0.85rem", fontStyle:"italic", color: isDark ? "#a78bfa" : "#7c3aed", opacity:0.7, letterSpacing:"0.04em" }}>
               ✦ {intention}
             </span>
           </div>
         )}
 
-        <div style={{ fontSize:"0.68rem", color:phaseColor, fontWeight:700, letterSpacing:"0.2em", textTransform:"uppercase", marginBottom:"1.5rem", fontFamily:"'DM Mono', monospace" }}>
+        <div style={{ fontSize:"0.68rem", color:phaseColor, fontWeight:700, letterSpacing:"0.2em", textTransform:"uppercase", marginBottom:"1.5rem", fontFamily:"var(--font-caps)" }}>
           {phase==="work" ? "Focus" : "Break"}
         </div>
         <div className={running?"timer-pulse":""}>
           <TimerRing pct={timerPct} color={phaseColor} running={running}>
-            <div className="timer-breath" style={{ fontSize:"3.2rem", fontWeight:600, letterSpacing:"-0.03em", color:theme.text, fontFamily:"'Outfit', system-ui, sans-serif" }}>{fmt(timeLeft)}</div>
+            <div className="timer-breath" style={{ fontSize:DR?"3.6rem":"3.2rem", fontWeight:DR?400:600, letterSpacing:DR?"0":"-0.03em", color:theme.text, fontFamily:DR?"var(--font-display)":"var(--font-body)" }}>{fmt(timeLeft)}</div>
             {focusedTask
-              ? <div style={{ fontSize:"0.75rem", color:phaseColor, maxWidth:150, textAlign:"center", marginTop:6, fontStyle:"italic", lineHeight:1.3, fontFamily:"'Outfit', system-ui, sans-serif" }}>✦ {focusedTask.text}</div>
+              ? <div style={{ fontSize:"0.75rem", color:phaseColor, maxWidth:150, textAlign:"center", marginTop:6, fontStyle:"italic", lineHeight:1.3, fontFamily:"var(--font-body)" }}>✦ {focusedTask.text}</div>
               : <div style={{ fontSize:"0.65rem", color:theme.textMuted, marginTop:6, fontStyle:"italic" }}>no task selected</div>
             }
           </TimerRing>
         </div>
         <div style={{ display:"flex", gap:"0.75rem", marginTop:"2rem", alignItems:"center" }}>
           {!running
-            ? <button className={!focusedTaskId && phase==="work"?"start-pulse":""} style={{ ...btn(true), fontSize:"1rem", padding:"0.7rem 2.2rem" }} onClick={handleStart}>▶ {phase==="work"?"Begin Focus":"Begin Break"}</button>
+            ? <button className={!focusedTaskId && phase==="work"?"start-pulse":""} style={{ ...btn(DR ? "invite" : true), fontSize:DR?"0.85rem":"1rem", padding:"0.7rem 2.2rem" }} onClick={handleStart}>▶ {phase==="work"?"Begin Focus":"Begin Break"}</button>
             : <button style={{ ...btn(true), fontSize:"1rem", padding:"0.7rem 2.2rem" }} onClick={handlePause}>⏸ Pause</button>
           }
           <button style={{ ...btn(false), padding:"0.7rem 1.2rem" }} onClick={handleReset}>↺</button>
         </div>
         {needTask && <div className="need-task" style={{ marginTop:"1rem", color:"#f87171", fontSize:"0.88rem", fontStyle:"italic" }}>Choose a task from the Tasks tab first.</div>}
         {!running && (
-          <p style={{ marginTop:"1.5rem", fontSize:"0.85rem", fontStyle:"italic", color:theme.textMuted, opacity:0.65, fontFamily:"'Outfit', system-ui, sans-serif", textAlign:"center" }}>
+          <p style={{ marginTop:"1.5rem", fontSize:"0.85rem", fontStyle:"italic", color:theme.textMuted, opacity:0.65, fontFamily:"var(--font-body)", textAlign:"center" }}>
             Dropping into the quiet.
           </p>
         )}
         <div style={{ marginTop:"1rem", display:"flex", flexDirection:"column", alignItems:"center", gap:"0.4rem" }}>
-          <div style={{ fontSize:"0.65rem", color:theme.textMuted, letterSpacing:"0.12em", fontFamily:"'DM Mono', monospace" }}>Z · exit &nbsp;·&nbsp; space · start/pause</div>
+          <div style={{ fontSize:"0.65rem", color:theme.textMuted, letterSpacing:"0.12em", fontFamily:"var(--font-caps)" }}>Z · exit &nbsp;·&nbsp; space · start/pause</div>
           <div style={{ fontSize:"0.72rem", color:theme.textMuted, fontStyle:"italic" }}>🔥 {streakLabel} · {sessionsToday} session{sessionsToday!==1?"s":""} today</div>
         </div>
         <button onClick={()=>setZenMode(false)} style={{ position:"fixed", top:"1.25rem", right:"1.25rem", ...btn(false), fontSize:"0.72rem", padding:"0.3rem 0.7rem", opacity:0.4 }}>✦ Exit</button>
@@ -671,49 +674,67 @@ export default function App() {
 
   // ── Normal Mode ───────────────────────────────────────────────
   return (
-    <div style={{ minHeight:"100vh", background:theme.bg, fontFamily:"'Outfit', system-ui, sans-serif", color:theme.text, transition:"background 0.4s, color 0.3s", position:"relative", overflow:"hidden" }}>
+    <div style={{ minHeight:"100vh", background:theme.bg, fontFamily:"var(--font-body)", color:theme.text, transition:"background 0.4s, color 0.3s", position:"relative", overflow:"hidden" }}>
       <style>{globalStyles}</style>
       {running && phase==="work" && <div className="aurora-wrap"><div className="aurora-1"/><div className="aurora-2"/><div className="aurora-3"/></div>}
 
-      {showGate           && <MorningGate   theme={theme} opsTouchedToday={opsTouchedToday} onChoice={handleGateChoice}/>}
-      {showIntentionModal && <IntentionModal theme={theme} onSet={handleSetIntention} existing={intention}/>}
       {showSkipModal      && <SkipBreakModal theme={theme} onSkip={handleSkipBreak} onTakeBreak={handleTakeBreak} sessionsToday={sessionsToday} consecutiveSkips={consecutiveSkips}/>}
       {showTaskSwap       && <TaskSwapModal  theme={theme} tasks={tasks} completedCount={tasks.filter(t=>t.done).length} onSelect={handleTaskSwapSelect} onSkip={handleTaskSwapSkip}/>}
-      {showSchedule       && <ScheduleSidebar theme={theme} onClose={() => setShowSchedule(false)}/>}
 
       <div style={{ maxWidth:900, margin:"0 auto", padding:"2rem 1.25rem", position:"relative", zIndex:2 }}>
 
         {/* Header */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1.75rem", flexWrap:"wrap", gap:"0.75rem" }}>
-          <div>
-            <div style={{ fontWeight:600, fontSize:"1.8rem", color:theme.text, letterSpacing:"-0.02em", lineHeight:1, fontFamily:"'Outfit', system-ui, sans-serif" }}>Sage & Steph</div>
-            <div style={{ fontSize:"0.62rem", color:theme.textMuted, letterSpacing:"0.15em", textTransform:"uppercase", marginTop:3, fontFamily:"'DM Mono', monospace" }}>Focus Dashboard · v{VERSION}</div>
+          <div style={{ display:"flex", alignItems:"center", gap:"0.7rem" }}>
+            {DR && <Emblem name="moon-face" size={52}/>}
+            <div>
+            <div style={{ fontWeight:DR?400:600, fontSize:DR?"2.1rem":"1.8rem", color:theme.text, letterSpacing:DR?"0":"-0.02em", lineHeight:1, fontFamily:"var(--font-display)" }}>Sage & Steph</div>
+            <div style={{ fontSize:"0.62rem", color:DR?theme.accentInk:theme.textMuted, letterSpacing:DR?"0.22em":"0.15em", textTransform:"uppercase", marginTop:DR?6:3, fontFamily:"var(--font-caps)" }}>Focus Dashboard · v{VERSION}</div>
+            </div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:"0.75rem", flexWrap:"wrap" }}>
+            {DR && (
+              <span style={{ display:"inline-flex", alignItems:"center", gap:"0.45rem", fontStyle:"italic", color:theme.textMuted, fontSize:"0.85rem" }}>
+                <MoonPhase theme={theme} size={16}/>{moonOf(new Date()).name}
+              </span>
+            )}
             <LiveClock color={theme.textMuted}/>
-            <div style={{ display:"flex", gap:"0.35rem", alignItems:"center" }}>
-              {THEMES.map(t => (
-                <button key={t.key} onClick={()=>switchTheme(t)} title={t.label} style={{ width:18, height:18, borderRadius:"50%", background:t.accent, border:theme.key===t.key?`2px solid ${theme.text}`:"2px solid transparent", cursor:"pointer", padding:0, transition:"transform 0.15s", transform:theme.key===t.key?"scale(1.3)":"scale(1)" }}/>
-              ))}
-            </div>
-            <button style={{ ...btn(false), fontSize:"0.72rem", padding:"0.3rem 0.65rem", background: showSchedule ? `${theme.accent}22` : "transparent" }} onClick={()=>setShowSchedule(p=>!p)} title="Today's schedule">⏱ Schedule</button>
-            <button style={{ ...btn(false), fontSize:"0.72rem", padding:"0.3rem 0.65rem" }} onClick={()=>setZenMode(p=>!p)} title="Zen mode (Z)">⬡ Zen</button>
-            <button onClick={() => setShowIntentionModal(true)} title="Set today's intention" style={{ ...btn(false), fontSize:"0.72rem", padding:"0.3rem 0.65rem", opacity: intention ? 1 : 0.6 }}>✦ Intention</button>
+            {/* The crescent toggle: Candlelight ↔ Daylight. The moon knob waxes as it turns on. */}
+            {(() => {
+              const day = theme.key === "daylight";
+              const next = THEMES.find(t => t.key === (day ? "candlelight" : "daylight"));
+              return (
+                <button
+                  role="switch" aria-checked={day} aria-label="Daylight mode"
+                  title={day ? "Daylight · switch to Candlelight" : "Candlelight · switch to Daylight"}
+                  onClick={() => switchTheme(next)}
+                  style={{ display:"inline-flex", alignItems:"center", gap:"0.55rem", background:"none", border:"none", padding:0, cursor:"pointer", color:theme.textMuted }}
+                >
+                  <span style={{ position:"relative", width:58, height:30, flex:"none", borderRadius:999, background:"linear-gradient(180deg, #f1dca0 0%, #c9a35b 22%, #8a6630 48%, #b48a45 70%, #e4c784 88%, #9a743c 100%)", filter:"drop-shadow(0 2px 3px rgba(0,0,0,.4))" }}>
+                    <span style={{ position:"absolute", inset:2, borderRadius:999, background: day ? "radial-gradient(circle at 50% 30%, #1d7a7d, #0f5960)" : "radial-gradient(circle at 50% 30%, #2e2145, #140f1e)", boxShadow:"inset 0 1px 3px rgba(0,0,0,.7)", transition:"background .18s ease" }}/>
+                    <span style={{ position:"absolute", top:4, left: day ? 32 : 4, width:22, height:22, borderRadius:"50%", overflow:"hidden", background:"radial-gradient(circle at 35% 30%, #fbf1d4, #e9d7ae 60%, #c9a35b)", boxShadow:"0 1px 2px rgba(0,0,0,.6)", transition:"left .18s ease" }}>
+                      <span style={{ position:"absolute", top:-3, left: day ? -26 : -9, width:22, height:22, borderRadius:"50%", background:"#140f1e", transition:"left .18s ease" }}/>
+                    </span>
+                  </span>
+                  <span style={{ fontFamily:"var(--font-caps)", fontSize:"0.62rem", letterSpacing:"0.2em", textTransform:"uppercase" }}>{day ? "Daylight" : "Candlelight"}</span>
+                </button>
+              );
+            })()}
+            <button style={{ ...btn(false), fontSize:"0.72rem", padding:"0.3rem 0.65rem" }} onClick={()=>setZenMode(p=>!p)} title="Zen mode (Z)">{DR ? <span style={{ display:"inline-flex", alignItems:"center", gap:"0.4rem" }}><LineIcon name="eye" size={15}/>Zen</span> : "⬡ Zen"}</button>
           </div>
         </div>
 
-        {intention && (
-          <div style={{ marginBottom:"1rem" }}>
-            <IntentionChip intention={intention} accent={theme.accent} textMuted={theme.textMuted} isDark={isDark} onEdit={() => setShowIntentionModal(true)}/>
-          </div>
-        )}
-
-        {/* Timer Panel */}
-        <div style={panel}>
+        {/* Timer Panel — the featured thing on the view */}
+        <div style={{ ...panel, position:"relative" }}>
+          {DR && <OrnateCorners color={theme.accentInk}/>}
           <div style={{ display:"flex", justifyContent:"center", marginBottom:"0.75rem" }}>
-            <span style={{ background:`${phaseColor}22`, color:phaseColor, borderRadius:20, padding:"0.2rem 0.9rem", fontSize:"0.65rem", fontWeight:700, letterSpacing:"0.15em", textTransform:"uppercase", fontFamily:"'DM Mono', monospace" }}>
-              {phaseLabel}
-            </span>
+            {DR
+              ? <span className="dr-rule" style={{ width:"min(320px, 80%)", fontFamily:"var(--font-caps)", fontSize:"0.72rem", letterSpacing:"0.22em", textTransform:"uppercase", color:theme.accentInk }}>
+                  <LineIcon name={phase==="work" ? "star" : "crescent"} size={13}/>{phaseLabel}<LineIcon name={phase==="work" ? "star" : "crescent"} size={13}/>
+                </span>
+              : <span style={{ background:`${phaseColor}22`, color:phaseColor, borderRadius:20, padding:"0.2rem 0.9rem", fontSize:"0.65rem", fontWeight:700, letterSpacing:"0.15em", textTransform:"uppercase", fontFamily:"var(--font-caps)" }}>
+                  {phaseLabel}
+                </span>}
           </div>
 
           <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", justifyContent:"center", marginBottom:"0.75rem", alignItems:"center" }}>
@@ -733,7 +754,7 @@ export default function App() {
           )}
 
           <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", justifyContent:"center", marginBottom:"1rem", flexWrap:"wrap" }}>
-            <span style={{ fontSize:"0.65rem", color:theme.textMuted, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.1em", fontFamily:"'DM Mono', monospace" }}>Custom:</span>
+            <span style={{ fontSize:"0.65rem", color:theme.textMuted, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.1em", fontFamily:"var(--font-caps)" }}>Custom:</span>
             <input value={customW} onChange={e=>setCustomW(e.target.value)} placeholder="Work min" onKeyDown={e=>e.key==="Enter"&&applyCustom()} style={{ ...inp, width:80, textAlign:"center", fontSize:"0.88rem" }}/>
             <span style={{ color:theme.textMuted, fontSize:"0.85rem" }}>/</span>
             <input value={customB} onChange={e=>setCustomB(e.target.value)} placeholder="Break min" onKeyDown={e=>e.key==="Enter"&&applyCustom()} style={{ ...inp, width:80, textAlign:"center", fontSize:"0.88rem" }}/>
@@ -743,46 +764,46 @@ export default function App() {
           <div style={{ display:"flex", justifyContent:"center", marginBottom:"0.75rem" }}>
             <div className={running?"timer-pulse":""}>
               <TimerRing pct={timerPct} color={phaseColor} running={running}>
-                <div className="timer-breath" style={{ fontSize:"2.6rem", fontWeight:500, letterSpacing:"-0.03em", color:theme.text, fontFamily:"'Outfit', system-ui, sans-serif" }}>{fmt(timeLeft)}</div>
-                {phase === "work" && intention && !focusedTask && (
-                  <div className="intention-float" style={{ fontSize:"0.6rem", color:theme.accent, maxWidth:110, textAlign:"center", marginTop:4, fontStyle:"italic", lineHeight:1.3, opacity:0.65 }}>
-                    {intention.length > 40 ? intention.slice(0,38)+"…" : intention}
-                  </div>
-                )}
+                <div className="timer-breath" style={{ fontSize:DR?"3rem":"2.6rem", fontWeight:DR?400:500, letterSpacing:DR?"0":"-0.03em", color:theme.text, fontFamily:DR?"var(--font-display)":"var(--font-body)" }}>{fmt(timeLeft)}</div>
                 {focusedTask
                   ? <div style={{ fontSize:"0.68rem", color:phaseColor, maxWidth:130, textAlign:"center", marginTop:4, fontWeight:600, fontStyle:"italic", lineHeight:1.3 }}>✦ {focusedTask.text}</div>
-                  : !intention && <div style={{ fontSize:"0.62rem", color:theme.textMuted, marginTop:4, textAlign:"center", fontStyle:"italic" }}>pick a task below</div>
+                  : <div style={{ fontSize:"0.62rem", color:theme.textMuted, marginTop:4, textAlign:"center", fontStyle:"italic" }}>pick a task below</div>
                 }
               </TimerRing>
             </div>
           </div>
 
-          {needTask && <div className="need-task" style={{ textAlign:"center", color:"#f87171", fontSize:"0.88rem", marginBottom:"0.6rem", fontStyle:"italic" }}>Choose a task to focus on first.</div>}
+          <div style={{ marginBottom:"1rem" }}>
+            <IntentionChip intention={intention} theme={theme} onSet={handleSetIntention}/>
+          </div>
+
+          {needTask && <div className="need-task" style={{ textAlign:"center", color:theme.error || "#f87171", fontSize:"0.88rem", marginBottom:"0.6rem", fontStyle:"italic" }}>Choose a task to focus on first.</div>}
 
           <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap", justifyContent:"center" }}>
             {!running
-              ? <button className={!focusedTaskId && phase==="work"?"start-pulse":""} style={{ ...btn(true), fontSize:"0.95rem", padding:"0.55rem 1.6rem" }} onClick={handleStart}>▶ {phase==="work"?"Begin Focus":"Begin Break"}</button>
+              ? <button className={!focusedTaskId && phase==="work"?"start-pulse":""} style={{ ...btn(DR ? "invite" : true), fontSize:DR?"0.82rem":"0.95rem", padding:"0.55rem 1.6rem" }} onClick={handleStart}>▶ {phase==="work"?"Begin Focus":"Begin Break"}</button>
               : <button style={{ ...btn(true), fontSize:"0.95rem", padding:"0.55rem 1.6rem" }} onClick={handlePause}>⏸ Pause</button>
             }
             <button style={{ ...btn(false), padding:"0.55rem 1rem" }} onClick={handleReset}>↺ Reset</button>
             <button style={{ ...pill(autoCycle), padding:"0.4rem 0.9rem" }} onClick={toggleAutoCycle} title="Auto-cycle: flow focus → break → focus automatically">
-              {autoCycle ? "🔁 Auto-cycle: on" : "🔁 Auto-cycle: off"}
+              {DR
+                ? <span style={{ display:"inline-flex", alignItems:"center", gap:"0.4rem" }}><LineIcon name="crescent" size={14}/>Auto-cycle: {autoCycle ? "on" : "off"}</span>
+                : (autoCycle ? "🔁 Auto-cycle: on" : "🔁 Auto-cycle: off")}
             </button>
           </div>
 
           {autoCycle && phase==="break" && running && (
             <div style={{ textAlign:"center", marginTop:"0.6rem" }}>
               <span onClick={() => { handlePause(); setShowSkipModal(true); }} style={{ fontSize:"0.8rem", color:theme.accent, cursor:"pointer", fontStyle:"italic" }}>
-                🌿 skip break
+                {DR ? <><LineIcon name="sprig" size={14}/> skip break</> : "🌿 skip break"}
               </span>
             </div>
           )}
 
           <div style={{ textAlign:"center", marginTop:"0.75rem" }}>
             <div style={{ fontSize:"0.75rem", color:theme.textMuted, fontStyle:"italic" }}>
-              🔥 {streakLabel} · {sessionsToday} session{sessionsToday!==1?"s":""} today
+              {DR ? <LineIcon name="candle" size={14} style={{ color:theme.accentInk }}/> : "🔥"} {streakLabel} · {sessionsToday} session{sessionsToday!==1?"s":""} today
             </div>
-            <PaceIndicator sessionsToday={sessionsToday} consecutiveSkips={consecutiveSkips} sessionTimestamps={sessionTimestamps} accent={theme.accent} textMuted={theme.textMuted} isDark={isDark}/>
           </div>
 
           {!running && timeLeft<(workMins*60) && timeLeft>0 && phase==="work" && focusedTaskId && (
@@ -797,15 +818,15 @@ export default function App() {
           <SoundscapePanel theme={theme} activeSounds={activeSounds} soundVol={soundVol} onToggle={toggleSound} onVolumeChange={setSoundVol} panelStyle={panel}/>
         </ErrorBoundary>
 
-        {/* Sprint Pulse */}
-        <ErrorBoundary label="sprint pulse">
-          <SprintPulse theme={theme} panelStyle={panel} btnStyle={btn} inpStyle={inp}/>
-        </ErrorBoundary>
-
         {/* Tab Bar */}
         <div style={{ display:"flex", gap:"0.4rem", marginBottom:"1rem", flexWrap:"wrap" }}>
-          {[["tasks","📋 Tasks"],["pi","🗂 PI Parking Lot"],["readiness","🧭 PI Readiness"]].map(([k,l])=>(
-            <button key={k} style={{ ...pill(activeTab===k), fontSize:"0.82rem", padding:"0.4rem 1rem" }} onClick={()=>setActiveTab(k)}>{l}</button>
+          {(DR
+            ? [["tasks","cards","Tasks"],["pi","crystal","PI Parking Lot"],["ledger","planchette","Ledger"]]
+            : [["tasks",null,"📋 Tasks"],["pi",null,"🗂 PI Parking Lot"],["ledger",null,"📜 Ledger"]]
+          ).map(([k,icon,l])=>(
+            <button key={k} style={{ ...pill(activeTab===k), fontSize:DR?"0.7rem":"0.82rem", padding:"0.45rem 1rem", display:"inline-flex", alignItems:"center", gap:"0.45rem" }} onClick={()=>setActiveTab(k)}>
+              {icon && <LineIcon name={icon} size={15} style={{ color:theme.accentInk }}/>}{l}
+            </button>
           ))}
         </div>
 
@@ -813,9 +834,9 @@ export default function App() {
         {activeTab==="tasks" && (
           <ErrorBoundary label="tasks">
           <DailyOps
-            theme={theme} panelStyle={panel} btnStyle={btn} inpStyle={inp}
-            onTouched={() => setOpsTouchedToday(true)}
-            highlight={orientHighlight}
+            theme={theme} panelStyle={panel} btnStyle={btn} pillStyle={pill} inpStyle={inp}
+            tasks={tasks} focusedTaskId={focusedTaskId}
+            onFocusOp={focusOp} onToggleLinked={toggleTask}
           />
           <TasksTab
             theme={theme} tasks={tasks} saveTasks={saveTasks}
@@ -852,15 +873,16 @@ export default function App() {
           </ErrorBoundary>
         )}
 
-        {/* PI Readiness Tab */}
-        {activeTab==="readiness" && (
-          <ErrorBoundary label="PI readiness">
-            <PIReadiness theme={theme}/>
+        {/* Ledger Tab */}
+        {activeTab==="ledger" && (
+          <ErrorBoundary label="ledger">
+            <LedgerTab theme={theme} panelStyle={panel} pillStyle={pill}/>
           </ErrorBoundary>
         )}
 
         {/* Footer */}
-        <div style={{ textAlign:"center", marginTop:"1.5rem", fontSize:"0.6rem", color:theme.textMuted, letterSpacing:"0.1em", fontFamily:"'DM Mono', monospace" }}>
+        {DR && <StarDivider color={theme.accentInk} width={90} style={{ marginTop:"1.75rem" }}/>}
+        <div style={{ textAlign:"center", marginTop:"1.5rem", fontSize:"0.6rem", color:theme.textMuted, letterSpacing:"0.1em", fontFamily:"var(--font-caps)" }}>
           space · start/pause &nbsp;·&nbsp; Z · zen &nbsp;·&nbsp; click focus on a task to begin
         </div>
       </div>
