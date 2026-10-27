@@ -6,6 +6,12 @@ Enhancements and ideas captured as we build. Items move from **Backlog → In Pr
 
 ## Done
 
+- [x] **The day arc, the evening face, and the seed on the sill (v6.2.0)** *(2026-10-27)*
+  **Day arc:** a panel above the timer traces the workday from start to hard stop, with a rose mark at the log-off aim (defaults: 8:00 start, log off by 3:30, hard stop 4:00, Mon–Fri; edit under **Hours**). It counts down to the aim, then says "You can go" with a **Close the day** plaque.
+  **What this work pays for:** her own list (in Hours), one line shown under the arc through the day, all of it on the evening face.
+  **Evening face:** after Close the day, or automatically past the hard stop (never mid-session), the work folds away: "The workday is closed," focused time, things finished, evenings reclaimed this month (days closed on or before the hard stop; only counts up), what the work paid for, and the plant. "Open the work again for a bit" brings it back for that day.
+  **The seed on the sill:** a drawn plant fed by finished tasks and daily ops (each counts once, so re-checking can't farm it). Seed → sprout → leaves → bud → bloom at 12; press the bloom into the herbarium and choose the next seed (moonflower, foxglove, poppy, lavender). New parts grow in with a small bright note; it sways slowly; it never wilts.
+
 - [x] **End-of-session pull, Spectral labels, sheet iconography (v6.1.0)** *(2026-10-27)*
   **Session pull:** when a focus session ends, a face-down card is offered (the break keeps running behind it). Turn it with a click or Enter, or "Not now" at no cost. 16 cards — invitations for the break, reflections, and a few true small wonders — with painted art; the Luna Moth is a rare pull. Cards already drawn today sit out until the whole deck has been seen. Every turned card is kept: **Today's spread** in the Ledger, plus a running count of all cards drawn. Soft rising two-note tone on the turn (a shimmer on the rare one). `?pull` or `#pull` in the URL offers a practice card.
   **Type:** Cinzel now only marks the plaques you commit with (Begin Focus, Add, Park, Pause), the Focus/Break inscription and the wordmark subtitle. Every small label, chip, tab, sort control and quiet button moved to Spectral in sentence case at readable sizes (0.8–0.95rem). IM Fell English unchanged. Buttons and inputs now inherit the page font (fixed the Arial fallbacks).

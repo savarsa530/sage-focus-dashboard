@@ -1,4 +1,4 @@
-// Sage & Steph Focus Dashboard — v6.1.0
+// Sage & Steph Focus Dashboard — v6.2.0
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { THEMES, PRESETS } from "./constants";
@@ -17,11 +17,18 @@ import DailyOps        from "./components/DailyOps";
 import LedgerTab       from "./components/LedgerTab";
 import SessionPull     from "./components/SessionPull";
 import { DECK, drawCard, recordPull } from "./deck";
+import DayArc      from "./components/DayArc";
+import Garden      from "./components/Garden";
+import EveningFace from "./components/EveningFace";
+import { loadPlan, savePlan, dayState, loadCloses, closeDay, reopenDay } from "./workday";
+import { loadGarden, feed } from "./garden";
+import { playGrow } from "./audio";
+import { dayKey } from "./utils";
 import { Emblem, LineIcon, MoonPhase, OrnateCorners, StarDivider } from "./components/Witchy";
 import { emblemUrl } from "./glyphs";
 import { moonOf } from "./moon";
 
-const VERSION = "6.1.0 · 2026-10-27";
+const VERSION = "6.2.0 · 2026-10-27";
 
 export default function App() {
 
@@ -115,6 +122,15 @@ export default function App() {
   // ?pull or #pull in the URL offers a practice card on load, to try it without a session.
   const [pullCard, setPullCard] = useState(() => (typeof location !== "undefined" && (/[?&]pull\b/.test(location.search) || location.hash === "#pull")) ? drawCard() : null);
   const pullTaskRef = useRef(null);
+
+  // ── Workday shape, the garden, and the evening face ───────────
+  const [plan, setPlan]     = useState(loadPlan);
+  const [clock, setClock]   = useState(() => new Date());
+  const [closes, setCloses] = useState(loadCloses);
+  const [garden, setGarden] = useState(loadGarden);
+  useEffect(() => { const id = setInterval(() => setClock(new Date()), 30000); return () => clearInterval(id); }, []);
+  const handleSavePlan = (p) => { savePlan(p); setPlan(p); };
+  const feedGarden = (key) => { const { garden: g, grew } = feed(key); setGarden(g); if (grew) playGrow(); };
   // Fetch every card's art when the dashboard opens, so the face is already
   // in the browser cache when a card turns 25 minutes later.
   useEffect(() => {
@@ -367,6 +383,7 @@ export default function App() {
     const nowDone = !task.done;
     const updatedTasks = tasks.map(t => t.id === id ? {...t, done: nowDone} : t);
     saveTasks(updatedTasks);
+    if (nowDone) feedGarden(`task:${id}`);
     if (nowDone && id === focusedTaskId && phase === "work") {
       endsAtRef.current = null;
       const remainingUnchecked = updatedTasks.filter(t => !t.done);
@@ -515,6 +532,16 @@ export default function App() {
   const streakLabel = streak===0 ? (DR ? "A new streak begins" : "Start your streak!") : streak===1 ? (DR ? "1 day" : "1 day 🌱") : (DR ? `${streak} days running` : `${streak} days 🔥`);
   const focusedTask = tasks.find(t => t.id === focusedTaskId);
 
+  // Evening: the day was closed by hand, or it's past the hard stop and not reopened.
+  const ds         = dayState(plan, clock);
+  const todayClose = closes[dayKey(clock)];
+  const reopened   = !!todayClose?.reopened;
+  const closedAt   = todayClose?.closedAt && !reopened ? todayClose.closedAt : null;
+  const evening    = DR && !running && (!!closedAt || (ds.phase === "over" && !reopened));
+  const handleCloseDay = () => setCloses(closeDay());
+  const handleReopen   = () => setCloses(reopenDay());
+  const doneToday  = garden.days?.[dayKey(clock)] || 0;
+
   // Deck Room: paper is flat, square and framed with double rules; brass is what you press.
   const GRAIN = isDark
     ? "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.12'/></svg>\")"
@@ -603,6 +630,12 @@ export default function App() {
     .pull-card.turned{filter:drop-shadow(0 0 16px ${theme.brass}40);}
     .pull-card.turned.rare{animation:rareGlow 3.2s ease-in-out .8s infinite;}
     .pull-after{animation:afterIn .4s ease-out .55s both;}
+    @keyframes partIn{from{transform:scale(0);opacity:0;}to{transform:scale(1);opacity:1;}}
+    @keyframes stemIn{from{stroke-dasharray:0 200;}to{stroke-dasharray:200 0;}}
+    @keyframes sway{0%,100%{transform:rotate(-1.2deg);}50%{transform:rotate(1.2deg);}}
+    .plant-sway{transform-origin:50% 92%;animation:sway 7s ease-in-out infinite;}
+    @keyframes arcGlow{0%,100%{filter:drop-shadow(0 0 3px ${theme.brass}66);}50%{filter:drop-shadow(0 0 9px ${theme.brassHi}aa);}}
+    .arc-glow{animation:arcGlow 4s ease-in-out infinite;}
     body{background:${theme.bg};}
     ::placeholder{color:${theme.textMuted}70;font-family:var(--font-body);}
     input:focus,textarea:focus{border-color:${theme.accent}99!important;box-shadow:0 0 0 3px ${theme.accent}22!important;outline:none;}
@@ -753,6 +786,13 @@ export default function App() {
           </div>
         </div>
 
+        {evening ? (
+          <EveningFace theme={theme} plan={plan} closedAt={closedAt} garden={garden} onGardenChange={setGarden}
+            onReopen={handleReopen} tasksDoneToday={doneToday} panelStyle={panel}/>
+        ) : (<>
+
+        {DR && <DayArc theme={theme} plan={plan} now={clock} onSavePlan={handleSavePlan} onCloseDay={handleCloseDay} panelStyle={panel} running={running}/>}
+
         {/* Timer Panel — the featured thing on the view */}
         <div style={{ ...panel, position:"relative" }}>
           {DR && <OrnateCorners color={theme.accentInk}/>}
@@ -842,6 +882,9 @@ export default function App() {
           )}
         </div>
 
+        {/* The seed on the sill */}
+        {DR && <div style={panel}><Garden theme={theme} garden={garden} onChange={setGarden}/></div>}
+
         {/* Soundscape Panel */}
         <ErrorBoundary label="ambience">
           <SoundscapePanel theme={theme} activeSounds={activeSounds} soundVol={soundVol} onToggle={toggleSound} onVolumeChange={setSoundVol} panelStyle={panel}/>
@@ -866,6 +909,7 @@ export default function App() {
             theme={theme} panelStyle={panel} btnStyle={btn} pillStyle={pill} inpStyle={inp}
             tasks={tasks} focusedTaskId={focusedTaskId}
             onFocusOp={focusOp} onToggleLinked={toggleTask}
+            onOpDone={(op) => feedGarden(`op:${dayKey()}:${op.id}`)}
           />
           <TasksTab
             theme={theme} tasks={tasks} saveTasks={saveTasks}
@@ -909,11 +953,13 @@ export default function App() {
           </ErrorBoundary>
         )}
 
+        </>)}
+
         {/* Footer */}
         {DR && <StarDivider color={theme.accentInk} width={90} style={{ marginTop:"1.75rem" }}/>}
-        <div style={{ textAlign:"center", marginTop:"1.5rem", fontSize:"0.8rem", color:theme.textMuted, letterSpacing:"0.01em", fontFamily:"var(--font-body)" }}>
+        {!evening && <div style={{ textAlign:"center", marginTop:"1.5rem", fontSize:"0.8rem", color:theme.textMuted, letterSpacing:"0.01em", fontFamily:"var(--font-body)" }}>
           space · start/pause &nbsp;·&nbsp; Z · zen &nbsp;·&nbsp; click focus on a task to begin
-        </div>
+        </div>}
       </div>
       {showCompletionFlash && <div className="completion-flash"/>}
       {pullCard && <SessionPull key={pullCard.id} theme={theme} card={pullCard} breakRunning={phase==="break" && running} onReveal={(c) => recordPull(c, pullTaskRef.current)} onClose={() => setPullCard(null)}/>}

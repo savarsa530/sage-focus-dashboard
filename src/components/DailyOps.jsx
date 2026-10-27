@@ -26,7 +26,7 @@ function saveTemplate(template) {
 
 // Daily ops are starter tasks: a fresh checklist each day, and any op can be
 // focused, which pops it into the task list so its time is tracked.
-export default function DailyOps({ theme, panelStyle, btnStyle, pillStyle, inpStyle, tasks = [], focusedTaskId, onFocusOp, onToggleLinked }) {
+export default function DailyOps({ theme, panelStyle, btnStyle, pillStyle, inpStyle, tasks = [], focusedTaskId, onFocusOp, onToggleLinked, onOpDone }) {
   const DR = !!theme.deckRoom;
   const isDark = theme.isDark;
   const [collapsed, setCollapsed] = useState(false);
@@ -57,6 +57,7 @@ export default function DailyOps({ theme, panelStyle, btnStyle, pillStyle, inpSt
     persist(items.map(i => i.id === id ? { ...i, checked: next } : i));
     const t = linkedTask(item);
     if (t && t.done !== next) onToggleLinked?.(t.id);   // keep the popped-in task in step
+    if (!t && next) onOpDone?.(item);                     // a finished op feeds the garden
   };
 
   const addItem = () => {
