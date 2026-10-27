@@ -1,10 +1,41 @@
+// The Deck Room design system — Candlelight (dark, default) and Daylight.
+// Tokens: https://claude.ai/artifact/CNppAkVLLWUh7RFrkZ43bF
+const DECK_ROOM_FONTS = {
+  body:    "'Spectral', Georgia, serif",
+  caps:    "'Cinzel', 'Trajan Pro', Georgia, serif",
+  display: "'IM Fell English', 'Iowan Old Style', Georgia, serif",
+};
+const CLASSIC_FONTS = {
+  body:    "'Outfit', system-ui, sans-serif",
+  caps:    "'DM Mono', monospace",
+  display: "'Outfit', system-ui, sans-serif",
+};
+const DECK_ROOM_SHARED = {
+  deckRoom:true, fonts:DECK_ROOM_FONTS,
+  velvet:"#2a1838", velvetHi:"#3b2152",
+  parchment:"#efe4cc", parchmentLo:"#dccdaa", parchmentInk:"#33243f",
+  brassHi:"#f1dca0", brass:"#c9a35b", brassLo:"#8a6630",
+  gem:"#9b6fd8", rose:"#a83d86", cream:"#f4ebdd",
+  shadowMetal:"0 3px 4px rgba(0,0,0,.45)",
+};
+
 export const THEMES = [
-  { key:"liminal",        label:"Liminal",        accent:"#c8923a", bg:"#0c0816", panel:"#1c1338", panelBorder:"#30204e", text:"#ecdff7", textMuted:"#9580b8", timerRing:"#c8923a", auroraColors:["#c8923a","#9b7dbd","#4ecdc0"], shadowSoft:"0 2px 8px rgba(0,0,0,0.15)", isDark:true  },
-  { key:"liminal-botany", label:"Liminal Botany", accent:"#D9A441", bg:"#2A0F24", panel:"#4A2E47", panelBorder:"#5A3A57", text:"#F5F2F0", textMuted:"#8A837C", timerRing:"#D9A441", auroraColors:["#D9A441","#A8FFD9","#F2DCE2"], shadowSoft:"0 2px 8px rgba(0,0,0,0.15)", isDark:true  },
-  { key:"dusk",      label:"Dusk",      accent:"#e89a2a", bg:"#0e0a06", panel:"#201610", panelBorder:"#3c2a18", text:"#f2e6d2", textMuted:"#8c7262", timerRing:"#e89a2a", auroraColors:["#e89a2a","#c46830","#d4a840"], shadowSoft:"0 2px 8px rgba(0,0,0,0.15)", isDark:true  },
-  { key:"forest",    label:"Forest",    accent:"#4ecdc0", bg:"#060c0a", panel:"#0e1a14", panelBorder:"#1c3226", text:"#d6f0e8", textMuted:"#68a090", timerRing:"#4ecdc0", auroraColors:["#4ecdc0","#48a068","#8de8d0"], shadowSoft:"0 2px 8px rgba(0,0,0,0.15)", isDark:true  },
-  { key:"dawn",      label:"Dawn",      accent:"#b85c72", bg:"#faf4f0", panel:"#f2e8e2", panelBorder:"#e0cec4", text:"#281a14", textMuted:"#8a6858", timerRing:"#b85c72", auroraColors:["#b85c72","#c8923a","#9b7dbd"], shadowSoft:"0 2px 8px rgba(0,0,0,0.06)", isDark:false },
-  { key:"amethyst",  label:"Amethyst",  accent:"#6e3eaa", bg:"#f4eefa", panel:"#ece0f8", panelBorder:"#d0bce8", text:"#1c0e2e", textMuted:"#7a6494", timerRing:"#6e3eaa", auroraColors:["#6e3eaa","#b85c72","#c8923a"], shadowSoft:"0 2px 8px rgba(0,0,0,0.06)", isDark:false },
+  { key:"candlelight", label:"Candlelight", ...DECK_ROOM_SHARED,
+    accent:"#c6a15b", accentInk:"#d9b979", primary:"#8c5cc7",
+    bg:"#17131f", panel:"#2b1838", card:"#211a2c", panelBorder:"#4f4032", line:"rgba(198,161,91,.32)",
+    text:"#f4ebdd", textMuted:"#b8adc4", timerRing:"#c6a15b", breakColor:"#86c7c4", error:"#e79ac4",
+    auroraColors:["#8c5cc7","#c6a15b","#0f5960"], shadowSoft:"none", isDark:true },
+  { key:"daylight", label:"Daylight", ...DECK_ROOM_SHARED,
+    accent:"#9a743c", accentInk:"#7a5a2b", primary:"#76529a",
+    bg:"#f5efe3", panel:"#e7dcef", card:"#fbf7ef", panelBorder:"#d1bea0", line:"rgba(154,116,60,.4)",
+    text:"#33243f", textMuted:"#5e4f69", timerRing:"#9a743c", breakColor:"#1d6366", error:"#9c2f6e",
+    auroraColors:["#76529a","#9a743c","#24777a"], shadowSoft:"none", isDark:false },
+  { key:"liminal",        label:"Liminal",        accent:"#c8923a", bg:"#0c0816", panel:"#1c1338", panelBorder:"#30204e", text:"#ecdff7", textMuted:"#9580b8", timerRing:"#c8923a", auroraColors:["#c8923a","#9b7dbd","#4ecdc0"], shadowSoft:"0 2px 8px rgba(0,0,0,0.15)", isDark:true,  fonts:CLASSIC_FONTS },
+  { key:"liminal-botany", label:"Liminal Botany", accent:"#D9A441", bg:"#2A0F24", panel:"#4A2E47", panelBorder:"#5A3A57", text:"#F5F2F0", textMuted:"#8A837C", timerRing:"#D9A441", auroraColors:["#D9A441","#A8FFD9","#F2DCE2"], shadowSoft:"0 2px 8px rgba(0,0,0,0.15)", isDark:true,  fonts:CLASSIC_FONTS },
+  { key:"dusk",      label:"Dusk",      accent:"#e89a2a", bg:"#0e0a06", panel:"#201610", panelBorder:"#3c2a18", text:"#f2e6d2", textMuted:"#8c7262", timerRing:"#e89a2a", auroraColors:["#e89a2a","#c46830","#d4a840"], shadowSoft:"0 2px 8px rgba(0,0,0,0.15)", isDark:true,  fonts:CLASSIC_FONTS },
+  { key:"forest",    label:"Forest",    accent:"#4ecdc0", bg:"#060c0a", panel:"#0e1a14", panelBorder:"#1c3226", text:"#d6f0e8", textMuted:"#68a090", timerRing:"#4ecdc0", auroraColors:["#4ecdc0","#48a068","#8de8d0"], shadowSoft:"0 2px 8px rgba(0,0,0,0.15)", isDark:true,  fonts:CLASSIC_FONTS },
+  { key:"dawn",      label:"Dawn",      accent:"#b85c72", bg:"#faf4f0", panel:"#f2e8e2", panelBorder:"#e0cec4", text:"#281a14", textMuted:"#8a6858", timerRing:"#b85c72", auroraColors:["#b85c72","#c8923a","#9b7dbd"], shadowSoft:"0 2px 8px rgba(0,0,0,0.06)", isDark:false, fonts:CLASSIC_FONTS },
+  { key:"amethyst",  label:"Amethyst",  accent:"#6e3eaa", bg:"#f4eefa", panel:"#ece0f8", panelBorder:"#d0bce8", text:"#1c0e2e", textMuted:"#7a6494", timerRing:"#6e3eaa", auroraColors:["#6e3eaa","#b85c72","#c8923a"], shadowSoft:"0 2px 8px rgba(0,0,0,0.06)", isDark:false, fonts:CLASSIC_FONTS },
 ];
 
 export const PRESETS = [

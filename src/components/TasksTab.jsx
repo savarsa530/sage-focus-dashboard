@@ -58,7 +58,7 @@ export default function TasksTab({
     <>
       {/* Add task */}
       <div style={panelStyle}>
-        <div style={{ fontSize:"0.62rem", fontWeight:600, color:theme.textMuted, letterSpacing:"0.12em", textTransform:"uppercase", marginBottom:"0.7rem", fontFamily:"'DM Mono', monospace" }}>Today's Focus</div>
+        <div style={{ fontSize:"0.62rem", fontWeight:600, color:theme.textMuted, letterSpacing:"0.12em", textTransform:"uppercase", marginBottom:"0.7rem", fontFamily:"var(--font-caps)" }}>Today's Focus</div>
         <div style={{ display:"flex", gap:"0.5rem" }}>
           <input style={inpStyle} placeholder="Add a task…" value={newTask} onChange={e=>setNewTask(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addTask()}/>
           <button style={btnStyle(true)} onClick={addTask}>Add</button>
@@ -68,7 +68,7 @@ export default function TasksTab({
       {/* Task list */}
       <div style={panelStyle}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"0.75rem", flexWrap:"wrap", gap:"0.5rem" }}>
-          <div style={{ fontSize:"0.62rem", fontWeight:600, color:theme.textMuted, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:"'DM Mono', monospace" }}>
+          <div style={{ fontSize:"0.62rem", fontWeight:600, color:theme.textMuted, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:"var(--font-caps)" }}>
             Tasks ({tasks.filter(t=>!t.done).length} open)
           </div>
           <div style={{ display:"flex", gap:"0.35rem", flexWrap:"wrap", alignItems:"center" }}>
@@ -81,7 +81,7 @@ export default function TasksTab({
         </div>
 
         {canDrag && tasks.length > 1 && (
-          <div style={{ fontSize:"0.62rem", color:theme.textMuted, marginBottom:"0.5rem", textAlign:"right", fontFamily:"'DM Mono', monospace" }}>drag ⠿ to reorder</div>
+          <div style={{ fontSize:"0.62rem", color:theme.textMuted, marginBottom:"0.5rem", textAlign:"right", fontFamily:"var(--font-caps)" }}>drag ⠿ to reorder</div>
         )}
 
         {sortedTasks.length === 0 && (
@@ -128,12 +128,12 @@ export default function TasksTab({
                     {task.text}
                   </div>
                   {(task.focusSecs||0) > 0 && !task.done && (
-                    <div style={{ fontSize:"0.65rem", color:theme.accent, marginTop:1, fontWeight:600, fontFamily:"'DM Mono', monospace" }}>
+                    <div style={{ fontSize:"0.65rem", color:theme.accent, marginTop:1, fontWeight:600, fontFamily:"var(--font-caps)" }}>
                       ⏱ {fmtMins(task.focusSecs)} invested
                     </div>
                   )}
                 </div>
-                <button onClick={()=>cyclePriority(task.id)} title={pLabel(task.priority)} style={{ background:"none", border:`1px solid ${pColor(task.priority)}44`, borderRadius:6, cursor:"pointer", fontSize:"0.65rem", color:pColor(task.priority), fontWeight:700, padding:"1px 5px", flexShrink:0, fontFamily:"'DM Mono', monospace" }}>
+                <button onClick={()=>cyclePriority(task.id)} title={pLabel(task.priority)} style={{ background:"none", border:`1px solid ${pColor(task.priority)}44`, borderRadius:6, cursor:"pointer", fontSize:"0.65rem", color:pColor(task.priority), fontWeight:700, padding:"1px 5px", flexShrink:0, fontFamily:"var(--font-caps)" }}>
                   {task.priority[0].toUpperCase()}
                 </button>
                 {!task.done && (
@@ -156,7 +156,7 @@ export default function TasksTab({
 
       {/* Side Quests */}
       <div style={panelStyle}>
-        <div style={{ fontSize:"0.62rem", fontWeight:600, color:theme.textMuted, letterSpacing:"0.12em", textTransform:"uppercase", marginBottom:"0.4rem", fontFamily:"'DM Mono', monospace" }}>⚡ Side Quests</div>
+        <div style={{ fontSize:"0.62rem", fontWeight:600, color:theme.textMuted, letterSpacing:"0.12em", textTransform:"uppercase", marginBottom:"0.4rem", fontFamily:"var(--font-caps)" }}>⚡ Side Quests</div>
         <div style={{ fontSize:"0.82rem", color:theme.textMuted, marginBottom:"0.75rem", fontStyle:"italic" }}>Stray thoughts go here. Don't break flow — park it.</div>
         <div style={{ display:"flex", gap:"0.5rem", marginBottom:"0.75rem" }}>
           <input style={inpStyle} placeholder="Park a distraction…" value={newQuest} onChange={e=>setNewQuest(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addQuest()}/>

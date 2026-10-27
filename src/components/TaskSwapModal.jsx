@@ -18,7 +18,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
       <div style={{ textAlign:"center", marginBottom:"1.5rem" }}>
         <div style={{
           fontSize:"0.6rem", letterSpacing:"0.22em", textTransform:"uppercase",
-          color:theme.accent, fontFamily:"'Outfit', system-ui, sans-serif",
+          color:theme.accent, fontFamily:"var(--font-body)",
           fontStyle:"italic", marginBottom:"0.5rem", opacity:0.85,
         }}>
           task complete
@@ -28,7 +28,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
           background: isDark ? `${theme.accent}14` : `${theme.accent}12`,
           border:`1px solid ${theme.accent}35`,
           borderRadius:20, padding:"0.3rem 1rem",
-          fontFamily:"'Outfit', system-ui, sans-serif",
+          fontFamily:"var(--font-body)",
           fontSize:"1rem", fontStyle:"italic",
           color: isDark ? "#c4b5f8" : "#5b3f8a",
         }}>
@@ -36,7 +36,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
           <span>{completedCount} completed this session</span>
         </div>
         <h2 style={{
-          fontFamily:"'Outfit', system-ui, sans-serif",
+          fontFamily:"var(--font-body)",
           fontSize:"1.55rem", fontWeight:600,
           color: isDark ? "#e8e0f8" : "#2d1854",
           letterSpacing:"-0.01em", lineHeight:1.2, margin:"1rem 0 0",
@@ -48,7 +48,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
 
       {suggested && (
         <div style={{ marginBottom:"1rem" }}>
-          <div style={{ fontSize:"0.6rem", color:theme.textMuted, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:"'DM Mono', monospace", marginBottom:"0.5rem" }}>
+          <div style={{ fontSize:"0.6rem", color:theme.textMuted, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:"var(--font-caps)", marginBottom:"0.5rem" }}>
             suggested
           </div>
           <button
@@ -64,16 +64,16 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
           >
             <span style={{ width:8, height:8, borderRadius:"50%", background: pColor(suggested.priority), flexShrink:0, boxShadow:`0 0 6px ${pColor(suggested.priority)}88` }}/>
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontFamily:"'Outfit', system-ui, sans-serif", fontSize:"1rem", fontWeight:600, color: isDark ? "#e8e0f8" : "#2d1854", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+              <div style={{ fontFamily:"var(--font-body)", fontSize:"1rem", fontWeight:600, color: isDark ? "#e8e0f8" : "#2d1854", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                 {suggested.text}
               </div>
               {(suggested.focusSecs||0) > 0 && (
-                <div style={{ fontSize:"0.65rem", color:theme.accent, marginTop:2, fontFamily:"'DM Mono', monospace" }}>
+                <div style={{ fontSize:"0.65rem", color:theme.accent, marginTop:2, fontFamily:"var(--font-caps)" }}>
                   ⏱ {suggested.focusSecs < 3600 ? `${Math.floor(suggested.focusSecs/60)}m` : `${Math.floor(suggested.focusSecs/3600)}h`} invested
                 </div>
               )}
             </div>
-            <span style={{ fontSize:"0.72rem", color: isDark ? "#000" : "#fff", background:theme.accent, borderRadius:8, padding:"0.2rem 0.6rem", flexShrink:0, fontFamily:"'Outfit', system-ui, sans-serif", fontWeight:700 }}>
+            <span style={{ fontSize:"0.72rem", color: isDark ? "#000" : "#fff", background:theme.accent, borderRadius:8, padding:"0.2rem 0.6rem", flexShrink:0, fontFamily:"var(--font-body)", fontWeight:700 }}>
               Select →
             </span>
           </button>
@@ -82,7 +82,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
 
       {others.length > 0 && (
         <div style={{ marginBottom:"1.25rem" }}>
-          <div style={{ fontSize:"0.6rem", color:theme.textMuted, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:"'DM Mono', monospace", marginBottom:"0.5rem" }}>
+          <div style={{ fontSize:"0.6rem", color:theme.textMuted, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:"var(--font-caps)", marginBottom:"0.5rem" }}>
             or choose another
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:"0.3rem", maxHeight:180, overflowY:"auto" }}>
@@ -99,7 +99,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
                 }}
               >
                 <span style={{ width:6, height:6, borderRadius:"50%", background:pColor(t.priority), flexShrink:0 }}/>
-                <span style={{ flex:1, fontFamily:"'Outfit', system-ui, sans-serif", fontSize:"0.92rem", color: isDark ? "#c4b5f8" : "#4a2d7a", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                <span style={{ flex:1, fontFamily:"var(--font-body)", fontSize:"0.92rem", color: isDark ? "#c4b5f8" : "#4a2d7a", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                   {t.text}
                 </span>
               </button>
@@ -113,7 +113,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
           onClick={onSkip}
           style={{
             background:"transparent", border:"none", color:theme.textMuted, cursor:"pointer",
-            fontFamily:"'Outfit', system-ui, sans-serif", fontSize:"0.88rem", fontStyle:"italic",
+            fontFamily:"var(--font-body)", fontSize:"0.88rem", fontStyle:"italic",
             textDecoration:"underline dotted", padding:"0.25rem 0.5rem",
           }}
         >

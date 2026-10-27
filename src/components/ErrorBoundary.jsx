@@ -32,7 +32,7 @@ export default class ErrorBoundary extends Component {
           border: "1px solid rgba(140,100,160,0.35)", borderRadius: 14,
           padding: "1rem 1.25rem", marginBottom: "1.1rem",
           background: "rgba(120,80,140,0.08)", color: "#c9b8d8",
-          fontFamily: "'Outfit', system-ui, sans-serif", fontSize: "0.85rem",
+          fontFamily: "var(--font-body)", fontSize: "0.85rem",
           textAlign: "center", lineHeight: 1.5,
         }}>
           <div style={{ marginBottom: "0.55rem" }}>🌿 The {label} panel hit a snag.</div>
@@ -53,7 +53,7 @@ export default class ErrorBoundary extends Component {
         minHeight: "100vh", display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center", gap: "1rem",
         background: "#0c0816", color: "#ecdff7",
-        fontFamily: "'Outfit', system-ui, sans-serif", padding: "2rem",
+        fontFamily: "var(--font-body)", padding: "2rem",
         textAlign: "center",
       }}>
         <div style={{ fontSize: "2rem" }}>🌿</div>

@@ -80,12 +80,12 @@ export default function DailyOps({ theme, panelStyle, btnStyle, inpStyle, onTouc
       {/* Header row */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: collapsed ? 0 : "0.9rem" }}>
         <div style={{ display:"flex", alignItems:"center", gap:"0.55rem" }}>
-          <span style={{ fontSize:"0.65rem", letterSpacing:"0.16em", textTransform:"uppercase", color:theme.textMuted, fontFamily:"'DM Mono', monospace" }}>
+          <span style={{ fontSize:"0.65rem", letterSpacing:"0.16em", textTransform:"uppercase", color:theme.textMuted, fontFamily:"var(--font-caps)" }}>
             Daily Ops
           </span>
           {items.length > 0 && (
             <span style={{
-              fontSize:"0.65rem", fontFamily:"'DM Mono', monospace", fontWeight:700,
+              fontSize:"0.65rem", fontFamily:"var(--font-caps)", fontWeight:700,
               color: allDone ? "#4ade80" : theme.accent,
             }}>
               {checked}/{items.length}
@@ -126,7 +126,7 @@ export default function DailyOps({ theme, panelStyle, btnStyle, inpStyle, onTouc
                 </button>
                 <span style={{
                   fontSize:"0.88rem", flex:1,
-                  fontFamily:"'Outfit', system-ui, sans-serif",
+                  fontFamily:"var(--font-body)",
                   color: item.checked ? theme.textMuted : theme.text,
                   textDecoration: item.checked ? "line-through" : "none",
                   opacity: item.checked ? 0.5 : 1,
