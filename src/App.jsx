@@ -573,21 +573,6 @@ export default function App() {
   };
 
   const globalStyles = `
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
-    ${theme.key === 'liminal-botany' ? `
-    :root {
-      --lb-bg-1: #2A0F24;
-      --lb-bg-2: #0F1A14;
-      --lb-surface-1: #4A2E47;
-      --lb-surface-2: #2F3A34;
-      --lb-accent-1: #D9A441;
-      --lb-accent-2: #E7C27A;
-      --lb-breath-1: #F2DCE2;
-      --lb-breath-2: #A8FFD9;
-      --lb-text-1: #F5F2F0;
-      --lb-text-2: #C7C2BD;
-      --lb-text-3: #8A837C;
-    }` : ''}
     :root{--font-body:${theme.fonts.body};--font-caps:${theme.fonts.caps};--font-display:${theme.fonts.display};}
     *{box-sizing:border-box;margin:0;padding:0;}
     body{background:${theme.bg};}
@@ -714,11 +699,27 @@ export default function App() {
               </span>
             )}
             <LiveClock color={theme.textMuted}/>
-            <div style={{ display:"flex", gap:"0.35rem", alignItems:"center" }}>
-              {THEMES.map(t => (
-                <button key={t.key} onClick={()=>switchTheme(t)} title={t.label} style={{ width:18, height:18, borderRadius:"50%", background:t.accent, border:theme.key===t.key?`2px solid ${theme.text}`:"2px solid transparent", cursor:"pointer", padding:0, transition:"transform 0.15s", transform:theme.key===t.key?"scale(1.3)":"scale(1)" }}/>
-              ))}
-            </div>
+            {/* The crescent toggle: Candlelight ↔ Daylight. The moon knob waxes as it turns on. */}
+            {(() => {
+              const day = theme.key === "daylight";
+              const next = THEMES.find(t => t.key === (day ? "candlelight" : "daylight"));
+              return (
+                <button
+                  role="switch" aria-checked={day} aria-label="Daylight mode"
+                  title={day ? "Daylight · switch to Candlelight" : "Candlelight · switch to Daylight"}
+                  onClick={() => switchTheme(next)}
+                  style={{ display:"inline-flex", alignItems:"center", gap:"0.55rem", background:"none", border:"none", padding:0, cursor:"pointer", color:theme.textMuted }}
+                >
+                  <span style={{ position:"relative", width:58, height:30, flex:"none", borderRadius:999, background:"linear-gradient(180deg, #f1dca0 0%, #c9a35b 22%, #8a6630 48%, #b48a45 70%, #e4c784 88%, #9a743c 100%)", filter:"drop-shadow(0 2px 3px rgba(0,0,0,.4))" }}>
+                    <span style={{ position:"absolute", inset:2, borderRadius:999, background: day ? "radial-gradient(circle at 50% 30%, #1d7a7d, #0f5960)" : "radial-gradient(circle at 50% 30%, #2e2145, #140f1e)", boxShadow:"inset 0 1px 3px rgba(0,0,0,.7)", transition:"background .18s ease" }}/>
+                    <span style={{ position:"absolute", top:4, left: day ? 32 : 4, width:22, height:22, borderRadius:"50%", overflow:"hidden", background:"radial-gradient(circle at 35% 30%, #fbf1d4, #e9d7ae 60%, #c9a35b)", boxShadow:"0 1px 2px rgba(0,0,0,.6)", transition:"left .18s ease" }}>
+                      <span style={{ position:"absolute", top:-3, left: day ? -26 : -9, width:22, height:22, borderRadius:"50%", background:"#140f1e", transition:"left .18s ease" }}/>
+                    </span>
+                  </span>
+                  <span style={{ fontFamily:"var(--font-caps)", fontSize:"0.62rem", letterSpacing:"0.2em", textTransform:"uppercase" }}>{day ? "Daylight" : "Candlelight"}</span>
+                </button>
+              );
+            })()}
             <button style={{ ...btn(false), fontSize:"0.72rem", padding:"0.3rem 0.65rem" }} onClick={()=>setZenMode(p=>!p)} title="Zen mode (Z)">{DR ? <span style={{ display:"inline-flex", alignItems:"center", gap:"0.4rem" }}><LineIcon name="eye" size={15}/>Zen</span> : "⬡ Zen"}</button>
           </div>
         </div>
