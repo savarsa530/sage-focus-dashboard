@@ -111,8 +111,8 @@ export default function App() {
   const [showSkipModal, setShowSkipModal] = useState(false);
   const [showCompletionFlash, setShowCompletionFlash] = useState(false);
   // End-of-session pull: one face-down card offered when a focus session ends.
-  // ?pull in the URL offers a practice card on load, to try it without a session.
-  const [pullCard, setPullCard] = useState(() => (typeof location !== "undefined" && /[?&]pull\b/.test(location.search)) ? drawCard() : null);
+  // ?pull or #pull in the URL offers a practice card on load, to try it without a session.
+  const [pullCard, setPullCard] = useState(() => (typeof location !== "undefined" && (/[?&]pull\b/.test(location.search) || location.hash === "#pull")) ? drawCard() : null);
   const pullTaskRef = useRef(null);
   const [autoCycle, setAutoCycle] = useState(() => {
     const v = safeGet("sage_autocycle_v1");
