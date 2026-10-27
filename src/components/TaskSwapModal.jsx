@@ -1,123 +1,92 @@
 import LiminalModal from "./LiminalModal";
+import { LineIcon } from "./Witchy";
+import { taskStage } from "../glyphs";
 
+// After a task is checked off mid-focus: what's next?
 export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, onSkip }) {
-  const isDark = theme.isDark;
   const unchecked = tasks.filter(t => !t.done);
   const pNum = (p) => ({ high:3, medium:2, low:1 }[p] || 2);
-  const pColor = (p) => ({ high:"#f87171", medium:theme.accent, low:theme.textMuted }[p]);
+  const pLabel = (p) => ({ high:"high priority", medium:"medium priority", low:"low priority" }[p] || "");
+  const ink = theme.accentInk || theme.accent;
+  const fmt = (s) => s < 3600 ? `${Math.floor(s/60)}m` : `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
 
   const suggested = [...unchecked].sort((a, b) => {
     const pd = pNum(b.priority) - pNum(a.priority);
     return pd !== 0 ? pd : (b.focusSecs||0) - (a.focusSecs||0);
   })[0];
-
   const others = unchecked.filter(t => t.id !== suggested?.id);
+
+  const label = { fontSize:"0.88rem", fontStyle:"italic", color:theme.textMuted, marginBottom:"0.45rem" };
+  const row = (t, featured) => {
+    const st = taskStage(t, false);
+    return (
+      <button
+        key={t.id}
+        onClick={() => onSelect(t.id)}
+        style={{
+          width:"100%", textAlign:"left", cursor:"pointer",
+          display:"flex", alignItems:"center", gap:"0.75rem",
+          background: featured ? theme.card : "transparent",
+          border:`1px solid ${featured ? theme.accent + "80" : theme.line}`,
+          borderRadius:0, padding: featured ? "0.85rem 1rem" : "0.6rem 0.85rem",
+          color:theme.text, transition:"background .15s",
+        }}
+      >
+        <span title={st.label} style={{ color:ink, display:"inline-flex", flexShrink:0 }}><LineIcon name={st.icon} size={featured ? 22 : 18}/></span>
+        <span style={{ flex:1, minWidth:0 }}>
+          <span style={{ display:"block", fontFamily: featured ? "var(--font-display)" : "var(--font-body)", fontSize: featured ? "1.15rem" : "0.98rem", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+            {t.text}
+          </span>
+          {featured && (
+            <span style={{ display:"block", fontSize:"0.85rem", fontStyle:"italic", color:theme.textMuted, marginTop:2 }}>
+              {pLabel(t.priority)}{(t.focusSecs||0) > 0 ? ` · ${fmt(t.focusSecs)} invested` : ""}
+            </span>
+          )}
+        </span>
+        {featured && (
+          <span style={{
+            fontFamily:"var(--font-caps)", textTransform:"uppercase", letterSpacing:"0.14em", fontSize:"0.72rem",
+            background:`linear-gradient(180deg, ${theme.velvetHi} 0%, ${theme.velvet} 100%)`, color:theme.cream,
+            border:`2px solid ${theme.brass}`, borderRadius:10, boxShadow:theme.shadowMetal,
+            padding:"0.35rem 0.8rem", flexShrink:0,
+          }}>Focus</span>
+        )}
+      </button>
+    );
+  };
 
   return (
     <LiminalModal theme={theme} onClose={null} size="md">
-      <div style={{ textAlign:"center", marginBottom:"1.5rem" }}>
-        <div style={{
-          fontSize:"0.9rem", letterSpacing:"0.01em",
-          color:theme.accent, fontFamily:"var(--font-body)",
-          fontStyle:"italic", marginBottom:"0.5rem", opacity:0.85,
-        }}>
-          task complete
+      <div style={{ textAlign:"center", marginBottom:"1.4rem" }}>
+        <div style={{ color:theme.breakColor, display:"inline-flex" }}><LineIcon name="bloom" size={30}/></div>
+        <div style={{ fontStyle:"italic", color:theme.textMuted, fontSize:"0.95rem", marginTop:"0.2rem" }}>
+          Bloomed. {completedCount} done so far.
         </div>
-        <div style={{
-          display:"inline-flex", alignItems:"center", gap:"0.5rem",
-          background: isDark ? `${theme.accent}14` : `${theme.accent}12`,
-          border:`1px solid ${theme.accent}35`,
-          borderRadius:20, padding:"0.3rem 1rem",
-          fontFamily:"var(--font-body)",
-          fontSize:"1rem", fontStyle:"italic",
-          color: isDark ? "#c4b5f8" : "#5b3f8a",
-        }}>
-          <span style={{ fontSize:"0.9rem" }}>✓</span>
-          <span>{completedCount} completed this session</span>
-        </div>
-        <h2 style={{
-          fontFamily:"var(--font-body)",
-          fontSize:"1.55rem", fontWeight:600,
-          color: isDark ? "#e8e0f8" : "#2d1854",
-          letterSpacing:"-0.01em", lineHeight:1.2, margin:"1rem 0 0",
-        }}>
+        <h2 style={{ fontFamily:"var(--font-display)", fontWeight:400, fontSize:"1.9rem", color:theme.text, lineHeight:1.15, margin:"0.5rem 0 0" }}>
           What's next?
         </h2>
-        <div style={{ width:40, height:1, background:`${theme.accent}50`, margin:"0.75rem auto 0" }}/>
+        <div className="dr-rule" style={{ width:120, margin:"0.6rem auto 0", color:ink }}><LineIcon name="star" size={11}/></div>
       </div>
 
       {suggested && (
         <div style={{ marginBottom:"1rem" }}>
-          <div style={{ fontSize:"0.8rem", color:theme.textMuted, letterSpacing:"0.01em", fontFamily:"var(--font-body)", marginBottom:"0.5rem" }}>
-            suggested
-          </div>
-          <button
-            onClick={() => onSelect(suggested.id)}
-            style={{
-              width:"100%", textAlign:"left",
-              background: isDark ? `${theme.accent}14` : `${theme.accent}10`,
-              border:`1.5px solid ${theme.accent}50`,
-              borderRadius:12, padding:"0.85rem 1rem",
-              cursor:"pointer", transition:"all 0.15s",
-              display:"flex", alignItems:"center", gap:"0.75rem",
-            }}
-          >
-            <span style={{ width:8, height:8, borderRadius:"50%", background: pColor(suggested.priority), flexShrink:0, boxShadow:`0 0 6px ${pColor(suggested.priority)}88` }}/>
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontFamily:"var(--font-body)", fontSize:"1rem", fontWeight:600, color: isDark ? "#e8e0f8" : "#2d1854", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                {suggested.text}
-              </div>
-              {(suggested.focusSecs||0) > 0 && (
-                <div style={{ fontSize:"0.85rem", color:theme.accent, marginTop:2, fontFamily:"var(--font-body)" }}>
-                  ⏱ {suggested.focusSecs < 3600 ? `${Math.floor(suggested.focusSecs/60)}m` : `${Math.floor(suggested.focusSecs/3600)}h`} invested
-                </div>
-              )}
-            </div>
-            <span style={{ fontSize:"0.72rem", color: isDark ? "#000" : "#fff", background:theme.accent, borderRadius:8, padding:"0.2rem 0.6rem", flexShrink:0, fontFamily:"var(--font-body)", fontWeight:700 }}>
-              Select →
-            </span>
-          </button>
+          <div style={label}>Suggested</div>
+          {row(suggested, true)}
         </div>
       )}
 
       {others.length > 0 && (
         <div style={{ marginBottom:"1.25rem" }}>
-          <div style={{ fontSize:"0.8rem", color:theme.textMuted, letterSpacing:"0.01em", fontFamily:"var(--font-body)", marginBottom:"0.5rem" }}>
-            or choose another
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:"0.3rem", maxHeight:180, overflowY:"auto" }}>
-            {others.map(t => (
-              <button
-                key={t.id}
-                onClick={() => onSelect(t.id)}
-                style={{
-                  width:"100%", textAlign:"left",
-                  background: isDark ? "rgba(255,255,255,0.03)" : "rgba(80,30,120,0.03)",
-                  border:`1px solid ${isDark ? "#3d2f5a" : "#c9b8d8"}`,
-                  borderRadius:10, padding:"0.6rem 0.85rem",
-                  cursor:"pointer", display:"flex", alignItems:"center", gap:"0.65rem", transition:"all 0.12s",
-                }}
-              >
-                <span style={{ width:6, height:6, borderRadius:"50%", background:pColor(t.priority), flexShrink:0 }}/>
-                <span style={{ flex:1, fontFamily:"var(--font-body)", fontSize:"0.92rem", color: isDark ? "#c4b5f8" : "#4a2d7a", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                  {t.text}
-                </span>
-              </button>
-            ))}
+          <div style={label}>Or choose another</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:"0.35rem", maxHeight:200, overflowY:"auto" }}>
+            {others.map(t => row(t, false))}
           </div>
         </div>
       )}
 
       <div style={{ textAlign:"center" }}>
-        <button
-          onClick={onSkip}
-          style={{
-            background:"transparent", border:"none", color:theme.textMuted, cursor:"pointer",
-            fontFamily:"var(--font-body)", fontSize:"0.88rem", fontStyle:"italic",
-            textDecoration:"underline dotted", padding:"0.25rem 0.5rem",
-          }}
-        >
-          Skip for now
+        <button onClick={onSkip} style={{ background:"transparent", border:"none", color:theme.textMuted, cursor:"pointer", fontSize:"0.95rem", fontStyle:"italic", padding:"0.25rem 0.5rem" }}>
+          Not now
         </button>
       </div>
     </LiminalModal>
