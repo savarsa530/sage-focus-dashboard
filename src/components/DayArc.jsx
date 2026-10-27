@@ -22,6 +22,8 @@ export default function DayArc({ theme, plan, now, onSavePlan, onCloseDay, panel
   // One line from her list, turning slowly through the day.
   const buys = plan.buys.filter(Boolean);
   const buy = buys.length ? buys[Math.floor(ds.now / 20) % buys.length] : null;
+  // Last two hours before log-off, through to the hard stop: nudge toward wrapping up.
+  const windingDown = (ds.phase === "working" && ds.toAim <= 120) || ds.phase === "wrapping";
 
   let headline, sub;
   if (ds.phase === "off")         { headline = "No workday today."; sub = "Nothing here is asking for you."; }
@@ -75,13 +77,18 @@ export default function DayArc({ theme, plan, now, onSavePlan, onCloseDay, panel
         </svg>
       )}
 
-      {buy && (
+      {windingDown ? (
+        <div style={{ textAlign:"center", marginTop:"0.25rem", color:ink, fontSize:"0.95rem", fontStyle:"italic", display:"flex", alignItems:"center", justifyContent:"center", gap:"0.45rem" }}>
+          <LineIcon name="crescent" size={14}/>
+          Shift what can't be done today over to tomorrow, and start wrapping up your day.
+        </div>
+      ) : buy && (
         <div style={{ textAlign:"center", marginTop:"0.25rem", color:theme.textMuted, fontSize:"0.95rem" }}>
           <span style={{ fontStyle:"italic" }}>This work pays for </span>
           <span style={{ color:theme.text }}>{buy}</span>
         </div>
       )}
-      {!buy && ds.phase !== "off" && (
+      {!buy && (ds.phase === "before" || (ds.phase === "working" && !windingDown)) && (
         <div style={{ textAlign:"center", marginTop:"0.25rem" }}>
           <button onClick={() => setEditing(true)} style={{ background:"none", border:"none", color:ink, cursor:"pointer", fontStyle:"italic", fontSize:"0.92rem" }}>
             What does this work pay for? Add it here.

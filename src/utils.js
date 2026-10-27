@@ -1,4 +1,6 @@
-export const fmt   = (s) => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+import { groupNameFor } from "./taskGroups";
+
+export const fmt   =(s) => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
 export const pad   = (n) => String(n).padStart(2,"0");
 export const uuid  = ()  => crypto.randomUUID();
 export const today = ()  => new Date().toDateString();
@@ -36,7 +38,7 @@ export function safeSet(key, value) {
 
 // ── Focus ledger ───────────────────────────────────────────────
 // Time spent, by day and by task, so it can be summarized later.
-// Shape: { days: { "YYYY-MM-DD": { [taskId]: { label, kind, secs } } },
+// Shape: { days: { "YYYY-MM-DD": { [taskId]: { label, kind, group, secs } } },
 //          sessions: { "YYYY-MM-DD": n },
 //          earlier: { [taskId]: { label, kind, secs } } }   // time logged before the ledger existed
 const LEDGER_KEY = "sage_ledger_v1";
@@ -64,6 +66,7 @@ export function creditLedger(task, secs) {
   const day = ledger.days[k] || (ledger.days[k] = {});
   const row = day[task.id] || (day[task.id] = { label:task.text, kind: task.opId ? "op" : "task", secs:0 });
   row.label = task.text;
+  row.group = groupNameFor(task);
   row.secs += secs;
   safeSet(LEDGER_KEY, ledger);
 }
