@@ -130,7 +130,7 @@ export default function App() {
   const [garden, setGarden] = useState(loadGarden);
   useEffect(() => { const id = setInterval(() => setClock(new Date()), 30000); return () => clearInterval(id); }, []);
   const handleSavePlan = (p) => { savePlan(p); setPlan(p); };
-  const feedGarden = (key) => { const { garden: g, grew } = feed(key); setGarden(g); if (grew) playGrow(); };
+  const feedGarden = (key) => { const { garden: g, fed, grew } = feed(key); setGarden(g); if (fed) playGrow(grew); };
   // Fetch every card's art when the dashboard opens, so the face is already
   // in the browser cache when a card turns 25 minutes later.
   useEffect(() => {
@@ -630,6 +630,8 @@ export default function App() {
     .pull-card.turned{filter:drop-shadow(0 0 16px ${theme.brass}40);}
     .pull-card.turned.rare{animation:rareGlow 3.2s ease-in-out .8s infinite;}
     .pull-after{animation:afterIn .4s ease-out .55s both;}
+    @keyframes pipIn{0%{transform:scale(0);}60%{transform:scale(1.6);}100%{transform:scale(1);}}
+    .pip-new{animation:pipIn .6s ease-out both;}
     @keyframes partIn{from{transform:scale(0);opacity:0;}to{transform:scale(1);opacity:1;}}
     @keyframes stemIn{from{stroke-dasharray:0 200;}to{stroke-dasharray:200 0;}}
     @keyframes sway{0%,100%{transform:rotate(-1.2deg);}50%{transform:rotate(1.2deg);}}

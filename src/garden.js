@@ -12,16 +12,13 @@ export const SPECIES = {
   lavender:   { name:"Lavender",   note:"for calm" },
 };
 
-// Growth points needed to reach each stage: seed, sprout, first leaves,
-// more leaves, full leaf, bud, bloom.
-export const STAGES = [0, 1, 2, 4, 6, 9, 12];
+// Growth points at which each named stage begins: seed, sprout, first leaves,
+// growing, full leaf, bud, bloom. Every point between also shows on the plant.
+export const STAGES = [0, 1, 2, 4, 7, 10, 12];
 export const STAGE_NAMES = ["a seed in the soil", "sprouting", "first leaves", "growing", "in full leaf", "budding", "in bloom"];
 
 export const stageOf = (points) => STAGES.reduce((s, need, i) => (points >= need ? i : s), 0);
-export const toNext = (points) => {
-  const st = stageOf(points);
-  return st >= STAGES.length - 1 ? 0 : STAGES[st + 1] - points;
-};
+export const BLOOM_AT = 12;
 
 const fresh = (species = "moonflower") => ({ species, plantedAt: Date.now(), points: 0, credited: [] });
 
@@ -35,14 +32,14 @@ const save = (g) => { safeSet(GARDEN_KEY, g); return g; };
 // Credit a finished thing once, by a stable key, so re-checking can't farm growth.
 export function feed(key) {
   const g = loadGarden();
-  if (g.plant.credited.includes(key)) return { garden: g, grew: false };
+  if (g.plant.credited.includes(key)) return { garden: g, fed: false, grew: false };
   const before = stageOf(g.plant.points);
   g.plant.points += 1;
   g.plant.credited = [...g.plant.credited, key].slice(-400);
   const dk = dayKey();
   g.days = { ...(g.days || {}), [dk]: ((g.days || {})[dk] || 0) + 1 };
   save(g);
-  return { garden: g, grew: stageOf(g.plant.points) > before };
+  return { garden: g, fed: true, grew: stageOf(g.plant.points) > before };
 }
 
 export function pressBloom() {

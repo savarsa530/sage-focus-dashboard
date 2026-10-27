@@ -152,15 +152,15 @@ export function playTurn(rare = false) {
   } catch { /* audio unavailable */ }
 }
 
-// A small bright note when the plant reaches a new stage.
-export function playGrow() {
+// A small bright note for each bit of growth; a fuller one at a new stage.
+export function playGrow(stage = false) {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const g = ctx.createGain(); g.connect(ctx.destination);
-    const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = 784;
+    const o = ctx.createOscillator(); o.type = "triangle"; o.frequency.value = stage ? 784 : 659;
     const t0 = ctx.currentTime;
     g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(0.12, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(stage ? 0.12 : 0.07, t0 + 0.02);
     g.gain.exponentialRampToValueAtTime(0.001, t0 + 1.1);
     o.connect(g); o.start(t0); o.stop(t0 + 1.1);
     setTimeout(() => { try { ctx.close(); } catch { /* closed */ } }, 1500);
