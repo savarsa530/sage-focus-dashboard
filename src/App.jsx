@@ -3,7 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { THEMES, PRESETS } from "./constants";
 import { fmt, uuid, today, safeGet, safeGetJSON, safeSet, loadLedger, creditLedger, countLedgerSession } from "./utils";
-import { startSound, stopSound, setVolume, stopAllSounds, playDing } from "./audio";
+import { startSound, stopSound, setVolume, stopAllSounds, playDing, CHIMES, getChime, setChime, playChime } from "./audio";
+import Backdrop, { BackdropPicker } from "./components/Backdrop";
+import { BACKDROP_CSS } from "./backdrop";
 import ErrorBoundary   from "./components/ErrorBoundary";
 import LiveClock       from "./components/LiveClock";
 import TimerRing       from "./components/TimerRing";
@@ -421,7 +423,9 @@ export default function App() {
     const fromIdx = ordered.findIndex(t => t.id === dragId);
     const toIdx   = ordered.findIndex(t => t.id === targetId);
     const reordered = [...ordered];
-    const [moved] = reordered.splice(fromIdx, 1);
+    let [moved] = reordered.splice(fromIdx, 1);
+    const target = ordered[toIdx];
+    if (!moved.opId && !target.opId) moved = { ...moved, group: target.group };
     reordered.splice(toIdx, 0, moved);
     saveTasks(reordered.map((t, i) => ({ ...t, order: i })));
     handleDragEnd();
@@ -524,7 +528,6 @@ export default function App() {
 
   // ── Shared style objects ──────────────────────────────────────
   const isDark    = theme.isDark;
-  const auroraC   = theme.auroraColors;
   const phaseLabel = phase==="work" ? "Focus" : "Break";
   const phaseColor = phase==="work" ? theme.timerRing : (theme.breakColor || "#86efac");
   const DR         = !!theme.deckRoom;   // The Deck Room design system
@@ -653,15 +656,10 @@ export default function App() {
     ::-webkit-scrollbar-thumb{background:${theme.panelBorder};border-radius:4px;}
     @keyframes gentlePulse{0%,100%{box-shadow:0 0 0 0 ${theme.accent}30;}50%{box-shadow:0 0 24px 10px ${theme.accent}45;}}
     @keyframes needTaskShake{0%,100%{transform:translateX(0);}20%,60%{transform:translateX(-4px);}40%,80%{transform:translateX(4px);}}
-    @keyframes auroraWave{0%{transform:translateX(-120%) skewX(-12deg);opacity:0;}20%{opacity:${isDark?0.15:0.09};}80%{opacity:${isDark?0.15:0.09};}100%{transform:translateX(220%) skewX(-12deg);opacity:0;}}
-    @keyframes auroraWave2{0%{transform:translateX(220%) skewX(12deg);opacity:0;}20%{opacity:${isDark?0.11:0.07};}80%{opacity:${isDark?0.11:0.07};}100%{transform:translateX(-120%) skewX(12deg);opacity:0;}}
     @keyframes timerGlow{0%,100%{filter:drop-shadow(0 0 8px ${phaseColor}55);}50%{filter:drop-shadow(0 0 32px ${phaseColor}88);}}
     @keyframes modalFadeIn{from{opacity:0;transform:scale(0.96);}to{opacity:1;transform:scale(1);}}
     @keyframes intentionFloat{0%,100%{opacity:0.85;transform:translateY(0);}50%{opacity:1;transform:translateY(-1px);}}
-    .aurora-wrap{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
-    .aurora-1{position:absolute;width:60%;height:35%;top:15%;left:0;background:linear-gradient(90deg,transparent,${auroraC[0]},transparent);border-radius:50%;animation:auroraWave 13s ease-in-out infinite;}
-    .aurora-2{position:absolute;width:50%;height:30%;top:45%;left:20%;background:linear-gradient(90deg,transparent,${auroraC[1]},transparent);border-radius:50%;animation:auroraWave2 18s ease-in-out infinite;animation-delay:5s;}
-    .aurora-3{position:absolute;width:70%;height:25%;top:65%;left:10%;background:linear-gradient(90deg,transparent,${auroraC[2]},transparent);border-radius:50%;animation:auroraWave 22s ease-in-out infinite;animation-delay:10s;}
+    ${BACKDROP_CSS}
     .timer-pulse{animation:timerGlow 3s ease-in-out infinite;}
     .start-pulse{animation:gentlePulse 2.5s ease-in-out infinite;}
     .need-task{animation:needTaskShake 0.5s ease;}
@@ -687,7 +685,7 @@ export default function App() {
     return (
       <div style={{ minHeight:"100vh", background:theme.bg, fontFamily:"var(--font-body)", color:theme.text, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
         <style>{globalStyles}</style>
-        {running && phase==="work" && <div className="aurora-wrap"><div className="aurora-1"/><div className="aurora-2"/><div className="aurora-3"/></div>}
+        {phase==="work" && (running || timerPct < 1) && <Backdrop theme={theme} progress={1 - timerPct} seed={`#${sessionsToday}`}/>}
 
         {showSkipModal && !pullCard && <SkipBreakModal theme={theme} onSkip={handleSkipBreak} onTakeBreak={handleTakeBreak} sessionsToday={sessionsToday} consecutiveSkips={consecutiveSkips}/>}
         {showTaskSwap  && <TaskSwapModal  theme={theme} tasks={tasks} completedCount={tasks.filter(t=>t.done).length} onSelect={handleTaskSwapSelect} onSkip={handleTaskSwapSkip}/>}
@@ -740,7 +738,7 @@ export default function App() {
   return (
     <div style={{ minHeight:"100vh", background:theme.bg, fontFamily:"var(--font-body)", color:theme.text, transition:"background 0.4s, color 0.3s", position:"relative", overflow:"hidden" }}>
       <style>{globalStyles}</style>
-      {running && phase==="work" && <div className="aurora-wrap"><div className="aurora-1"/><div className="aurora-2"/><div className="aurora-3"/></div>}
+      {phase==="work" && (running || timerPct < 1) && <Backdrop theme={theme} progress={1 - timerPct} seed={`#${sessionsToday}`}/>}
 
       {showSkipModal && !pullCard && <SkipBreakModal theme={theme} onSkip={handleSkipBreak} onTakeBreak={handleTakeBreak} sessionsToday={sessionsToday} consecutiveSkips={consecutiveSkips}/>}
       {showTaskSwap       && <TaskSwapModal  theme={theme} tasks={tasks} completedCount={tasks.filter(t=>t.done).length} onSelect={handleTaskSwapSelect} onSkip={handleTaskSwapSkip}/>}
@@ -809,12 +807,12 @@ export default function App() {
           </div>
 
           <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", justifyContent:"center", marginBottom:"0.75rem", alignItems:"center" }}>
-            <button onClick={() => setShowPresets(!showPresets)} style={{ ...btn(false), padding:"0.3rem 0.75rem", display:"flex", alignItems:"center", gap:"0.3rem" }} title="Timer presets">
-              ⚙ Presets
+            <button onClick={() => setShowPresets(!showPresets)} style={{ ...btn(false), padding:"0.3rem 0.75rem", display:"flex", alignItems:"center", gap:"0.3rem" }} title="Session lengths, end chime and backdrop" aria-expanded={showPresets}>
+              ⚙ Time toggles <span style={{ fontSize:"0.7rem", opacity:0.7 }}>{showPresets ? "▲" : "▼"}</span>
             </button>
           </div>
 
-          {showPresets && (
+          {showPresets && (<>
             <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", justifyContent:"center", marginBottom:"0.75rem" }}>
               {PRESETS.map(p => (
                 <button key={p.label} style={pill(workMins===p.work && brkMins===p.brk)} onClick={()=>{applyPreset(p); setShowPresets(false);}}>
@@ -822,15 +820,18 @@ export default function App() {
                 </button>
               ))}
             </div>
-          )}
 
-          <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", justifyContent:"center", marginBottom:"1rem", flexWrap:"wrap" }}>
+          <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", justifyContent:"center", marginBottom:"0.75rem", flexWrap:"wrap" }}>
             <span style={{ fontSize:"0.85rem", color:theme.textMuted, fontWeight:500, letterSpacing:"0.01em", fontFamily:"var(--font-body)" }}>Custom:</span>
-            <input value={customW} onChange={e=>setCustomW(e.target.value)} placeholder="Work min" onKeyDown={e=>e.key==="Enter"&&applyCustom()} style={{ ...inp, width:80, textAlign:"center", fontSize:"0.88rem" }}/>
+            <input value={customW} onChange={e=>setCustomW(e.target.value)} placeholder="Work min" onKeyDown={e=>e.key==="Enter"&&applyCustom()} style={{ ...inp, width:104, textAlign:"center", fontSize:"0.88rem" }}/>
             <span style={{ color:theme.textMuted, fontSize:"0.85rem" }}>/</span>
-            <input value={customB} onChange={e=>setCustomB(e.target.value)} placeholder="Break min" onKeyDown={e=>e.key==="Enter"&&applyCustom()} style={{ ...inp, width:80, textAlign:"center", fontSize:"0.88rem" }}/>
+            <input value={customB} onChange={e=>setCustomB(e.target.value)} placeholder="Break min" onKeyDown={e=>e.key==="Enter"&&applyCustom()} style={{ ...inp, width:104, textAlign:"center", fontSize:"0.88rem" }}/>
             <button style={{ ...btn(false), padding:"0.45rem 0.75rem" }} onClick={applyCustom}>Set</button>
           </div>
+
+          <ChimePicker pill={pill} muted={theme.textMuted}/>
+          <BackdropPicker pill={pill} muted={theme.textMuted}/>
+          </>)}
 
           <div style={{ display:"flex", justifyContent:"center", marginBottom:"0.75rem" }}>
             <div className={running?"timer-pulse":""}>
@@ -965,6 +966,22 @@ export default function App() {
       </div>
       {showCompletionFlash && <div className="completion-flash"/>}
       {pullCard && <SessionPull key={pullCard.id} theme={theme} card={pullCard} breakRunning={phase==="break" && running} onReveal={(c) => recordPull(c, pullTaskRef.current)} onClose={() => setPullCard(null)}/>}
+    </div>
+  );
+}
+
+// End-of-session chime choice; tapping one plays it.
+function ChimePicker({ pill, muted }) {
+  const [chime, setChimeState] = useState(getChime);
+  return (
+    <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", justifyContent:"center", alignItems:"center", marginBottom:"1rem" }}>
+      <span style={{ fontSize:"0.85rem", color:muted, fontWeight:500, fontFamily:"var(--font-body)" }}>End chime:</span>
+      {CHIMES.map(([id, label]) => (
+        <button key={id} style={pill(chime === id)} title={id === "none" ? "No sound at the end of a session" : "Tap to hear it"}
+          onClick={() => { setChimeState(id); setChime(id); playChime(id); }}>
+          {label}
+        </button>
+      ))}
     </div>
   );
 }

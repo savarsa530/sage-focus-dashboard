@@ -2,6 +2,7 @@ import { useState } from "react";
 import { uuid } from "../utils";
 import { Emblem, LineIcon } from "./Witchy";
 import { taskStage } from "../glyphs";
+import { loadGroups, saveGroups, GROUP_ICONS, GROUPS_UI_KEY } from "../taskGroups";
 
 export default function TasksTab({
   theme, tasks, saveTasks,
@@ -26,6 +27,7 @@ export default function TasksTab({
   };
   const pLabel  = (p) => ({ high:"H · High priority", medium:"M · Medium priority", low:"L · Low priority" }[p]);
   const pNum    = (p) => ({ high:3, medium:2, low:1 }[p]);
+  const line    = theme.line || theme.panelBorder;
   const fmtMins = (s) => s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s/60)}m` : `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
 
   const sortedTasks = (() => {
@@ -50,11 +52,145 @@ export default function TasksTab({
     return list;
   })();
 
+  // ── Groups ──
+  const [groups, setGroups]         = useState(loadGroups);
+  const [collapsed, setCollapsed]   = useState(() => { try { return JSON.parse(localStorage.getItem(GROUPS_UI_KEY)) || {}; } catch { return {}; } });
+  const [drafts, setDrafts]         = useState({});     // per-group "Add to …" text
+  const [newGroup, setNewGroup]     = useState(null);   // null = closed, string = naming
+  const [editingId, setEditingId]   = useState(null);
+  const [removingId, setRemovingId] = useState(null);
+  const [addToGroup, setAddToGroup] = useState("");     // group for the top add bar
+  const putGroups = (g) => { setGroups(g); saveGroups(g); };
+  const toggleCollapsed = (id) => setCollapsed(c => {
+    const next = { ...c, [id]: !c[id] };
+    try { localStorage.setItem(GROUPS_UI_KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
+    return next;
+  });
+  const nextOrder = () => tasks.reduce((m, t) => Math.max(m, t.order||0), 0) + 1;
+  const addToBucket = (g) => {
+    const text = (drafts[g.id] || "").trim();
+    if (!text) return;
+    saveTasks([...tasks, { id:uuid(), text, done:false, priority:"medium", focusSecs:0, order:nextOrder(), createdAt:Date.now(), group:g.id }]);
+    setDrafts(d => ({ ...d, [g.id]: "" }));
+  };
+  const createGroup = () => {
+    const name = (newGroup || "").trim();
+    if (!name) { setNewGroup(null); return; }
+    const used = new Set(groups.map(g => g.icon));
+    putGroups([...groups, { id:uuid(), name, icon: GROUP_ICONS.find(i => !used.has(i)) || "star" }]);
+    setNewGroup(null);
+  };
+  const renameGroup = (id, name) => {
+    name = name.trim();
+    if (name) putGroups(groups.map(g => g.id === id ? { ...g, name } : g));
+    setEditingId(null);
+  };
+  const cycleIcon = (id) => putGroups(groups.map(g => g.id === id ? { ...g, icon: GROUP_ICONS[(GROUP_ICONS.indexOf(g.icon) + 1) % GROUP_ICONS.length] } : g));
+  const shiftGroup = (id, dir) => {
+    const i = groups.findIndex(g => g.id === id), j = i + dir;
+    if (j < 0 || j >= groups.length) return;
+    const next = [...groups]; [next[i], next[j]] = [next[j], next[i]];
+    putGroups(next);
+  };
+  // Removing a group never deletes its tasks; they fall back to Unsorted.
+  const removeGroup = (id) => {
+    putGroups(groups.filter(g => g.id !== id));
+    saveTasks(tasks.map(t => t.group === id ? { ...t, group: undefined } : t));
+    if (addToGroup === id) setAddToGroup("");
+    setRemovingId(null);
+  };
+  const moveTask = (taskId, groupId) => saveTasks(tasks.map(t => t.id === taskId ? { ...t, group: groupId || undefined } : t));
+  const dropOnGroup = (e, groupId) => {
+    e.preventDefault();
+    if (dragId && !tasks.find(t => t.id === dragId)?.opId) moveTask(dragId, groupId);
+    handleDragEnd();
+  };
+
   const addTask = () => {
     if (!newTask.trim()) return;
-    const maxOrder = tasks.reduce((m, t) => Math.max(m, t.order||0), 0);
-    saveTasks([...tasks, { id:uuid(), text:newTask.trim(), done:false, priority:"medium", focusSecs:0, order:maxOrder+1, createdAt:Date.now() }]);
+    saveTasks([...tasks, { id:uuid(), text:newTask.trim(), done:false, priority:"medium", focusSecs:0, order:nextOrder(), createdAt:Date.now(), group: addToGroup || undefined }]);
     setNewTask("");
+  };
+
+  const hdrBtn = { background:"none", border:"none", color:theme.textMuted, cursor:"pointer", fontSize:"0.8rem", padding:"0 0.2rem", lineHeight:1, flexShrink:0 };
+
+  // Sections: focused daily ops, each group in order, then Unsorted.
+  // Sorting applies inside each section; empty ops/Unsorted sections hide.
+  const renderGroups = (renderRow) => {
+    const ids = new Set(groups.map(g => g.id));
+    const buckets = [
+      { id:"__ops", name:"From Daily Ops", icon:"candle", ops:true },
+      ...groups,
+      { id:"__none", name:"Unsorted", icon:"cards", none:true },
+    ];
+    return buckets.map(g => {
+      const items = sortedTasks.filter(t =>
+        g.ops ? t.opId && !ids.has(t.group) :
+        g.none ? !t.opId && !ids.has(t.group) :
+        t.group === g.id);
+      if ((g.ops || g.none) && items.length === 0) return null;
+      const open  = items.filter(t => !t.done).length;
+      const shut  = !!collapsed[g.id];
+      const real  = !g.ops && !g.none;
+      const index = groups.findIndex(x => x.id === g.id);
+      return (
+        <section key={g.id} aria-label={g.name}>
+          <div
+            onDragOver={e => { if (canDrag && dragId && !g.ops) e.preventDefault(); }}
+            onDrop={e => { if (!g.ops) dropOnGroup(e, g.none ? null : g.id); }}
+            style={{ display:"flex", alignItems:"center", gap:"0.5rem", padding:"0.15rem 0 0.4rem", borderBottom:`1px solid ${line}`, marginBottom: shut ? 0 : "0.5rem" }}>
+            <button onClick={()=>real && cycleIcon(g.id)} title={real ? "Change sigil" : undefined} aria-label={real ? `Change sigil for ${g.name}` : undefined}
+              style={{ background:"none", border:"none", padding:0, cursor: real ? "pointer" : "default", color:theme.accentInk || theme.accent, display:"inline-flex", flexShrink:0 }}>
+              <LineIcon name={g.icon || "star"} size={17}/>
+            </button>
+            {editingId === g.id ? (
+              <input id={`group-rename-${g.id}`} autoFocus defaultValue={g.name}
+                onBlur={e=>renameGroup(g.id, e.target.value)}
+                onKeyDown={e=>{ if (e.key==="Enter") e.target.blur(); if (e.key==="Escape") setEditingId(null); }}
+                style={{ ...inpStyle, fontSize:"0.9rem", padding:"0.2rem 0.5rem", flex:1, minWidth:0 }}/>
+            ) : (
+              <span onDoubleClick={()=>real && setEditingId(g.id)}
+                style={{ fontFamily:"var(--font-caps)", textTransform:"uppercase", letterSpacing:"0.12em", fontSize:"0.78rem", color: real ? theme.text : theme.textMuted, flex:1, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                {g.name}
+              </span>
+            )}
+            {removingId !== g.id && (
+              <span style={{ fontSize:"0.82rem", fontStyle:"italic", color: open ? (theme.accentInk || theme.accent) : theme.textMuted, flexShrink:0, fontFamily:"var(--font-body)" }}>
+                {open ? `${open} open` : items.length ? "all done" : "empty"}
+              </span>
+            )}
+            {real && (removingId === g.id ? (
+              <span style={{ display:"inline-flex", alignItems:"center", gap:"0.4rem", fontSize:"0.8rem", flexShrink:0 }}>
+                <span style={{ fontStyle:"italic", color:theme.textMuted }}>{items.length ? "Remove group? Tasks move to Unsorted." : "Remove group?"}</span>
+                <button onClick={()=>removeGroup(g.id)} style={{ ...pillStyle(true), fontSize:"0.78rem", padding:"0.1rem 0.55rem" }}>Remove</button>
+                <button onClick={()=>setRemovingId(null)} style={hdrBtn}>Keep</button>
+              </span>
+            ) : (
+              <>
+                <button onClick={()=>shiftGroup(g.id, -1)} disabled={index <= 0} aria-label={`Move ${g.name} up`} title="Move group up" style={{ ...hdrBtn, opacity: index <= 0 ? 0.15 : 0.5 }}>↑</button>
+                <button onClick={()=>shiftGroup(g.id, 1)} disabled={index >= groups.length - 1} aria-label={`Move ${g.name} down`} title="Move group down" style={{ ...hdrBtn, opacity: index >= groups.length - 1 ? 0.15 : 0.5 }}>↓</button>
+                <button onClick={()=>setEditingId(g.id)} aria-label={`Rename ${g.name}`} title="Rename" style={{ ...hdrBtn, opacity:0.5 }}>✎</button>
+                <button onClick={()=>setRemovingId(g.id)} aria-label={`Remove ${g.name}`} title="Remove group" style={{ ...hdrBtn, opacity:0.4 }}>×</button>
+              </>
+            ))}
+            <button onClick={()=>toggleCollapsed(g.id)} aria-label={shut ? `Expand ${g.name}` : `Collapse ${g.name}`} style={{ ...hdrBtn, fontSize:"0.72rem" }}>{shut ? "▼" : "▲"}</button>
+          </div>
+          {!shut && (
+            <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
+              {items.map(renderRow)}
+              {real && (
+                <div style={{ display:"flex", gap:"0.4rem" }}>
+                  <input id={`group-add-${g.id}`} value={drafts[g.id] || ""} onChange={e=>{ const v = e.target.value; setDrafts(d => ({ ...d, [g.id]: v })); }}
+                    onKeyDown={e=>e.key==="Enter"&&addToBucket(g)} placeholder={`Add to ${g.name}…`}
+                    style={{ ...inpStyle, fontSize:"0.82rem", flex:1, minWidth:0 }}/>
+                  <button style={{ ...btnStyle(false), padding:"0.4rem 0.75rem", fontSize:"0.82rem" }} aria-label={`Add to ${g.name}`} onClick={()=>addToBucket(g)}>+</button>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      );
+    });
   };
 
   return (
@@ -64,6 +200,13 @@ export default function TasksTab({
         <div style={{ fontSize:"0.85rem", fontWeight:500, color:theme.textMuted, letterSpacing:"0.01em", marginBottom:"0.7rem", fontFamily:"var(--font-body)" }}>Today's Focus</div>
         <div style={{ display:"flex", gap:"0.5rem" }}>
           <input style={inpStyle} placeholder="Add a task…" value={newTask} onChange={e=>setNewTask(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addTask()}/>
+          {groups.length > 0 && (
+            <select id="task-add-group" value={addToGroup} onChange={e=>setAddToGroup(e.target.value)} aria-label="Add to group" title="Which group it goes in"
+              style={{ ...inpStyle, width:"auto", flex:"0 1 auto", maxWidth:"9.5rem", fontSize:"0.85rem", cursor:"pointer" }}>
+              <option value="">Unsorted</option>
+              {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+          )}
           <button style={btnStyle(true)} onClick={addTask}>Add</button>
         </div>
       </div>
@@ -101,8 +244,8 @@ export default function TasksTab({
           )
         )}
 
-        <div style={{ display:"flex", flexDirection:"column", gap:"0.4rem" }}>
-          {sortedTasks.map(task => {
+        <div style={{ display:"flex", flexDirection:"column", gap:"0.9rem" }}>
+          {renderGroups(task => {
             const isFocused  = task.id === focusedTaskId;
             const isDragOver = task.id === dragOverId;
             const isDragging = task.id === dragId;
@@ -148,6 +291,17 @@ export default function TasksTab({
                     </div>
                   )}
                 </div>
+                {!task.opId && groups.length > 0 && (() => {
+                  const inGroup = groups.some(g => g.id === task.group);
+                  return (
+                    <select value="__" onChange={e=>moveTask(task.id, e.target.value)} title="Move to another group" aria-label={`Move ${task.text} to another group`}
+                      style={{ appearance:"none", WebkitAppearance:"none", background:"none", border:`1px solid ${line}`, borderRadius: DR ? 0 : 6, color:theme.textMuted, fontSize:"0.85rem", fontFamily:"var(--font-body)", padding:"1px 0", width:"1.9rem", textAlign:"center", textAlignLast:"center", cursor:"pointer", flexShrink:0 }}>
+                      <option value="__" disabled hidden>⇄</option>
+                      {groups.map(g => <option key={g.id} value={g.id} disabled={task.group===g.id}>{task.group===g.id ? "✓ " : ""}{g.name}</option>)}
+                      <option value="" disabled={!inGroup}>{inGroup ? "" : "✓ "}Unsorted</option>
+                    </select>
+                  );
+                })()}
                 <button onClick={()=>cyclePriority(task.id)} title={pLabel(task.priority)} style={{ background:"none", border:`1px solid ${pColor(task.priority)}44`, borderRadius:6, cursor:"pointer", fontSize:"0.85rem", color:pColor(task.priority), fontWeight:500, padding:"1px 5px", flexShrink:0, fontFamily:"var(--font-body)" }}>
                   {task.priority[0].toUpperCase()}
                 </button>
@@ -161,6 +315,20 @@ export default function TasksTab({
             );
           })}
         </div>
+
+        {newGroup === null ? (
+          <button onClick={()=>setNewGroup("")} style={{ display:"block", width:"100%", background:"none", border:`1px dashed ${line}`, borderRadius: DR ? 0 : 8, color:theme.textMuted, cursor:"pointer", fontSize:"0.88rem", fontStyle:"italic", padding:"0.5rem 0.8rem", marginTop:"0.9rem", fontFamily:"var(--font-body)" }}>
+            + New group
+          </button>
+        ) : (
+          <div style={{ display:"flex", gap:"0.4rem", marginTop:"0.9rem", alignItems:"center" }}>
+            <input id="task-new-group" autoFocus value={newGroup} onChange={e=>setNewGroup(e.target.value)}
+              onKeyDown={e=>{ if (e.key==="Enter") createGroup(); if (e.key==="Escape") setNewGroup(null); }}
+              placeholder="Who is this work for?" style={{ ...inpStyle, fontSize:"0.85rem", flex:1, minWidth:0 }}/>
+            <button style={btnStyle(true)} onClick={createGroup}>Create</button>
+            <button style={hdrBtn} aria-label="Cancel new group" onClick={()=>setNewGroup(null)}>✕</button>
+          </div>
+        )}
 
         {tasks.some(t=>t.done) && (
           <button style={{ ...btnStyle(false), marginTop:"0.75rem", fontSize:"0.75rem" }} onClick={()=>saveTasks(tasks.filter(t=>!t.done))}>

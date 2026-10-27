@@ -1,6 +1,7 @@
 import LiminalModal from "./LiminalModal";
 import { LineIcon } from "./Witchy";
 import { taskStage } from "../glyphs";
+import { groupPrefix } from "../taskGroups";
 
 // After a task is checked off mid-focus: what's next?
 export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, onSkip }) {
@@ -39,7 +40,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
           </span>
           {featured && (
             <span style={{ display:"block", fontSize:"0.85rem", fontStyle:"italic", color:theme.textMuted, marginTop:2 }}>
-              {pLabel(t.priority)}{(t.focusSecs||0) > 0 ? ` · ${fmt(t.focusSecs)} invested` : ""}
+              {groupPrefix(t)}{pLabel(t.priority)}{(t.focusSecs||0) > 0 ? ` · ${fmt(t.focusSecs)} invested` : ""}
             </span>
           )}
         </span>

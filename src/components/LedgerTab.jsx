@@ -2,6 +2,7 @@ import { useState } from "react";
 import { loadLedger, dayKey } from "../utils";
 import { Emblem, LineIcon, StarDivider } from "./Witchy";
 import { loadPulls, todaysPulls, cardById } from "../deck";
+import { groupIconFor } from "../taskGroups";
 
 const RANGES = [
   { key:"today", label:"Today",   days:1 },
@@ -30,10 +31,13 @@ function summarize(ledger, range) {
     inRange = keys.filter(k => k >= cutKey);
   }
   const byLabel = {};
+  const byGroup = {};   // who the time served; rows logged before groups existed count as Daily Ops / Unsorted
   const add = (row) => {
     const k = `${row.kind}:${row.label}`;
     byLabel[k] = byLabel[k] || { label:row.label, kind:row.kind, secs:0 };
     byLabel[k].secs += row.secs;
+    const g = row.group || (row.kind === "op" ? "Daily Ops" : "Unsorted");
+    byGroup[g] = (byGroup[g] || 0) + row.secs;
   };
   const perDay = inRange.map(k => {
     const rows = Object.values(ledger.days[k]);
@@ -46,7 +50,8 @@ function summarize(ledger, range) {
   const opsSecs = rows.filter(r => r.kind === "op").reduce((a, r) => a + r.secs, 0);
   const sessions = perDay.reduce((a, d) => a + d.sessions, 0);
   const earlierSecs = !range.days ? Object.values(ledger.earlier || {}).reduce((a, r) => a + r.secs, 0) : 0;
-  return { rows, total, opsSecs, sessions, perDay, earlierSecs };
+  const groups = Object.entries(byGroup).filter(([, secs]) => secs > 0).sort((a, b) => b[1] - a[1]);
+  return { rows, groups, total, opsSecs, sessions, perDay, earlierSecs };
 }
 
 const capsStyle = (theme) => ({ fontFamily:"var(--font-body)", letterSpacing:"0.01em", fontSize:"0.85rem", color:theme.textMuted });
@@ -135,6 +140,29 @@ export default function LedgerTab({ theme, panelStyle, pillStyle }) {
           </div>
 
           {DR ? <StarDivider color={ink} width={80} style={{ margin:"0 0 1rem" }}/> : null}
+
+          {s.groups.length > 0 && (
+            <div style={{ marginBottom:"1.4rem" }}>
+              <div style={{ ...caps, marginBottom:"0.35rem" }}>Who it served</div>
+              {s.groups.map(([name, secs]) => {
+                const share = secs / s.total;
+                return (
+                  <div key={name} style={{ display:"grid", gridTemplateColumns:"minmax(0,1fr) auto", alignItems:"center", gap:"0.25rem 0.75rem", padding:"0.45rem 0" }}>
+                    <span style={{ display:"flex", alignItems:"center", gap:"0.5rem", minWidth:0, fontFamily:"var(--font-display)", fontSize:"1.02rem", color:theme.text }}>
+                      {DR && <span style={{ color:ink, display:"inline-flex" }}><LineIcon name={groupIconFor(name)} size={15}/></span>}
+                      <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{name}</span>
+                    </span>
+                    <span style={{ fontFamily:"var(--font-display)", color:theme.text }}>
+                      {fmtDur(secs)} <span style={{ fontStyle:"italic", color:theme.textMuted, fontSize:"0.85rem" }}>· {Math.round(share * 100)}%</span>
+                    </span>
+                    <div style={{ gridColumn:"1 / -1", height:5, background: DR ? theme.line : theme.panelBorder, overflow:"hidden" }}>
+                      <div style={{ width:`${Math.max(2, share * 100)}%`, height:"100%", background: theme.breakColor || theme.accent }}/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <div style={{ display:"flex", flexDirection:"column" }}>
             {s.rows.map(r => {
