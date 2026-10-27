@@ -10,8 +10,8 @@ export default function IntentionChip({ intention, theme, onSet }) {
   const cancel = () => { setDraft(intention || ""); setEditing(false); };
 
   const label = {
-    fontFamily:"var(--font-caps)", fontSize:"0.62rem", letterSpacing:"0.22em",
-    textTransform:"uppercase", color: theme.accentInk || theme.accent,
+    fontFamily:"var(--font-body)", fontSize:"0.88rem", letterSpacing:"0.01em",
+    fontStyle:"italic", color: theme.accentInk || theme.accent,
   };
 
   if (!intention || editing) {

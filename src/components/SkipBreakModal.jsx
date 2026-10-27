@@ -13,7 +13,7 @@ export default function SkipBreakModal({ theme, onSkip, onTakeBreak, sessionsTod
     <LiminalModal theme={theme} onClose={onTakeBreak} size="md">
       <div style={{ textAlign:"center", marginBottom:"1.5rem" }}>
         <div style={{
-          fontSize:"0.6rem", letterSpacing:"0.22em", textTransform:"uppercase",
+          fontSize:"0.9rem", letterSpacing:"0.01em",
           color: theme.accent, fontFamily:"var(--font-body)",
           fontStyle:"italic", marginBottom:"0.5rem", opacity:0.85,
         }}>
@@ -43,8 +43,8 @@ export default function SkipBreakModal({ theme, onSkip, onTakeBreak, sessionsTod
 
       <div style={{ marginBottom:"1.25rem" }}>
         <div style={{
-          fontSize:"0.68rem", color:theme.textMuted, letterSpacing:"0.1em",
-          textTransform:"uppercase", fontFamily:"var(--font-body)",
+          fontSize:"0.88rem", color:theme.textMuted, letterSpacing:"0.01em",
+          fontFamily:"var(--font-body)",
           marginBottom:"0.65rem",
         }}>
           Why skip the break?

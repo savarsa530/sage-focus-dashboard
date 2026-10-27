@@ -1,4 +1,4 @@
-// Sage & Steph Focus Dashboard — v6.0.0
+// Sage & Steph Focus Dashboard — v6.1.0
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { THEMES, PRESETS } from "./constants";
@@ -15,10 +15,12 @@ import TasksTab        from "./components/TasksTab";
 import PITab           from "./components/PITab";
 import DailyOps        from "./components/DailyOps";
 import LedgerTab       from "./components/LedgerTab";
+import SessionPull     from "./components/SessionPull";
+import { drawCard, recordPull } from "./deck";
 import { Emblem, LineIcon, MoonPhase, OrnateCorners, StarDivider } from "./components/Witchy";
 import { moonOf } from "./moon";
 
-const VERSION = "6.0.0 · 2026-10-27";
+const VERSION = "6.1.0 · 2026-10-27";
 
 export default function App() {
 
@@ -108,6 +110,10 @@ export default function App() {
   const [needTask,  setNeedTask]  = useState(false);
   const [showSkipModal, setShowSkipModal] = useState(false);
   const [showCompletionFlash, setShowCompletionFlash] = useState(false);
+  // End-of-session pull: one face-down card offered when a focus session ends.
+  // ?pull in the URL offers a practice card on load, to try it without a session.
+  const [pullCard, setPullCard] = useState(() => (typeof location !== "undefined" && /[?&]pull\b/.test(location.search)) ? drawCard() : null);
+  const pullTaskRef = useRef(null);
   const [autoCycle, setAutoCycle] = useState(() => {
     const v = safeGet("sage_autocycle_v1");
     return v == null ? true : v === "true";
@@ -185,6 +191,8 @@ export default function App() {
       bumpStreak();
       recordSessionTimestamp();
       countLedgerSession();
+      pullTaskRef.current = tasksRef.current.find(t => t.id === focusedIdRef.current)?.text || null;
+      setPullCard(prev => prev || drawCard());
       const dur = brkMinsRef.current * 60;
       setPhase("break"); setTimeLeft(dur);
       if (autoCycleRef.current) {
@@ -482,14 +490,14 @@ export default function App() {
   useEffect(() => {
     const h = (e) => {
       if (e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT") return;
-      if (showSkipModal || showTaskSwap) return;
+      if (showSkipModal || showTaskSwap || pullCard) return;
       if (e.key===" ")  { e.preventDefault(); running ? handlePause() : handleStart(); }
       if (e.key==="z"||e.key==="Z") setZenMode(p=>!p);
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [running, focusedTaskId, showSkipModal, showTaskSwap]);
+  }, [running, focusedTaskId, showSkipModal, showTaskSwap, pullCard]);
 
   // ── Shared style objects ──────────────────────────────────────
   const isDark    = theme.isDark;
@@ -547,9 +555,10 @@ export default function App() {
       background:`linear-gradient(180deg, ${theme.velvetHi} 0%, ${theme.velvet} 100%)`,
       color:theme.cream, border:`2px solid ${theme.brass}`,
       borderRadius:10, boxShadow:theme.shadowMetal, padding:"0.5rem 1.2rem" };
-    return { ...caps,
+    // Quiet controls speak in Spectral; Cinzel is kept for the plaques you commit with.
+    return { fontFamily:"var(--font-body)", fontSize:"0.9rem", letterSpacing:"0.01em", cursor:"pointer", transition:"transform 0.1s, filter 0.15s",
       background:"transparent", color:theme.accentInk, border:`1px solid ${theme.line}`,
-      borderRadius:0, padding:"0.4rem 0.9rem", fontSize:"0.7rem" };
+      borderRadius:0, padding:"0.4rem 0.9rem" };
   };
 
   // Chips: rose marks only the active item, as a 2px underline.
@@ -559,8 +568,8 @@ export default function App() {
     border:`1px solid ${theme.line}`, borderRadius:0,
     borderBottom: active ? `2px solid ${theme.rose}` : `1px solid ${theme.line}`,
     padding:"0.35rem 0.85rem",
-    fontFamily:"var(--font-caps)", textTransform:"uppercase",
-    fontSize:"0.68rem", fontWeight:400, letterSpacing:"0.18em", cursor:"pointer",
+    fontFamily:"var(--font-body)",
+    fontSize:"0.9rem", fontWeight:400, letterSpacing:"0.01em", cursor:"pointer",
     transition:"background 0.2s, color 0.2s",
   } : {
     background:   active ? theme.accent : `${theme.accent}18`,
@@ -575,6 +584,19 @@ export default function App() {
   const globalStyles = `
     :root{--font-body:${theme.fonts.body};--font-caps:${theme.fonts.caps};--font-display:${theme.fonts.display};}
     *{box-sizing:border-box;margin:0;padding:0;}
+    button,input,select,textarea{font-family:inherit;}
+    @keyframes pullIn{from{opacity:0;}to{opacity:1;}}
+    @keyframes pullOut{from{opacity:1;}to{opacity:0;}}
+    @keyframes cardRise{from{opacity:0;transform:translateY(18px) scale(.97);}to{opacity:1;transform:translateY(0) scale(1);}}
+    @keyframes rareGlow{0%,100%{filter:drop-shadow(0 0 10px ${theme.brass}55);}50%{filter:drop-shadow(0 0 26px ${theme.brassHi}aa);}}
+    @keyframes afterIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+    .pull-enter{animation:pullIn .3s ease-out both;}
+    .pull-leave{animation:pullOut .22s ease-in both;}
+    .pull-enter .pull-card{animation:cardRise .5s cubic-bezier(.2,.8,.2,1) both;}
+    .pull-card:not(.turned):hover{filter:brightness(1.08) drop-shadow(0 0 18px ${theme.brass}44);}
+    .pull-card.turned{filter:drop-shadow(0 0 16px ${theme.brass}40);}
+    .pull-card.turned.rare{animation:rareGlow 3.2s ease-in-out .8s infinite;}
+    .pull-after{animation:afterIn .4s ease-out .55s both;}
     body{background:${theme.bg};}
     ::placeholder{color:${theme.textMuted}70;font-family:var(--font-body);}
     input:focus,textarea:focus{border-color:${theme.accent}99!important;box-shadow:0 0 0 3px ${theme.accent}22!important;outline:none;}
@@ -583,7 +605,7 @@ export default function App() {
     button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid ${theme.primary}!important;outline-offset:2px;}
     .dr-rule{display:flex;align-items:center;gap:10px;color:${theme.accent};}
     .dr-rule::before,.dr-rule::after{content:"";height:1px;flex:1;background:${theme.line};}
-    @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;}}` : ""}
+    @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;}.pull-flip{transform:none!important;}.pull-card.turned .pull-flip>span:first-child{opacity:0;}.pull-card.turned .pull-flip>span:last-child{transform:none!important;}}` : ""}
     textarea{resize:vertical;}
     select{background:${theme.panel};color:${theme.text};border:1px solid ${theme.panelBorder};border-radius:8px;padding:6px 10px;font-family:var(--font-body);font-size:0.9rem;outline:none;}
     ::-webkit-scrollbar{width:5px;}
@@ -626,7 +648,7 @@ export default function App() {
         <style>{globalStyles}</style>
         {running && phase==="work" && <div className="aurora-wrap"><div className="aurora-1"/><div className="aurora-2"/><div className="aurora-3"/></div>}
 
-        {showSkipModal && <SkipBreakModal theme={theme} onSkip={handleSkipBreak} onTakeBreak={handleTakeBreak} sessionsToday={sessionsToday} consecutiveSkips={consecutiveSkips}/>}
+        {showSkipModal && !pullCard && <SkipBreakModal theme={theme} onSkip={handleSkipBreak} onTakeBreak={handleTakeBreak} sessionsToday={sessionsToday} consecutiveSkips={consecutiveSkips}/>}
         {showTaskSwap  && <TaskSwapModal  theme={theme} tasks={tasks} completedCount={tasks.filter(t=>t.done).length} onSelect={handleTaskSwapSelect} onSkip={handleTaskSwapSkip}/>}
 
         {intention && (
@@ -663,11 +685,12 @@ export default function App() {
           </p>
         )}
         <div style={{ marginTop:"1rem", display:"flex", flexDirection:"column", alignItems:"center", gap:"0.4rem" }}>
-          <div style={{ fontSize:"0.65rem", color:theme.textMuted, letterSpacing:"0.12em", fontFamily:"var(--font-caps)" }}>Z · exit &nbsp;·&nbsp; space · start/pause</div>
+          <div style={{ fontSize:"0.85rem", color:theme.textMuted, letterSpacing:"0.01em", fontFamily:"var(--font-body)" }}>Z · exit &nbsp;·&nbsp; space · start/pause</div>
           <div style={{ fontSize:"0.72rem", color:theme.textMuted, fontStyle:"italic" }}>🔥 {streakLabel} · {sessionsToday} session{sessionsToday!==1?"s":""} today</div>
         </div>
         <button onClick={()=>setZenMode(false)} style={{ position:"fixed", top:"1.25rem", right:"1.25rem", ...btn(false), fontSize:"0.72rem", padding:"0.3rem 0.7rem", opacity:0.4 }}>✦ Exit</button>
         {showCompletionFlash && <div className="completion-flash"/>}
+        {pullCard && <SessionPull key={pullCard.id} theme={theme} card={pullCard} breakRunning={phase==="break" && running} onReveal={(c) => recordPull(c, pullTaskRef.current)} onClose={() => setPullCard(null)}/>}
       </div>
     );
   }
@@ -678,7 +701,7 @@ export default function App() {
       <style>{globalStyles}</style>
       {running && phase==="work" && <div className="aurora-wrap"><div className="aurora-1"/><div className="aurora-2"/><div className="aurora-3"/></div>}
 
-      {showSkipModal      && <SkipBreakModal theme={theme} onSkip={handleSkipBreak} onTakeBreak={handleTakeBreak} sessionsToday={sessionsToday} consecutiveSkips={consecutiveSkips}/>}
+      {showSkipModal && !pullCard && <SkipBreakModal theme={theme} onSkip={handleSkipBreak} onTakeBreak={handleTakeBreak} sessionsToday={sessionsToday} consecutiveSkips={consecutiveSkips}/>}
       {showTaskSwap       && <TaskSwapModal  theme={theme} tasks={tasks} completedCount={tasks.filter(t=>t.done).length} onSelect={handleTaskSwapSelect} onSkip={handleTaskSwapSkip}/>}
 
       <div style={{ maxWidth:900, margin:"0 auto", padding:"2rem 1.25rem", position:"relative", zIndex:2 }}>
@@ -716,11 +739,11 @@ export default function App() {
                       <span style={{ position:"absolute", top:-3, left: day ? -26 : -9, width:22, height:22, borderRadius:"50%", background:"#140f1e", transition:"left .18s ease" }}/>
                     </span>
                   </span>
-                  <span style={{ fontFamily:"var(--font-caps)", fontSize:"0.62rem", letterSpacing:"0.2em", textTransform:"uppercase" }}>{day ? "Daylight" : "Candlelight"}</span>
+                  <span style={{ fontFamily:"var(--font-body)", fontSize:"0.85rem", letterSpacing:"0.01em", }}>{day ? "Daylight" : "Candlelight"}</span>
                 </button>
               );
             })()}
-            <button style={{ ...btn(false), fontSize:"0.72rem", padding:"0.3rem 0.65rem" }} onClick={()=>setZenMode(p=>!p)} title="Zen mode (Z)">{DR ? <span style={{ display:"inline-flex", alignItems:"center", gap:"0.4rem" }}><LineIcon name="eye" size={15}/>Zen</span> : "⬡ Zen"}</button>
+            <button style={{ ...btn(false), padding:"0.3rem 0.75rem" }} onClick={()=>setZenMode(p=>!p)} title="Zen mode (Z)">{DR ? <span style={{ display:"inline-flex", alignItems:"center", gap:"0.4rem" }}><LineIcon name="eye" size={15}/>Zen</span> : "⬡ Zen"}</button>
           </div>
         </div>
 
@@ -730,15 +753,15 @@ export default function App() {
           <div style={{ display:"flex", justifyContent:"center", marginBottom:"0.75rem" }}>
             {DR
               ? <span className="dr-rule" style={{ width:"min(320px, 80%)", fontFamily:"var(--font-caps)", fontSize:"0.72rem", letterSpacing:"0.22em", textTransform:"uppercase", color:theme.accentInk }}>
-                  <LineIcon name={phase==="work" ? "star" : "crescent"} size={13}/>{phaseLabel}<LineIcon name={phase==="work" ? "star" : "crescent"} size={13}/>
+                  <LineIcon name={phase==="work" ? "star" : "teacup"} size={phase==="work" ? 13 : 16}/>{phaseLabel}<LineIcon name={phase==="work" ? "star" : "teacup"} size={phase==="work" ? 13 : 16}/>
                 </span>
-              : <span style={{ background:`${phaseColor}22`, color:phaseColor, borderRadius:20, padding:"0.2rem 0.9rem", fontSize:"0.65rem", fontWeight:700, letterSpacing:"0.15em", textTransform:"uppercase", fontFamily:"var(--font-caps)" }}>
+              : <span style={{ background:`${phaseColor}22`, color:phaseColor, borderRadius:20, padding:"0.2rem 0.9rem", fontSize:"0.85rem", fontWeight:500, letterSpacing:"0.01em", fontFamily:"var(--font-body)" }}>
                   {phaseLabel}
                 </span>}
           </div>
 
           <div style={{ display:"flex", gap:"0.4rem", flexWrap:"wrap", justifyContent:"center", marginBottom:"0.75rem", alignItems:"center" }}>
-            <button onClick={() => setShowPresets(!showPresets)} style={{ ...btn(false), fontSize:"0.78rem", padding:"0.3rem 0.65rem", display:"flex", alignItems:"center", gap:"0.3rem" }} title="Timer presets">
+            <button onClick={() => setShowPresets(!showPresets)} style={{ ...btn(false), padding:"0.3rem 0.75rem", display:"flex", alignItems:"center", gap:"0.3rem" }} title="Timer presets">
               ⚙ Presets
             </button>
           </div>
@@ -754,7 +777,7 @@ export default function App() {
           )}
 
           <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", justifyContent:"center", marginBottom:"1rem", flexWrap:"wrap" }}>
-            <span style={{ fontSize:"0.65rem", color:theme.textMuted, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.1em", fontFamily:"var(--font-caps)" }}>Custom:</span>
+            <span style={{ fontSize:"0.85rem", color:theme.textMuted, fontWeight:500, letterSpacing:"0.01em", fontFamily:"var(--font-body)" }}>Custom:</span>
             <input value={customW} onChange={e=>setCustomW(e.target.value)} placeholder="Work min" onKeyDown={e=>e.key==="Enter"&&applyCustom()} style={{ ...inp, width:80, textAlign:"center", fontSize:"0.88rem" }}/>
             <span style={{ color:theme.textMuted, fontSize:"0.85rem" }}>/</span>
             <input value={customB} onChange={e=>setCustomB(e.target.value)} placeholder="Break min" onKeyDown={e=>e.key==="Enter"&&applyCustom()} style={{ ...inp, width:80, textAlign:"center", fontSize:"0.88rem" }}/>
@@ -766,8 +789,8 @@ export default function App() {
               <TimerRing pct={timerPct} color={phaseColor} running={running}>
                 <div className="timer-breath" style={{ fontSize:DR?"3rem":"2.6rem", fontWeight:DR?400:500, letterSpacing:DR?"0":"-0.03em", color:theme.text, fontFamily:DR?"var(--font-display)":"var(--font-body)" }}>{fmt(timeLeft)}</div>
                 {focusedTask
-                  ? <div style={{ fontSize:"0.68rem", color:phaseColor, maxWidth:130, textAlign:"center", marginTop:4, fontWeight:600, fontStyle:"italic", lineHeight:1.3 }}>✦ {focusedTask.text}</div>
-                  : <div style={{ fontSize:"0.62rem", color:theme.textMuted, marginTop:4, textAlign:"center", fontStyle:"italic" }}>pick a task below</div>
+                  ? <div style={{ fontSize:"0.85rem", color:phaseColor, maxWidth:140, textAlign:"center", marginTop:4, fontWeight:600, fontStyle:"italic", lineHeight:1.3 }}>✦ {focusedTask.text}</div>
+                  : <div style={{ fontSize:"0.82rem", color:theme.textMuted, marginTop:4, textAlign:"center", fontStyle:"italic" }}>pick a task below</div>
                 }
               </TimerRing>
             </div>
@@ -781,7 +804,7 @@ export default function App() {
 
           <div style={{ display:"flex", gap:"0.5rem", alignItems:"center", flexWrap:"wrap", justifyContent:"center" }}>
             {!running
-              ? <button className={!focusedTaskId && phase==="work"?"start-pulse":""} style={{ ...btn(DR ? "invite" : true), fontSize:DR?"0.82rem":"0.95rem", padding:"0.55rem 1.6rem" }} onClick={handleStart}>▶ {phase==="work"?"Begin Focus":"Begin Break"}</button>
+              ? <button className={!focusedTaskId && phase==="work"?"start-pulse":""} style={{ ...btn(DR ? "invite" : true), fontSize:DR?"0.82rem":"0.95rem", padding:"0.55rem 1.6rem", display:"inline-flex", alignItems:"center", gap:"0.5rem" }} onClick={handleStart}>{DR ? <LineIcon name={phase==="work" ? "star" : "teacup"} size={15}/> : "▶"} {phase==="work"?"Begin Focus":"Begin Break"}</button>
               : <button style={{ ...btn(true), fontSize:"0.95rem", padding:"0.55rem 1.6rem" }} onClick={handlePause}>⏸ Pause</button>
             }
             <button style={{ ...btn(false), padding:"0.55rem 1rem" }} onClick={handleReset}>↺ Reset</button>
@@ -821,10 +844,10 @@ export default function App() {
         {/* Tab Bar */}
         <div style={{ display:"flex", gap:"0.4rem", marginBottom:"1rem", flexWrap:"wrap" }}>
           {(DR
-            ? [["tasks","cards","Tasks"],["pi","crystal","PI Parking Lot"],["ledger","planchette","Ledger"]]
+            ? [["tasks","cards","Tasks"],["pi","crystal","PI Parking Lot"],["ledger","hourglass","Ledger"]]
             : [["tasks",null,"📋 Tasks"],["pi",null,"🗂 PI Parking Lot"],["ledger",null,"📜 Ledger"]]
           ).map(([k,icon,l])=>(
-            <button key={k} style={{ ...pill(activeTab===k), fontSize:DR?"0.7rem":"0.82rem", padding:"0.45rem 1rem", display:"inline-flex", alignItems:"center", gap:"0.45rem" }} onClick={()=>setActiveTab(k)}>
+            <button key={k} style={{ ...pill(activeTab===k), fontSize:DR?"0.95rem":"0.82rem", padding:"0.45rem 1rem", display:"inline-flex", alignItems:"center", gap:"0.45rem" }} onClick={()=>setActiveTab(k)}>
               {icon && <LineIcon name={icon} size={15} style={{ color:theme.accentInk }}/>}{l}
             </button>
           ))}
@@ -882,11 +905,12 @@ export default function App() {
 
         {/* Footer */}
         {DR && <StarDivider color={theme.accentInk} width={90} style={{ marginTop:"1.75rem" }}/>}
-        <div style={{ textAlign:"center", marginTop:"1.5rem", fontSize:"0.6rem", color:theme.textMuted, letterSpacing:"0.1em", fontFamily:"var(--font-caps)" }}>
+        <div style={{ textAlign:"center", marginTop:"1.5rem", fontSize:"0.8rem", color:theme.textMuted, letterSpacing:"0.01em", fontFamily:"var(--font-body)" }}>
           space · start/pause &nbsp;·&nbsp; Z · zen &nbsp;·&nbsp; click focus on a task to begin
         </div>
       </div>
       {showCompletionFlash && <div className="completion-flash"/>}
+      {pullCard && <SessionPull key={pullCard.id} theme={theme} card={pullCard} breakRunning={phase==="break" && running} onReveal={(c) => recordPull(c, pullTaskRef.current)} onClose={() => setPullCard(null)}/>}
     </div>
   );
 }

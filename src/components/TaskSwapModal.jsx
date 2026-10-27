@@ -17,7 +17,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
     <LiminalModal theme={theme} onClose={null} size="md">
       <div style={{ textAlign:"center", marginBottom:"1.5rem" }}>
         <div style={{
-          fontSize:"0.6rem", letterSpacing:"0.22em", textTransform:"uppercase",
+          fontSize:"0.9rem", letterSpacing:"0.01em",
           color:theme.accent, fontFamily:"var(--font-body)",
           fontStyle:"italic", marginBottom:"0.5rem", opacity:0.85,
         }}>
@@ -48,7 +48,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
 
       {suggested && (
         <div style={{ marginBottom:"1rem" }}>
-          <div style={{ fontSize:"0.6rem", color:theme.textMuted, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:"var(--font-caps)", marginBottom:"0.5rem" }}>
+          <div style={{ fontSize:"0.8rem", color:theme.textMuted, letterSpacing:"0.01em", fontFamily:"var(--font-body)", marginBottom:"0.5rem" }}>
             suggested
           </div>
           <button
@@ -68,7 +68,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
                 {suggested.text}
               </div>
               {(suggested.focusSecs||0) > 0 && (
-                <div style={{ fontSize:"0.65rem", color:theme.accent, marginTop:2, fontFamily:"var(--font-caps)" }}>
+                <div style={{ fontSize:"0.85rem", color:theme.accent, marginTop:2, fontFamily:"var(--font-body)" }}>
                   ⏱ {suggested.focusSecs < 3600 ? `${Math.floor(suggested.focusSecs/60)}m` : `${Math.floor(suggested.focusSecs/3600)}h`} invested
                 </div>
               )}
@@ -82,7 +82,7 @@ export default function TaskSwapModal({ theme, tasks, completedCount, onSelect, 
 
       {others.length > 0 && (
         <div style={{ marginBottom:"1.25rem" }}>
-          <div style={{ fontSize:"0.6rem", color:theme.textMuted, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:"var(--font-caps)", marginBottom:"0.5rem" }}>
+          <div style={{ fontSize:"0.8rem", color:theme.textMuted, letterSpacing:"0.01em", fontFamily:"var(--font-body)", marginBottom:"0.5rem" }}>
             or choose another
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:"0.3rem", maxHeight:180, overflowY:"auto" }}>

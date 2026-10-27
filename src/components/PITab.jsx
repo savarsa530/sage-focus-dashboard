@@ -2,7 +2,7 @@ import { PI_CYCLES, PI_STATUSES, PI_SECTION_TYPES } from "../constants";
 
 function FieldLabel({ children, textMuted }) {
   return (
-    <div style={{ fontSize:"0.65rem", color:textMuted, fontWeight:600, marginBottom:3, textTransform:"uppercase", letterSpacing:"0.08em", fontFamily:"var(--font-caps)" }}>
+    <div style={{ fontSize:"0.85rem", color:textMuted, fontWeight:500, marginBottom:3, letterSpacing:"0.01em", fontFamily:"var(--font-body)" }}>
       {children}
     </div>
   );
@@ -26,7 +26,7 @@ export default function PITab({
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1rem", flexWrap:"wrap", gap:"0.5rem" }}>
         <div>
-          <div style={{ fontSize:"0.62rem", fontWeight:600, color:theme.textMuted, letterSpacing:"0.12em", textTransform:"uppercase", fontFamily:"var(--font-caps)" }}>PI Parking Lot</div>
+          <div style={{ fontSize:"0.85rem", fontWeight:500, color:theme.textMuted, letterSpacing:"0.01em", fontFamily:"var(--font-body)" }}>PI Parking Lot</div>
           <div style={{ fontSize:"0.82rem", color:theme.textMuted, marginTop:2, fontStyle:"italic" }}>Capacity, dependencies, and risks across planning cycles</div>
         </div>
         <div style={{ display:"flex", gap:"0.35rem", flexWrap:"wrap" }}>
@@ -90,7 +90,7 @@ export default function PITab({
         <div style={{ marginBottom:"1.5rem" }}>
           <div style={{ fontSize:"0.78rem", fontWeight:700, color:PI_SECTION_TYPES.capacity.color, textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:"0.75rem", display:"flex", alignItems:"center", gap:"0.4rem" }}>
             <span>{PI_SECTION_TYPES.capacity.icon}</span><span>Capacity</span>
-            {piCapacity.length > 0 && <span style={{ marginLeft:"auto", fontSize:"0.65rem", color:theme.textMuted, fontFamily:"var(--font-caps)" }}>({piCapacity.length})</span>}
+            {piCapacity.length > 0 && <span style={{ marginLeft:"auto", fontSize:"0.85rem", color:theme.textMuted, fontFamily:"var(--font-body)" }}>({piCapacity.length})</span>}
           </div>
           {piCapacity.length === 0 ? (
             <div style={{ textAlign:"center", padding:"1.5rem", color:theme.textMuted, fontSize:"0.88rem", fontStyle:"italic", border:`1px dashed ${theme.panelBorder}`, borderRadius:10 }}>No capacity constraints yet 🌿</div>
@@ -104,14 +104,14 @@ export default function PITab({
                   if (!items.length) return null;
                   return (
                     <div key={cycle}>
-                      <div style={{ fontSize:"0.65rem", color:theme.textMuted, fontWeight:600, marginBottom:"0.35rem", textTransform:"uppercase", letterSpacing:"0.06em", fontFamily:"var(--font-caps)" }}>PI {cycle}</div>
+                      <div style={{ fontSize:"0.85rem", color:theme.textMuted, fontWeight:500, marginBottom:"0.35rem", letterSpacing:"0.01em", fontFamily:"var(--font-body)" }}>PI {cycle}</div>
                       {items.map(item => {
                         const isOpen = piExpanded === item.id;
                         const impactColor = { low:"#86efac", medium:theme.accent, high:"#f87171" }[item.impactLevel];
                         return (
                           <div key={item.id} style={{ background:`${PI_SECTION_TYPES.capacity.color}08`, border:`1px solid ${theme.panelBorder}`, borderRadius:10, overflow:"hidden", marginBottom:"0.4rem" }}>
                             <div style={{ display:"flex", alignItems:"center", gap:"0.6rem", padding:"0.6rem 0.8rem", cursor:"pointer", userSelect:"none" }} onClick={() => setPiExpanded(isOpen ? null : item.id)}>
-                              <span style={{ color:impactColor, fontSize:"0.68rem", fontWeight:700, fontFamily:"var(--font-caps)" }}>{item.impactLevel?.toUpperCase() || "MED"}</span>
+                              <span style={{ color:impactColor, fontSize:"0.85rem", fontWeight:500, fontFamily:"var(--font-body)" }}>{item.impactLevel?.toUpperCase() || "MED"}</span>
                               <span style={{ flex:1, fontWeight:600, fontSize:"0.9rem", color:theme.text }}>{item.title}</span>
                               <span style={{ color:theme.textMuted, fontSize:"0.8rem" }}>{isOpen ? "▲" : "▼"}</span>
                               <button onClick={e => { e.stopPropagation(); deletePiItem("capacity", item.id); }} style={{ background:"none", border:"none", cursor:"pointer", color:theme.textMuted, fontSize:"0.82rem", padding:"0 4px" }}>✕</button>
@@ -140,7 +140,7 @@ export default function PITab({
         <div style={{ marginBottom:"1.5rem" }}>
           <div style={{ fontSize:"0.78rem", fontWeight:700, color:PI_SECTION_TYPES.dependencies.color, textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:"0.75rem", display:"flex", alignItems:"center", gap:"0.4rem" }}>
             <span>{PI_SECTION_TYPES.dependencies.icon}</span><span>Dependencies</span>
-            {piDependencies.length > 0 && <span style={{ marginLeft:"auto", fontSize:"0.65rem", color:theme.textMuted, fontFamily:"var(--font-caps)" }}>({piDependencies.length})</span>}
+            {piDependencies.length > 0 && <span style={{ marginLeft:"auto", fontSize:"0.85rem", color:theme.textMuted, fontFamily:"var(--font-body)" }}>({piDependencies.length})</span>}
           </div>
           {piDependencies.length === 0 ? (
             <div style={{ textAlign:"center", padding:"1.5rem", color:theme.textMuted, fontSize:"0.88rem", fontStyle:"italic", border:`1px dashed ${theme.panelBorder}`, borderRadius:10 }}>No dependencies yet 🔗</div>
@@ -154,14 +154,14 @@ export default function PITab({
                   if (!items.length) return null;
                   return (
                     <div key={cycle}>
-                      <div style={{ fontSize:"0.65rem", color:theme.textMuted, fontWeight:600, marginBottom:"0.35rem", textTransform:"uppercase", letterSpacing:"0.06em", fontFamily:"var(--font-caps)" }}>PI {cycle}</div>
+                      <div style={{ fontSize:"0.85rem", color:theme.textMuted, fontWeight:500, marginBottom:"0.35rem", letterSpacing:"0.01em", fontFamily:"var(--font-body)" }}>PI {cycle}</div>
                       {items.map(item => {
                         const isOpen = piExpanded === item.id;
                         const statusColor = { identified:"#fbbf24", in_progress:theme.accent, resolved:"#86efac" }[item.status];
                         return (
                           <div key={item.id} style={{ background:`${PI_SECTION_TYPES.dependencies.color}08`, border:`1px solid ${theme.panelBorder}`, borderRadius:10, overflow:"hidden", marginBottom:"0.4rem" }}>
                             <div style={{ display:"flex", alignItems:"center", gap:"0.6rem", padding:"0.6rem 0.8rem", cursor:"pointer", userSelect:"none" }} onClick={() => setPiExpanded(isOpen ? null : item.id)}>
-                              <span style={{ color:statusColor, fontSize:"0.68rem", fontWeight:700, fontFamily:"var(--font-caps)" }}>{item.status?.replace(/_/g, " ").toUpperCase() || "IDENTIFIED"}</span>
+                              <span style={{ color:statusColor, fontSize:"0.85rem", fontWeight:500, fontFamily:"var(--font-body)" }}>{item.status?.replace(/_/g, " ").toUpperCase() || "IDENTIFIED"}</span>
                               <span style={{ flex:1, fontWeight:600, fontSize:"0.9rem", color:theme.text }}>{item.title}</span>
                               <span style={{ color:theme.textMuted, fontSize:"0.8rem" }}>{isOpen ? "▲" : "▼"}</span>
                               <button onClick={e => { e.stopPropagation(); deletePiItem("dependencies", item.id); }} style={{ background:"none", border:"none", cursor:"pointer", color:theme.textMuted, fontSize:"0.82rem", padding:"0 4px" }}>✕</button>
@@ -191,7 +191,7 @@ export default function PITab({
         <div>
           <div style={{ fontSize:"0.78rem", fontWeight:700, color:PI_SECTION_TYPES.risk.color, textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:"0.75rem", display:"flex", alignItems:"center", gap:"0.4rem" }}>
             <span>{PI_SECTION_TYPES.risk.icon}</span><span>Risk</span>
-            {piRisk.length > 0 && <span style={{ marginLeft:"auto", fontSize:"0.65rem", color:theme.textMuted, fontFamily:"var(--font-caps)" }}>({piRisk.length})</span>}
+            {piRisk.length > 0 && <span style={{ marginLeft:"auto", fontSize:"0.85rem", color:theme.textMuted, fontFamily:"var(--font-body)" }}>({piRisk.length})</span>}
           </div>
           {piRisk.length === 0 ? (
             <div style={{ textAlign:"center", padding:"1.5rem", color:theme.textMuted, fontSize:"0.88rem", fontStyle:"italic", border:`1px dashed ${theme.panelBorder}`, borderRadius:10 }}>No risks yet ⚠️</div>
@@ -205,7 +205,7 @@ export default function PITab({
                   if (!items.length) return null;
                   return (
                     <div key={cycle}>
-                      <div style={{ fontSize:"0.65rem", color:theme.textMuted, fontWeight:600, marginBottom:"0.35rem", textTransform:"uppercase", letterSpacing:"0.06em", fontFamily:"var(--font-caps)" }}>PI {cycle}</div>
+                      <div style={{ fontSize:"0.85rem", color:theme.textMuted, fontWeight:500, marginBottom:"0.35rem", letterSpacing:"0.01em", fontFamily:"var(--font-body)" }}>PI {cycle}</div>
                       {items.map(item => {
                         const isOpen = piExpanded === item.id;
                         return (

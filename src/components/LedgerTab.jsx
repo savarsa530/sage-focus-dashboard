@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { loadLedger, dayKey } from "../utils";
 import { Emblem, LineIcon, StarDivider } from "./Witchy";
+import { loadPulls, todaysPulls, cardById } from "../deck";
 
 const RANGES = [
   { key:"today", label:"Today",   days:1 },
@@ -48,7 +49,7 @@ function summarize(ledger, range) {
   return { rows, total, opsSecs, sessions, perDay, earlierSecs };
 }
 
-const capsStyle = (theme) => ({ fontFamily:"var(--font-caps)", textTransform:"uppercase", letterSpacing:"0.22em", fontSize:"0.62rem", color:theme.textMuted });
+const capsStyle = (theme) => ({ fontFamily:"var(--font-body)", letterSpacing:"0.01em", fontSize:"0.85rem", color:theme.textMuted });
 
 function Stat({ theme, label, value, caption }) {
   const DR = !!theme.deckRoom;
@@ -70,12 +71,15 @@ export default function LedgerTab({ theme, panelStyle, pillStyle }) {
   const ink = theme.accentInk || theme.accent;
 
   const caps = capsStyle(theme);
+  const allPulls = loadPulls();
+  const spread = todaysPulls(allPulls).slice().reverse();
+  const pulls = allPulls;
 
   return (
     <div style={panelStyle}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"0.75rem", flexWrap:"wrap", marginBottom:"1rem" }}>
         <div style={{ display:"flex", alignItems:"center", gap:"0.6rem" }}>
-          {DR && <Emblem name="lantern" size={40}/>}
+          {DR && <Emblem name="hourglass" size={48}/>}
           <div>
             <div style={{ ...caps, color:ink }}>The ledger</div>
             <div style={{ fontFamily:"var(--font-display)", fontSize:"1.35rem", color:theme.text }}>Where the time went</div>
@@ -86,9 +90,39 @@ export default function LedgerTab({ theme, panelStyle, pillStyle }) {
         </div>
       </div>
 
+
+      {pulls.length > 0 && (
+        <div style={{ marginBottom:"1.25rem" }}>
+          <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:"0.75rem", flexWrap:"wrap", marginBottom:"0.5rem" }}>
+            <div style={{ fontFamily:"var(--font-display)", fontSize:"1.1rem", color:theme.text }}>Today's spread</div>
+            <div style={{ fontStyle:"italic", color:theme.textMuted, fontSize:"0.85rem" }}>{allPulls.length} card{allPulls.length !== 1 ? "s" : ""} drawn in all</div>
+          </div>
+          {spread.length === 0 ? (
+            <div style={{ fontStyle:"italic", color:theme.textMuted, fontSize:"0.9rem" }}>No cards yet today. One is offered at the end of each focus session.</div>
+          ) : (
+            <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem" }}>
+              {spread.map(p => {
+                const c = cardById(p.card); if (!c) return null;
+                return (
+                  <div key={p.id} style={{ display:"flex", alignItems:"center", gap:"0.85rem", padding:"0.55rem 0.75rem", background: DR ? theme.card : "transparent", border:`1px solid ${DR ? theme.line : theme.panelBorder}`, borderRadius: DR ? 6 : 10 }}>
+                    <Emblem name={c.art} size={52}/>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ display:"flex", alignItems:"baseline", gap:"0.5rem", flexWrap:"wrap" }}>
+                        <span style={{ fontFamily:"var(--font-display)", fontSize:"1.05rem", color:theme.text }}>{c.name}</span>
+                        <span style={{ fontStyle:"italic", color:theme.textMuted, fontSize:"0.8rem" }}>{c.rare ? "rare · " : ""}{new Date(p.at).toLocaleTimeString([], { hour:"numeric", minute:"2-digit" })}{p.task ? ` · after ${p.task}` : ""}</span>
+                      </div>
+                      <div style={{ fontSize:"0.9rem", color:theme.textMuted, lineHeight:1.35 }}>{c.line}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
       {s.total === 0 ? (
         <div style={{ textAlign:"center", padding:"1.5rem 0", display:"flex", flexDirection:"column", alignItems:"center", gap:"0.6rem" }}>
-          {DR && <Emblem name="crystal-bundle" size={64}/>}
+          {DR && <Emblem name="sleeping-cat" size={96} style={{ height:48 }}/>}
           <div style={{ fontFamily:"var(--font-display)", fontSize:"1.25rem", color:theme.text }}>The ledger is quiet</div>
           <div style={{ fontStyle:"italic", color:theme.textMuted, fontSize:"0.88rem" }}>Focus on a task or a daily op and the time lands here.</div>
         </div>
@@ -110,7 +144,7 @@ export default function LedgerTab({ theme, panelStyle, pillStyle }) {
                   <div style={{ display:"flex", alignItems:"center", gap:"0.5rem", minWidth:0 }}>
                     {DR && <span style={{ color:ink }}><LineIcon name={r.kind === "op" ? "candle" : "cards"} size={15}/></span>}
                     <span style={{ fontFamily:"var(--font-display)", fontSize:"1.02rem", color:theme.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{r.label}</span>
-                    {r.kind === "op" && <span style={{ ...caps, fontSize:"0.55rem" }}>daily op</span>}
+                    {r.kind === "op" && <span style={{ ...caps, fontSize:"0.8rem", fontStyle:"italic" }}>daily op</span>}
                   </div>
                   <span style={{ fontFamily:"var(--font-display)", color:theme.text }}>{fmtDur(r.secs)} <span style={{ fontStyle:"italic", color:theme.textMuted, fontSize:"0.85rem" }}>· {Math.round(pct * 100)}%</span></span>
                   <div style={{ gridColumn:"1 / -1", height:3, background: DR ? theme.line : `${theme.panelBorder}`, overflow:"hidden" }}>

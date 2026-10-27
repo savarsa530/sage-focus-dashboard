@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { uuid, today, safeGet, safeGetJSON, safeSet } from "../utils";
 import { LineIcon } from "./Witchy";
+import { opIcon } from "../glyphs";
 
 const DEFAULT_TEMPLATE = [
   "Email scan",
@@ -85,12 +86,12 @@ export default function DailyOps({ theme, panelStyle, btnStyle, pillStyle, inpSt
       {/* Header row */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: collapsed ? 0 : "0.9rem" }}>
         <div style={{ display:"flex", alignItems:"center", gap:"0.55rem" }}>
-          <span style={{ fontSize:"0.65rem", letterSpacing:"0.16em", textTransform:"uppercase", color:theme.textMuted, fontFamily:"var(--font-caps)", display:"inline-flex", alignItems:"center", gap:"0.4rem" }}>
+          <span style={{ fontSize:"0.85rem", letterSpacing:"0.01em", color:theme.textMuted, fontFamily:"var(--font-body)", display:"inline-flex", alignItems:"center", gap:"0.4rem" }}>
             {DR && <LineIcon name="candle" size={14} style={{ color:theme.accentInk }}/>}Daily Ops
           </span>
           {items.length > 0 && (
             <span style={{
-              fontSize:"0.65rem", fontFamily:"var(--font-caps)", fontWeight:700,
+              fontSize:"0.85rem", fontFamily:"var(--font-body)", fontWeight:500,
               color: allDone ? (theme.breakColor || "#4ade80") : theme.accent,
             }}>
               {checked}/{items.length}
@@ -142,9 +143,10 @@ export default function DailyOps({ theme, panelStyle, btnStyle, pillStyle, inpSt
                   opacity: done ? 0.5 : 1,
                   transition:"all 0.15s",
                 }}>
+                  {DR && <LineIcon name={opIcon(item.text)} size={17} style={{ color:theme.accentInk, marginRight:"0.5rem", opacity: done ? 0.6 : 0.9 }}/>}
                   {item.text}
                   {(linked?.focusSecs || 0) > 0 && (
-                    <span style={{ marginLeft:"0.5rem", fontSize:"0.62rem", color:theme.accentInk || theme.accent, fontFamily:"var(--font-caps)", letterSpacing:"0.12em", textDecoration:"none", display:"inline-block" }}>
+                    <span style={{ marginLeft:"0.5rem", fontSize:"0.85rem", color:theme.accentInk || theme.accent, fontFamily:"var(--font-body)", letterSpacing:"0.01em", textDecoration:"none", display:"inline-block" }}>
                       {fmtMins(linked.focusSecs)}
                     </span>
                   )}
@@ -153,7 +155,7 @@ export default function DailyOps({ theme, panelStyle, btnStyle, pillStyle, inpSt
                   <button
                     onClick={() => onFocusOp?.(item)}
                     title={focused ? "Unfocus" : "Focus on this op — it joins your task list"}
-                    style={{ ...pillStyle(focused), fontSize:"0.66rem", padding:"0.2rem 0.6rem", flexShrink:0 }}
+                    style={{ ...pillStyle(focused), fontSize:"0.85rem", padding:"0.2rem 0.7rem", flexShrink:0 }}
                   >
                     {focused ? "★ focused" : "focus"}
                   </button>

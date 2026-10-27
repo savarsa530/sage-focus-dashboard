@@ -122,3 +122,32 @@ export function playDing() {
     setTimeout(() => { try { ctx.close(); } catch { /* already closed */ } }, 2500);
   } catch { /* audio unavailable */ }
 }
+
+// A softer, lower turn-of-the-card tone: two notes rising a fifth,
+// with a high shimmer added for a rare pull.
+export function playTurn(rare = false) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const master = ctx.createGain();
+    master.gain.value = 0.55;
+    master.connect(ctx.destination);
+    const notes = [
+      { freq: 392, at: 0,    gain: 0.35, decay: 1.6 },
+      { freq: 587, at: 0.14, gain: 0.28, decay: 1.9 },
+      ...(rare ? [{ freq: 1175, at: 0.32, gain: 0.12, decay: 2.4 }, { freq: 1568, at: 0.42, gain: 0.07, decay: 2.2 }] : []),
+    ];
+    notes.forEach(({ freq, at, gain, decay }) => {
+      const osc = ctx.createOscillator();
+      const g   = ctx.createGain();
+      const t0  = ctx.currentTime + at;
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(gain, t0 + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + decay);
+      osc.connect(g); g.connect(master);
+      osc.start(t0); osc.stop(t0 + decay);
+    });
+    setTimeout(() => { try { ctx.close(); } catch { /* already closed */ } }, 3200);
+  } catch { /* audio unavailable */ }
+}
