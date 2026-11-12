@@ -31,7 +31,7 @@ import { Emblem, LineIcon, MoonPhase, OrnateCorners, StarDivider } from "./compo
 import { emblemUrl } from "./glyphs";
 import { moonOf } from "./moon";
 
-const VERSION = "6.3.0 · 2026-11-12";
+const VERSION = "6.3.1 · 2026-11-12";
 
 export default function App() {
 

@@ -6,8 +6,11 @@ Enhancements and ideas captured as we build. Items move from **Backlog → In Pr
 
 ## Done
 
+- [x] **India team's shift ends at 11:00 PM IST (v6.3.1)** *(2026-11-12)*
+  The shaded shift on the Eastern / India clock now runs 3:00 PM to 11:00 PM IST (12:30 PM ET in winter, 1:30 PM ET in summer), not midnight.
+
 - [x] **Their side of the clock: Eastern and India time (v6.3.0)** *(2026-11-12)*
-  The header now shows India's time beside the clock ("India 9:50 PM"), and a "Their side of the clock" panel sits above the day arc: Eastern and India times side by side with their dates (India's marked "next day" when it is), how far ahead India is, and whether the India team is on shift. A slider moves through today's Eastern day in 15-minute steps and both times move together; "Now" snaps back. Bands above the slider shade the India team's shift (3:00 PM to midnight IST) and your own workday from **Hours**. The line under it ("8:00 AM ET / 6:30 PM IST", with India's weekday added when it's a different day) copies with one press. Uses the real time zones, so daylight saving is handled (10½ hours ahead in winter, 9½ in summer). **Minimize** folds the panel to one line with the live times and a **Show** button (the header's India time does the same); open or folded is remembered.
+  The header now shows India's time beside the clock ("India 9:50 PM"), and a "Their side of the clock" panel sits above the day arc: Eastern and India times side by side with their dates (India's marked "next day" when it is), how far ahead India is, and whether the India team is on shift. A slider moves through today's Eastern day in 15-minute steps and both times move together; "Now" snaps back. Bands above the slider shade the India team's shift (3:00 PM to about 11:00 PM IST) and your own workday from **Hours**. The line under it ("8:00 AM ET / 6:30 PM IST", with India's weekday added when it's a different day) copies with one press. Uses the real time zones, so daylight saving is handled (10½ hours ahead in winter, 9½ in summer). **Minimize** folds the panel to one line with the live times and a **Show** button (the header's India time does the same); open or folded is remembered.
 
 - [x] **The day arc, the evening face, and the seed on the sill (v6.2.0)** *(2026-10-27)*
   **Day arc:** a panel above the timer traces the workday from start to hard stop, with a rose mark at the log-off aim (defaults: 8:00 start, log off by 3:30, hard stop 4:00, Mon–Fri; edit under **Hours**). It counts down to the aim, then says "You can go" with a **Close the day** plaque.
