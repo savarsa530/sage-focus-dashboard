@@ -22,6 +22,7 @@ import { DECK, drawCard, recordPull } from "./deck";
 import DayArc      from "./components/DayArc";
 import Garden      from "./components/Garden";
 import EveningFace from "./components/EveningFace";
+import TwoClocks, { IndiaClockChip } from "./components/TwoClocks";
 import { loadPlan, savePlan, dayState, loadCloses, closeDay, reopenDay } from "./workday";
 import { loadGarden, feed } from "./garden";
 import { playGrow } from "./audio";
@@ -30,7 +31,7 @@ import { Emblem, LineIcon, MoonPhase, OrnateCorners, StarDivider } from "./compo
 import { emblemUrl } from "./glyphs";
 import { moonOf } from "./moon";
 
-const VERSION = "6.2.0 · 2026-10-27";
+const VERSION = "6.3.0 · 2026-11-12";
 
 export default function App() {
 
@@ -132,6 +133,9 @@ export default function App() {
   const [garden, setGarden] = useState(loadGarden);
   useEffect(() => { const id = setInterval(() => setClock(new Date()), 30000); return () => clearInterval(id); }, []);
   const handleSavePlan = (p) => { savePlan(p); setPlan(p); };
+  // Eastern ↔ India clock: always on the page, open or folded to one line; remembered.
+  const [clocksOpen, setClocksOpen] = useState(() => safeGet("sage_twoclocks_v1") !== "closed");
+  const toggleClocks = () => setClocksOpen(v => { safeSet("sage_twoclocks_v1", v ? "closed" : "open"); return !v; });
   const feedGarden = (key) => { const { garden: g, fed, grew } = feed(key); setGarden(g); if (fed) playGrow(grew); };
   // Fetch every card's art when the dashboard opens, so the face is already
   // in the browser cache when a card turns 25 minutes later.
@@ -761,6 +765,7 @@ export default function App() {
               </span>
             )}
             <LiveClock color={theme.textMuted}/>
+            <IndiaClockChip theme={theme} open={clocksOpen} onToggle={toggleClocks}/>
             {/* The crescent toggle: Candlelight ↔ Daylight. The moon knob waxes as it turns on. */}
             {(() => {
               const day = theme.key === "daylight";
@@ -785,6 +790,10 @@ export default function App() {
             <button style={{ ...btn(false), padding:"0.3rem 0.75rem" }} onClick={()=>setZenMode(p=>!p)} title="Zen mode (Z)">{DR ? <span style={{ display:"inline-flex", alignItems:"center", gap:"0.4rem" }}><LineIcon name="eye" size={15}/>Zen</span> : "⬡ Zen"}</button>
           </div>
         </div>
+
+        <ErrorBoundary label="India clock">
+          <TwoClocks theme={theme} plan={plan} panelStyle={panel} open={clocksOpen} onToggle={toggleClocks}/>
+        </ErrorBoundary>
 
         {evening ? (
           <EveningFace theme={theme} plan={plan} closedAt={closedAt} garden={garden} onGardenChange={setGarden}
