@@ -6,6 +6,9 @@ Enhancements and ideas captured as we build. Items move from **Backlog → In Pr
 
 ## Done
 
+- [x] **Coming up: the next two weeks of work (v6.4.0)** *(2026-11-12)*
+  A "Coming up" panel sits right under the timer: the next few work days with their deliverables and prep blocks, each marked today, tomorrow or "in N days", with light, stacked and crunch days tagged (crunch days carry a brass rule). Past days hide themselves; "Show all" opens the rest; "Updated" shows when the list was last changed. **Minimize** folds it to one line with the next thing and how far off the crunch is; open or folded is remembered. The list lives in `src/data/comingUp.js` and changes by pull request.
+
 - [x] **India team's shift ends at 11:00 PM IST (v6.3.1)** *(2026-11-12)*
   The shaded shift on the Eastern / India clock now runs 3:00 PM to 11:00 PM IST (12:30 PM ET in winter, 1:30 PM ET in summer), not midnight.
 

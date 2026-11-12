@@ -23,6 +23,7 @@ import DayArc      from "./components/DayArc";
 import Garden      from "./components/Garden";
 import EveningFace from "./components/EveningFace";
 import TwoClocks, { IndiaClockChip } from "./components/TwoClocks";
+import ComingUp from "./components/ComingUp";
 import { loadPlan, savePlan, dayState, loadCloses, closeDay, reopenDay } from "./workday";
 import { loadGarden, feed } from "./garden";
 import { playGrow } from "./audio";
@@ -31,7 +32,7 @@ import { Emblem, LineIcon, MoonPhase, OrnateCorners, StarDivider } from "./compo
 import { emblemUrl } from "./glyphs";
 import { moonOf } from "./moon";
 
-const VERSION = "6.3.1 · 2026-11-12";
+const VERSION = "6.4.0 · 2026-11-12";
 
 export default function App() {
 
@@ -893,6 +894,11 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {/* What's coming up at work (src/data/comingUp.js) */}
+        <ErrorBoundary label="coming up">
+          <ComingUp theme={theme} panelStyle={panel}/>
+        </ErrorBoundary>
 
         {/* The seed on the sill */}
         {DR && <div style={panel}><Garden theme={theme} garden={garden} onChange={setGarden}/></div>}
