@@ -17,11 +17,11 @@ function useNow(ms) {
 
 const inShift = (date) => { const m = minsIn(IST, date); return m >= TEAM_SHIFT.start && m < TEAM_SHIFT.end; };
 
-// The small India clock in the header. Pressing it opens the slider.
+// The small India clock in the header. Pressing it opens or folds the panel.
 export function IndiaClockChip({ theme, open, onToggle }) {
   const now = useNow(5000);
   return (
-    <button onClick={onToggle} aria-expanded={open} aria-controls="two-clocks" title="Eastern and India time"
+    <button onClick={onToggle} aria-expanded={open} aria-controls="two-clocks" title={open ? "Fold the India clock" : "Open the India clock"}
       style={{ background:"none", border:"none", borderBottom:`1px solid ${open ? theme.rose : "transparent"}`, padding:"0 0 1px", cursor:"pointer",
         fontFamily:"var(--font-body)", fontSize:"0.9rem", fontStyle:"italic", letterSpacing:"0.04em", color:theme.textMuted }}>
       India {timeIn(IST, now)}
@@ -40,7 +40,7 @@ function runs(instants, test) {
   return out;
 }
 
-export default function TwoClocks({ theme, plan, panelStyle, onClose }) {
+export default function TwoClocks({ theme, plan, panelStyle, open, onToggle }) {
   const now = useNow(15000);
   const [picked, setPicked] = useState(null);   // Eastern minutes, or null to follow the clock
   const [copied, setCopied] = useState(false);
@@ -91,19 +91,43 @@ export default function TwoClocks({ theme, plan, panelStyle, onClose }) {
     </div>
   );
 
+  const toggleBtn = (
+    <button onClick={onToggle} aria-expanded={open} aria-controls="two-clocks-body"
+      style={{ background:"none", border:`1px solid ${theme.line}`, color:ink, cursor:"pointer", padding:"0.25rem 0.6rem", fontSize:"0.88rem", display:"inline-flex", alignItems:"center", gap:"0.35rem" }}>
+      {open ? "Minimize" : "Show"}<span aria-hidden="true" style={{ fontSize:"0.7rem" }}>{open ? "▲" : "▼"}</span>
+    </button>
+  );
+  const title = (
+    <span style={{ display:"inline-flex", alignItems:"center", gap:"0.45rem", fontFamily:"var(--font-display)", fontSize:"1.25rem", color:theme.text }}>
+      <LineIcon name="crescent" size={15} style={{ color:ink }}/>Their side of the clock
+    </span>
+  );
+
+  // Folded: one line with the live times, and the way back in.
+  if (!open) return (
+    <div id="two-clocks" style={{ ...panelStyle, padding:"0.6rem 1.5rem" }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"0.75rem", flexWrap:"wrap" }}>
+        {title}
+        <span style={{ display:"inline-flex", alignItems:"center", gap:"0.75rem", flexWrap:"wrap" }}>
+          <span style={{ color:theme.textMuted, fontSize:"0.95rem" }}>{meetLine(now)}</span>
+          {toggleBtn}
+        </span>
+      </div>
+    </div>
+  );
+
   return (
     <div id="two-clocks" style={{ ...panelStyle, padding:"1rem 1.5rem 1.1rem" }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"0.75rem", marginBottom:"0.5rem" }}>
-        <span style={{ display:"inline-flex", alignItems:"center", gap:"0.45rem", fontFamily:"var(--font-display)", fontSize:"1.25rem", color:theme.text }}>
-          <LineIcon name="crescent" size={15} style={{ color:ink }}/>Their side of the clock
-        </span>
+        {title}
         <span style={{ display:"inline-flex", alignItems:"center", gap:"0.5rem" }}>
           {picked != null && (
             <button onClick={() => setPicked(null)} style={{ background:"none", border:`1px solid ${theme.line}`, color:ink, cursor:"pointer", padding:"0.25rem 0.6rem", fontSize:"0.88rem" }}>Now</button>
           )}
-          <button onClick={onClose} aria-label="Close the India clock" style={{ background:"none", border:"none", color:theme.textMuted, cursor:"pointer", fontSize:"1.1rem", lineHeight:1 }}>×</button>
+          {toggleBtn}
         </span>
       </div>
+      <div id="two-clocks-body">
 
       <div style={{ display:"flex", gap:"1rem", flexWrap:"wrap", alignItems:"flex-end" }}>
         {face("Eastern", ET)}
@@ -138,6 +162,7 @@ export default function TwoClocks({ theme, plan, panelStyle, onClose }) {
         <button onClick={copy} style={{ background:"transparent", border:`1px solid ${theme.line}`, color:ink, cursor:"pointer", padding:"0.4rem 0.8rem", fontSize:"0.9rem" }}>
           {copied ? "Copied" : "Copy"}
         </button>
+      </div>
       </div>
     </div>
   );

@@ -133,9 +133,9 @@ export default function App() {
   const [garden, setGarden] = useState(loadGarden);
   useEffect(() => { const id = setInterval(() => setClock(new Date()), 30000); return () => clearInterval(id); }, []);
   const handleSavePlan = (p) => { savePlan(p); setPlan(p); };
-  // Eastern ↔ India clock: open from the "India" time in the header; remembered.
-  const [showClocks, setShowClocks] = useState(() => safeGet("sage_twoclocks_v1") === "open");
-  const toggleClocks = () => setShowClocks(v => { safeSet("sage_twoclocks_v1", v ? "closed" : "open"); return !v; });
+  // Eastern ↔ India clock: always on the page, open or folded to one line; remembered.
+  const [clocksOpen, setClocksOpen] = useState(() => safeGet("sage_twoclocks_v1") !== "closed");
+  const toggleClocks = () => setClocksOpen(v => { safeSet("sage_twoclocks_v1", v ? "closed" : "open"); return !v; });
   const feedGarden = (key) => { const { garden: g, fed, grew } = feed(key); setGarden(g); if (fed) playGrow(grew); };
   // Fetch every card's art when the dashboard opens, so the face is already
   // in the browser cache when a card turns 25 minutes later.
@@ -765,7 +765,7 @@ export default function App() {
               </span>
             )}
             <LiveClock color={theme.textMuted}/>
-            <IndiaClockChip theme={theme} open={showClocks} onToggle={toggleClocks}/>
+            <IndiaClockChip theme={theme} open={clocksOpen} onToggle={toggleClocks}/>
             {/* The crescent toggle: Candlelight ↔ Daylight. The moon knob waxes as it turns on. */}
             {(() => {
               const day = theme.key === "daylight";
@@ -791,11 +791,9 @@ export default function App() {
           </div>
         </div>
 
-        {showClocks && (
-          <ErrorBoundary label="India clock">
-            <TwoClocks theme={theme} plan={plan} panelStyle={panel} onClose={toggleClocks}/>
-          </ErrorBoundary>
-        )}
+        <ErrorBoundary label="India clock">
+          <TwoClocks theme={theme} plan={plan} panelStyle={panel} open={clocksOpen} onToggle={toggleClocks}/>
+        </ErrorBoundary>
 
         {evening ? (
           <EveningFace theme={theme} plan={plan} closedAt={closedAt} garden={garden} onGardenChange={setGarden}
