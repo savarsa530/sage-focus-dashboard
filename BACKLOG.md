@@ -6,8 +6,8 @@ Enhancements and ideas captured as we build. Items move from **Backlog → In Pr
 
 ## Done
 
-- [x] **Coming up: a work calendar for the next two weeks (v6.4.0)** *(2026-11-12)*
-  A "Coming up" panel sits right under the timer as a small calendar: weeks as rows, Monday to Friday as columns, from this week through the last listed day. Every item is a coloured block by kind (rose for due, teal for a prep block, outlined for a meeting, quiet italics for a reminder), so heavy days read at a glance. Crunch days carry a brass double rule, today is ringed in rose, past days fade. Above the calendar, chips count down to the crunch and the milestones ("Mid-PI planning in 8 days"). **Minimize** folds it to one line: a strip of small squares, one per work day, coloured by load, plus the crunch countdown; open or folded is remembered. On a phone it stacks to one column of the days that have something. The list lives in `src/data/comingUp.js` and changes by pull request.
+- [x] **This block: each focus block decided ahead (v6.4.0)** *(2026-11-12)*
+  A "This block" panel right under the timer names what today's focus block is for, so the block opens with a first step instead of a decision. It shows one step at a time ("Step 2 of 4") with **Next step** and **Back**; the whole plan stays out of view so it can't turn into more planning. On the last step it shows where the work is done enough for today, and **Done for today** feeds the seed on the sill. **Focus the timer on this** puts the work in the task list and starts the timer on it. A breather day says so. Under it, one quiet line names the next block. **Minimize** folds it to one line (the work and the step you're on). Progress is kept per block in this browser. The plan lives in `src/data/focusPlan.js` and changes by pull request.
 
 - [x] **India team's shift ends at 11:00 PM IST (v6.3.1)** *(2026-11-12)*
   The shaded shift on the Eastern / India clock now runs 3:00 PM to 11:00 PM IST (12:30 PM ET in winter, 1:30 PM ET in summer), not midnight.

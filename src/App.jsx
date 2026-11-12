@@ -23,7 +23,7 @@ import DayArc      from "./components/DayArc";
 import Garden      from "./components/Garden";
 import EveningFace from "./components/EveningFace";
 import TwoClocks, { IndiaClockChip } from "./components/TwoClocks";
-import ComingUp from "./components/ComingUp";
+import FocusPlan from "./components/FocusPlan";
 import { loadPlan, savePlan, dayState, loadCloses, closeDay, reopenDay } from "./workday";
 import { loadGarden, feed } from "./garden";
 import { playGrow } from "./audio";
@@ -895,9 +895,9 @@ export default function App() {
           )}
         </div>
 
-        {/* What's coming up at work (src/data/comingUp.js) */}
-        <ErrorBoundary label="coming up">
-          <ComingUp theme={theme} panelStyle={panel}/>
+        {/* This block: today's focus block, decided ahead (src/data/focusPlan.js) */}
+        <ErrorBoundary label="this block">
+          <FocusPlan theme={theme} panelStyle={panel} btnStyle={btn} onBegin={focusOp} onDone={feedGarden}/>
         </ErrorBoundary>
 
         {/* The seed on the sill */}
