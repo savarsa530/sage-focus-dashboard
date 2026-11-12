@@ -5,16 +5,20 @@ import { safeGet, safeSet } from "../utils";
 import { COMING_UP, UPDATED } from "../data/comingUp";
 
 const KEY = "sage_comingup_v1";
-const SHOWN = 4;   // days shown before "Show all"
+const DAY = 86400000;
 
-// "2026-11-3" (from dayIn) → "2026-11-03", so keys compare as text.
+// Date keys are "YYYY-MM-DD" (Eastern). Arithmetic runs at UTC noon so it
+// never trips over daylight saving.
 const padKey = (k) => k.split("-").map((p, i) => (i ? p.padStart(2, "0") : p)).join("-");
 const asUTC  = (k) => { const [y, m, d] = k.split("-").map(Number); return Date.UTC(y, m - 1, d, 12); };
-const daysBetween = (a, b) => Math.round((asUTC(b) - asUTC(a)) / 86400000);
+const keyOf  = (t) => new Date(t).toISOString().slice(0, 10);
+const addDays = (k, n) => keyOf(asUTC(k) + n * DAY);
+const daysBetween = (a, b) => Math.round((asUTC(b) - asUTC(a)) / DAY);
+const weekday = (k) => new Date(asUTC(k)).getUTCDay();          // 0 Sun … 6 Sat
 const fmtDay = (k, opts) => new Intl.DateTimeFormat("en-US", { timeZone:"UTC", ...opts }).format(new Date(asUTC(k)));
+const whenLabel = (n) => n === 0 ? "today" : n === 1 ? "tomorrow" : `in ${n} days`;
 
-const whenLabel = (n) => n === 0 ? "Today" : n === 1 ? "Tomorrow" : `in ${n} days`;
-const TAGS = { light:"Light day", stacked:"Stacked", crunch:"Crunch" };
+const TAGS = { light:"Light", stacked:"Stacked", crunch:"Crunch" };
 
 function useToday() {
   const [key, setKey] = useState(() => padKey(dayIn(ET, new Date())));
@@ -25,21 +29,42 @@ function useToday() {
   return key;
 }
 
-// Upcoming work deliverables from src/data/comingUp.js. Past days hide
-// themselves; today is marked; the crunch days carry a brass rule.
+// How each kind of item looks: a tinted block with a coloured edge.
+function kindStyles(theme) {
+  const due  = theme.rose;
+  const prep = theme.breakColor || theme.primary;
+  return {
+    due:     { label:"Due",        swatch:due,  block:{ background:`${due}26`,  borderLeft:`3px solid ${due}` } },
+    prep:    { label:"Prep block", swatch:prep, block:{ background:`${prep}24`, borderLeft:`3px solid ${prep}` } },
+    meeting: { label:"Meeting",    swatch:theme.textMuted, block:{ background:"transparent", border:`1px solid ${theme.line}`, color:theme.textMuted } },
+    nudge:   { label:"Reminder",   swatch:null, block:{ background:"transparent", color:theme.textMuted, fontStyle:"italic", padding:"0 0.1rem" } },
+  };
+}
+
+// The work calendar: weeks as rows, weekdays as columns, every item a
+// coloured block, so the heavy days and the crunch show at a glance.
 export default function ComingUp({ theme, panelStyle }) {
   const today = useToday();
   const [open, setOpen] = useState(() => safeGet(KEY) !== "closed");
-  const [all, setAll]   = useState(false);
   const ink = theme.accentInk || theme.accent;
+  const K = kindStyles(theme);
 
-  const days = useMemo(
-    () => COMING_UP.filter(d => d.date >= today).sort((a, b) => a.date.localeCompare(b.date)),
-    [today]
-  );
+  const byDate = useMemo(() => Object.fromEntries(COMING_UP.map(d => [d.date, d])), []);
+  const ahead  = useMemo(() => COMING_UP.filter(d => d.date >= today).sort((a, b) => a.date.localeCompare(b.date)), [today]);
+  const last   = ahead.length ? ahead[ahead.length - 1].date : today;
+
+  // Weeks from this Monday through the week of the last listed day.
+  const weekend = ahead.some(d => [0, 6].includes(weekday(d.date)));
+  const cols = weekend ? [1, 2, 3, 4, 5, 6, 0] : [1, 2, 3, 4, 5];
+  const monday = addDays(today, -((weekday(today) + 6) % 7));
+  const weeks = [];
+  for (let w = monday; w <= last; w = addDays(w, 7)) {
+    weeks.push(cols.map(c => addDays(w, (c + 6) % 7)));
+  }
+
+  const crunch = ahead.find(d => d.tag === "crunch");
+  const milestones = ahead.flatMap(d => d.items.filter(i => i.milestone).map(i => ({ ...i, date:d.date })));
   const toggle = () => setOpen(v => { safeSet(KEY, v ? "closed" : "open"); return !v; });
-  const updated = fmtDay(UPDATED, { month:"short", day:"numeric" });
-  const crunchAhead = days.filter(d => d.tag === "crunch");
 
   const toggleBtn = (
     <button onClick={toggle} aria-expanded={open} aria-controls="coming-up-body"
@@ -53,88 +78,136 @@ export default function ComingUp({ theme, panelStyle }) {
     </span>
   );
 
-  // Folded: the next thing, and how far off the crunch is.
-  if (!open) {
-    const next = days[0];
-    const n = next ? daysBetween(today, next.date) : 0;
-    const c = crunchAhead[0];
-    const cn = c ? daysBetween(today, c.date) : 0;
-    return (
-      <div id="coming-up" style={{ ...panelStyle, padding:"0.6rem 1.5rem" }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"0.75rem", flexWrap:"wrap" }}>
-          {title}
-          <span style={{ display:"inline-flex", alignItems:"center", gap:"0.75rem", flexWrap:"wrap", minWidth:0 }}>
-            <span style={{ color:theme.textMuted, fontSize:"0.95rem" }}>
-              {next
-                ? <>{whenLabel(n)}: {next.items[0]?.text}{c && cn > 0 && <span style={{ fontStyle:"italic" }}> · crunch {whenLabel(cn)}</span>}</>
-                : "Nothing listed"}
-            </span>
-            {toggleBtn}
-          </span>
-        </div>
+  // One small square per work day ahead, coloured by how heavy it is.
+  const strip = (
+    <span aria-hidden="true" style={{ display:"inline-flex", gap:3, alignItems:"center" }}>
+      {weeks.flat().filter(k => k >= today).map(k => {
+        const d = byDate[k], n = d?.items.length || 0;
+        const bg = d?.tag === "crunch" ? theme.rose
+          : n >= 3 || d?.tag === "stacked" ? `${theme.brass || theme.accent}cc`
+          : n ? `${theme.breakColor || theme.primary}99` : "transparent";
+        return <span key={k} title={fmtDay(k, { weekday:"short", month:"short", day:"numeric" })}
+          style={{ width:12, height:12, background:bg, border:`1px solid ${k === today ? theme.text : theme.line}`, ...(weekday(k) === 1 && k !== today ? { marginLeft:5 } : null) }}/>;
+      })}
+    </span>
+  );
+
+  const countdown = crunch
+    ? (daysBetween(today, crunch.date) <= 0 ? "Crunch is today" : `Crunch ${whenLabel(daysBetween(today, crunch.date))}`)
+    : null;
+
+  // Folded: the heat strip and the crunch countdown.
+  if (!open) return (
+    <div id="coming-up" style={{ ...panelStyle, padding:"0.6rem 1.5rem" }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"0.75rem", flexWrap:"wrap" }}>
+        {title}
+        <span style={{ display:"inline-flex", alignItems:"center", gap:"0.75rem", flexWrap:"wrap" }}>
+          {strip}
+          {countdown && <span style={{ color:theme.textMuted, fontSize:"0.92rem", fontStyle:"italic" }}>{countdown}</span>}
+          {toggleBtn}
+        </span>
       </div>
-    );
-  }
+    </div>
+  );
 
-  const shown = all ? days : days.slice(0, SHOWN);
+  const block = (it, i) => (
+    <div key={i} style={{ fontSize:"0.8rem", lineHeight:1.3, padding:"0.22rem 0.4rem", color:theme.text, overflowWrap:"anywhere", ...K[it.kind || "due"]?.block }}>
+      {it.time && <span style={{ fontWeight:500, marginRight:"0.3rem", whiteSpace:"nowrap" }}>{it.time}</span>}
+      {it.text}
+    </div>
+  );
 
-  const dayCard = (d) => {
-    const n = daysBetween(today, d.date);
-    const isToday = n === 0, crunch = d.tag === "crunch";
+  const cell = (k) => {
+    const d = byDate[k];
+    const past = k < today, isToday = k === today, isCrunch = d?.tag === "crunch";
     return (
-      <div key={d.date} aria-current={isToday ? "date" : undefined}
+      <div key={k} className="cu-cell" data-has={d && !past ? "" : undefined} aria-current={isToday ? "date" : undefined}
         style={{
-          background: isToday ? theme.card : "transparent",
-          border:`1px solid ${isToday ? theme.rose : theme.line}`,
-          borderLeft: crunch ? `4px double ${theme.brass || theme.accent}` : undefined,
-          padding:"0.55rem 0.8rem 0.6rem", minWidth:0,
+          minWidth:0, display:"flex", flexDirection:"column", gap:"0.25rem",
+          padding:"0.4rem 0.45rem 0.5rem",
+          background: isToday ? theme.card : isCrunch ? `${theme.rose}12` : "transparent",
+          border: isCrunch ? `3px double ${theme.brass || theme.accent}` : `1px solid ${isToday ? theme.rose : theme.line}`,
+          outline: isToday && isCrunch ? `1px solid ${theme.rose}` : undefined,
+          opacity: past ? 0.38 : 1,
         }}>
-        <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:"0.5rem", flexWrap:"wrap", marginBottom:"0.25rem" }}>
-          <span style={{ fontFamily:"var(--font-display)", fontSize:"1.08rem", color:theme.text }}>
-            {fmtDay(d.date, { weekday:"short", month:"short", day:"numeric" })}
+        <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:"0.3rem" }}>
+          <span style={{ display:"inline-flex", alignItems:"baseline", gap:"0.3rem" }}>
+            <span className="cu-wd" style={{ fontSize:"0.75rem", color:theme.textMuted }}>{fmtDay(k, { weekday:"short" })}</span>
+            <span style={{ fontFamily:"var(--font-display)", fontSize:"1.15rem", lineHeight:1, color:isToday ? theme.rose : theme.text }}>{fmtDay(k, { day:"numeric" })}</span>
           </span>
-          <span style={{ fontSize:"0.8rem", fontStyle:"italic", color: isToday ? theme.rose : theme.textMuted, display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
-            {d.tag && (
-              <span style={{ color: crunch ? ink : theme.textMuted, display:"inline-flex", alignItems:"center", gap:"0.25rem" }}>
-                {crunch && <LineIcon name="star" size={11}/>}{TAGS[d.tag] || d.tag}
-              </span>
-            )}
-            {d.tag && <span aria-hidden="true">·</span>}
-            <span style={{ fontWeight: isToday ? 500 : 400 }}>{whenLabel(n)}</span>
-          </span>
+          {isToday
+            ? <span style={{ fontSize:"0.72rem", color:theme.rose, fontStyle:"italic" }}>Today</span>
+            : d?.tag && <span style={{ fontSize:"0.72rem", fontStyle:"italic", color:isCrunch ? ink : theme.textMuted, display:"inline-flex", alignItems:"center", gap:"0.2rem" }}>
+                {isCrunch && <LineIcon name="star" size={10}/>}{TAGS[d.tag] || d.tag}
+              </span>}
         </div>
-        <ul style={{ listStyle:"none", margin:0, padding:0, display:"flex", flexDirection:"column", gap:"0.15rem" }}>
-          {d.items.map((it, i) => (
-            <li key={i} style={{ fontSize:"0.92rem", lineHeight:1.35, color:theme.text }}>
-              {it.time && <span style={{ color:ink, marginRight:"0.4rem", whiteSpace:"nowrap" }}>{it.time}</span>}
-              {it.text}
-            </li>
-          ))}
-        </ul>
+        {d?.items.map(block)}
       </div>
     );
   };
 
   return (
-    <div id="coming-up" style={{ ...panelStyle, padding:"1rem 1.5rem 0.9rem" }}>
+    <div id="coming-up" style={{ ...panelStyle, padding:"1rem 1.25rem 0.9rem" }}>
+      <style>{`
+        .cu-grid{display:grid;grid-template-columns:repeat(${cols.length},minmax(0,1fr));gap:5px;}
+        .cu-head{display:grid;grid-template-columns:repeat(${cols.length},minmax(0,1fr));gap:5px;}
+        .cu-cell .cu-wd{display:none;}
+        @media (max-width:640px){
+          .cu-grid{grid-template-columns:1fr;}
+          .cu-head{display:none;}
+          .cu-cell .cu-wd{display:inline;}
+          .cu-cell:not([data-has]){display:none;}
+        }
+      `}</style>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:"0.75rem", marginBottom:"0.6rem" }}>
         {title}
         {toggleBtn}
       </div>
       <div id="coming-up-body">
-        {days.length === 0
+
+        {(countdown || milestones.length > 0) && (
+          <div style={{ display:"flex", gap:"0.45rem", flexWrap:"wrap", marginBottom:"0.7rem" }}>
+            {countdown && (
+              <span style={{ display:"inline-flex", alignItems:"center", gap:"0.35rem", padding:"0.2rem 0.6rem", border:`1px solid ${theme.rose}`, color:theme.text, fontSize:"0.85rem" }}>
+                <LineIcon name="star" size={11} style={{ color:theme.rose }}/>{countdown}
+                <span style={{ color:theme.textMuted }}>· {fmtDay(crunch.date, { weekday:"short", month:"short", day:"numeric" })}</span>
+              </span>
+            )}
+            {milestones.map((m, i) => (
+              <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:"0.35rem", padding:"0.2rem 0.6rem", border:`1px solid ${theme.line}`, color:theme.text, fontSize:"0.85rem" }}>
+                {m.short || m.text}<span style={{ color:theme.textMuted, fontStyle:"italic" }}>{whenLabel(daysBetween(today, m.date))}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {ahead.length === 0
           ? <div style={{ color:theme.textMuted, fontStyle:"italic", fontSize:"0.92rem" }}>Nothing listed past today.</div>
-          : <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(250px, 1fr))", gap:"0.55rem" }}>
-              {shown.map(dayCard)}
-            </div>}
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:"0.75rem", flexWrap:"wrap", marginTop:"0.6rem", fontSize:"0.82rem", color:theme.textMuted, fontStyle:"italic" }}>
-          <span>Updated {updated}</span>
-          {days.length > SHOWN && (
-            <button onClick={() => setAll(v => !v)} aria-expanded={all}
-              style={{ background:"none", border:"none", padding:0, cursor:"pointer", color:ink, fontStyle:"italic", fontSize:"0.85rem" }}>
-              {all ? "Show fewer" : `Show all (${days.length - SHOWN} more)`}
-            </button>
-          )}
+          : <>
+              <div className="cu-head" aria-hidden="true" style={{ marginBottom:4 }}>
+                {weeks[0].map(k => <span key={k} style={{ fontSize:"0.78rem", color:theme.textMuted, textAlign:"center", letterSpacing:"0.04em" }}>{fmtDay(k, { weekday:"short" })}</span>)}
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+                {weeks.map((w, i) => (
+                  <div key={i} className="cu-grid">
+                    {w.map(cell)}
+                  </div>
+                ))}
+              </div>
+            </>}
+
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:"0.75rem", flexWrap:"wrap", marginTop:"0.65rem", fontSize:"0.8rem", color:theme.textMuted }}>
+          <span style={{ display:"inline-flex", gap:"0.8rem", flexWrap:"wrap" }}>
+            {["due", "prep", "meeting"].map(k => (
+              <span key={k} style={{ display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
+                <span style={{ width:12, height:10, ...K[k].block, padding:0 }}/>{K[k].label}
+              </span>
+            ))}
+            <span style={{ display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
+              <span style={{ width:12, height:10, border:`3px double ${theme.brass || theme.accent}` }}/>Crunch day
+            </span>
+          </span>
+          <span style={{ fontStyle:"italic" }}>Times are Eastern · updated {fmtDay(UPDATED, { month:"short", day:"numeric" })}</span>
         </div>
       </div>
     </div>
