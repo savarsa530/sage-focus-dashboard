@@ -6,6 +6,9 @@ Enhancements and ideas captured as we build. Items move from **Backlog → In Pr
 
 ## Done
 
+- [x] **This block: each focus block decided ahead (v6.4.0)** *(2026-11-12)*
+  A "This block" panel right under the timer names what today's focus block is for, so the block opens with a first step instead of a decision. It shows one step at a time ("Step 2 of 4") with **Next step** and **Back**; the whole plan stays out of view so it can't turn into more planning. On the last step it shows where the work is done enough for today, and **Done for today** feeds the seed on the sill. **Focus the timer on this** puts the work in the task list and starts the timer on it. A breather day says so. Under it, one quiet line names the next block. **Minimize** folds it to one line (the work and the step you're on). Progress is kept per block in this browser. Each block can also say what it's for (which meeting, when, your role). The plan is private: it arrives in a link (`#plan=…`, built with `scripts/plan-link.mjs`), and the part after `#` never reaches the server. The dashboard keeps it in this browser's storage and clears it from the address bar, so updating the plan needs no pull request and none of it is in this public repo. A quiet line shows the date of the plan you're on.
+
 - [x] **India team's shift ends at 11:00 PM IST (v6.3.1)** *(2026-11-12)*
   The shaded shift on the Eastern / India clock now runs 3:00 PM to 11:00 PM IST (12:30 PM ET in winter, 1:30 PM ET in summer), not midnight.
 
