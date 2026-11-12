@@ -68,7 +68,7 @@ export default function TwoClocks({ theme, plan, panelStyle, open, onToggle }) {
   const shiftStartET = instants.find(d => minsIn(IST, d) === TEAM_SHIFT.start);
   const shiftEndET   = teamRuns.length ? instants[teamRuns[0][1] % STEPS] : null;
   let teamNote;
-  if (inShift(at)) teamNote = `The India team is on shift, until ${shiftEndET ? timeIn(ET, shiftEndET) : "midnight IST"} ET.`;
+  if (inShift(at)) teamNote = `The India team is on shift, until ${shiftEndET ? `${timeIn(ET, shiftEndET)} ET (11:00 PM IST)` : "11:00 PM IST"}.`;
   else teamNote = `The India team is off shift. They start at 3:00 PM IST${shiftStartET ? `, ${timeIn(ET, shiftStartET)} ET` : ""}.`;
 
   const copy = async () => {

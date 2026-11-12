@@ -4,9 +4,9 @@
 export const ET  = "America/New_York";
 export const IST = "Asia/Kolkata";
 
-// The India team's shift, in India time: 3:00 PM to midnight IST
-// (which is about 1:30 PM ET in winter).
-export const TEAM_SHIFT = { start: 15 * 60, end: 24 * 60 };
+// The India team's shift, in India time: 3:00 PM to about 11:00 PM IST
+// (12:30 PM ET in winter, 1:30 PM ET in summer).
+export const TEAM_SHIFT = { start: 15 * 60, end: 23 * 60 };
 
 const partsFmt = {};
 function partsIn(tz, date) {
