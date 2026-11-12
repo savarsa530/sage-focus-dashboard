@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { LineIcon } from "./Witchy";
-import { ET, dayIn } from "../tz";
+import { ET, dayIn, minsIn } from "../tz";
 import { safeGetJSON, safeSet } from "../utils";
-import { BLOCKS } from "../data/focusPlan";
+import { loadPlan, takePlanFromHash } from "../planLink";
 
-const KEY = "sage_focusplan_v1";   // { open, progress: { "date#i": { step, done } } }
+const KEY = "sage_focusplan_v1";   // { open, progress: { "date#time#work": { step, done } } }
 
 const padKey = (k) => k.split("-").map((p, i) => (i ? p.padStart(2, "0") : p)).join("-");
 const asUTC  = (k) => { const [y, m, d] = k.split("-").map(Number); return Date.UTC(y, m - 1, d, 12); };
@@ -24,14 +24,28 @@ function useToday() {
 // the whole plan can't pull you into planning instead of doing.
 export default function FocusPlan({ theme, panelStyle, btnStyle, onBegin, onDone }) {
   const today = useToday();
+  // The plan comes from a private link (see src/planLink.js), never from the repo.
+  const [plan, setPlan] = useState(loadPlan);
+  useEffect(() => {
+    const take = () => takePlanFromHash().then((p) => { if (p) setPlan(p); });
+    take();
+    window.addEventListener("hashchange", take);
+    return () => window.removeEventListener("hashchange", take);
+  }, []);
+  const BLOCKS = plan?.blocks || [];
   const [store, setStore] = useState(() => ({ open:true, progress:{}, ...(safeGetJSON(KEY) || {}) }));
   const save = (s) => { setStore(s); safeSet(KEY, s); };
   const ink = theme.accentInk || theme.accent;
 
-  const todays = BLOCKS.map((b, i) => ({ ...b, id:`${b.date}#${i}` })).filter(b => b.date === today);
+  const todays = BLOCKS.map((b) => ({ ...b, id:`${b.date}#${b.time}#${b.work}` })).filter(b => b.date === today)
+    .sort((a, b) => a.time.padStart(5, "0").localeCompare(b.time.padStart(5, "0")));
   const next = BLOCKS.filter(b => b.date > today && !b.rest).sort((a, b) => a.date.localeCompare(b.date))[0];
-  const [pick, setPick] = useState(0);
-  const block = todays[Math.min(pick, Math.max(0, todays.length - 1))];
+  // With two blocks today, show the one that has started (the later one once it begins).
+  const [pick, setPick] = useState(null);
+  const toMins = (t) => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+  const nowMins = minsIn(ET, new Date());
+  const auto = Math.max(0, todays.reduce((at, b, i) => (b.time && toMins(b.time) <= nowMins ? i : at), 0));
+  const block = todays[Math.min(pick ?? auto, Math.max(0, todays.length - 1))];
   const prog = (block && store.progress[block.id]) || { step:0, done:false };
   const setProg = (p) => save({ ...store, progress:{ ...store.progress, [block.id]:{ ...prog, ...p } } });
 
@@ -55,7 +69,8 @@ export default function FocusPlan({ theme, panelStyle, btnStyle, onBegin, onDone
   );
 
   // One line: what this block is for and where you are in it.
-  const summary = !block ? (nextLine || <span style={{ color:theme.textMuted, fontStyle:"italic" }}>Nothing planned yet</span>)
+  const summary = !plan ? <span style={{ color:theme.textMuted, fontStyle:"italic" }}>No plan yet. Open your latest plan link from Sage.</span>
+    : !block ? (nextLine || <span style={{ color:theme.textMuted, fontStyle:"italic" }}>Nothing planned yet</span>)
     : block.rest ? <span style={{ color:theme.textMuted }}>A breather</span>
     : <span style={{ color:theme.textMuted, fontSize:"0.95rem" }}>{block.work} · {prog.done ? "done for today" : `step ${prog.step + 1} of ${steps.length}`}</span>;
 
@@ -90,6 +105,9 @@ export default function FocusPlan({ theme, panelStyle, btnStyle, onBegin, onDone
         <div style={{ fontFamily:"var(--font-display)", fontSize:"1.35rem", lineHeight:1.25, color:theme.text, marginBottom:"0.7rem", textWrap:"balance" }}>
           {block.work}
         </div>
+        {block.context && (
+          <div style={{ color:theme.textMuted, fontSize:"0.95rem", lineHeight:1.45, marginTop:"-0.35rem", marginBottom:"0.75rem" }}>{block.context}</div>
+        )}
 
         {block.rest ? (
           <div style={{ color:theme.textMuted, fontStyle:"italic" }}>Nothing to work on in it. Step away from the screen if you can.</div>
@@ -127,6 +145,7 @@ export default function FocusPlan({ theme, panelStyle, btnStyle, onBegin, onDone
         </>)}
 
         {nextLine && <div style={{ marginTop:"0.8rem" }}>{nextLine}</div>}
+        {plan?.updated && <div style={{ marginTop:"0.3rem", color:theme.textMuted, fontSize:"0.78rem", fontStyle:"italic", opacity:0.8 }}>Plan from {fmtDay(plan.updated)}</div>}
       </div>
     </div>
   );
