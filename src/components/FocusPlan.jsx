@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { LineIcon } from "./Witchy";
 import { ET, dayIn, minsIn } from "../tz";
 import { safeGetJSON, safeSet } from "../utils";
-import { loadPlan, takePlanFromHash } from "../planLink";
+import { cleanPlan, parsePlanText } from "../planText";
 
+const PLAN_KEY = "sage_focusplan_data_v1";   // the pasted plan, kept only in this browser
 const KEY = "sage_focusplan_v1";   // { open, progress: { "date#time#work": { step, done } } }
 
 const padKey = (k) => k.split("-").map((p, i) => (i ? p.padStart(2, "0") : p)).join("-");
@@ -24,14 +25,17 @@ function useToday() {
 // the whole plan can't pull you into planning instead of doing.
 export default function FocusPlan({ theme, panelStyle, btnStyle, onBegin, onDone }) {
   const today = useToday();
-  // The plan comes from a private link (see src/planLink.js), never from the repo.
-  const [plan, setPlan] = useState(loadPlan);
-  useEffect(() => {
-    const take = () => takePlanFromHash().then((p) => { if (p) setPlan(p); });
-    take();
-    window.addEventListener("hashchange", take);
-    return () => window.removeEventListener("hashchange", take);
-  }, []);
+  // The plan is pasted in (see src/planText.js) and kept in this browser, never in the repo.
+  const [plan, setPlan] = useState(() => cleanPlan(safeGetJSON(PLAN_KEY)));
+  const [pasting, setPasting] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [pasteMsg, setPasteMsg] = useState("");
+  const savePasted = () => {
+    const p = parsePlanText(draft);
+    if (!p) { setPasteMsg("I couldn't find any blocks in that. Copy the whole plan email, from the first date down, and paste it again."); return; }
+    safeSet(PLAN_KEY, p); setPlan(p); setPasting(false); setDraft("");
+    setPasteMsg(`Plan saved: ${p.blocks.length} block${p.blocks.length === 1 ? "" : "s"}.`);
+  };
   const BLOCKS = plan?.blocks || [];
   const [store, setStore] = useState(() => ({ open:true, progress:{}, ...(safeGetJSON(KEY) || {}) }));
   const save = (s) => { setStore(s); safeSet(KEY, s); };
@@ -69,10 +73,31 @@ export default function FocusPlan({ theme, panelStyle, btnStyle, onBegin, onDone
   );
 
   // One line: what this block is for and where you are in it.
-  const summary = !plan ? <span style={{ color:theme.textMuted, fontStyle:"italic" }}>No plan yet. Open your latest plan link from Sage.</span>
+  const summary = !plan ? <span style={{ color:theme.textMuted, fontStyle:"italic" }}>No plan yet</span>
     : !block ? (nextLine || <span style={{ color:theme.textMuted, fontStyle:"italic" }}>Nothing planned yet</span>)
     : block.rest ? <span style={{ color:theme.textMuted }}>A breather</span>
     : <span style={{ color:theme.textMuted, fontSize:"0.95rem" }}>{block.work} · {prog.done ? "done for today" : `step ${prog.step + 1} of ${steps.length}`}</span>;
+
+  const quiet = { background:"none", border:`1px solid ${theme.line}`, color:ink, cursor:"pointer", padding:"0.4rem 0.8rem", fontSize:"0.9rem" };
+  const linkBtn = { background:"none", border:"none", padding:0, color:ink, cursor:"pointer", textDecoration:"underline", textUnderlineOffset:"3px", font:"inherit" };
+  const openPaste = () => { setPasting(true); setPasteMsg(""); };
+
+  // Paste the weekly plan email; it's read and kept in this browser.
+  if (pasting) return (
+    <div id="this-block" style={{ ...panelStyle, padding:"1rem 1.5rem 1.1rem" }}>
+      <div style={{ marginBottom:"0.5rem" }}>{label}</div>
+      <label htmlFor="plan-paste" style={{ display:"block", color:theme.textMuted, fontSize:"0.92rem", marginBottom:"0.4rem" }}>
+        Copy the whole plan email and paste it here. It stays in this browser.
+      </label>
+      <textarea id="plan-paste" value={draft} onChange={(e) => { setDraft(e.target.value); setPasteMsg(""); }} rows={8} autoFocus
+        style={{ width:"100%", boxSizing:"border-box", background:theme.card, color:theme.text, border:`1px solid ${theme.line}`, padding:"0.6rem 0.75rem", font:"inherit", fontSize:"0.9rem", lineHeight:1.4, resize:"vertical" }}/>
+      {pasteMsg && <div role="alert" style={{ color:theme.rose, fontSize:"0.9rem", marginTop:"0.4rem" }}>{pasteMsg}</div>}
+      <div style={{ display:"flex", gap:"0.5rem", flexWrap:"wrap", marginTop:"0.7rem" }}>
+        <button style={{ ...btnStyle("invite"), fontSize:"0.82rem", padding:"0.5rem 1.2rem" }} onClick={savePasted} disabled={!draft.trim()}>Save plan</button>
+        <button style={quiet} onClick={() => { setPasting(false); setDraft(""); setPasteMsg(""); }}>Cancel</button>
+      </div>
+    </div>
+  );
 
   if (!store.open || !block) return (
     <div id="this-block" style={{ ...panelStyle, padding:"0.6rem 1.5rem" }}>
@@ -80,13 +105,12 @@ export default function FocusPlan({ theme, panelStyle, btnStyle, onBegin, onDone
         {label}
         <span style={{ display:"inline-flex", alignItems:"center", gap:"0.75rem", flexWrap:"wrap", minWidth:0 }}>
           {summary}
-          {block && toggleBtn}
+          {block ? toggleBtn : <button style={{ ...quiet, padding:"0.25rem 0.6rem", fontSize:"0.88rem" }} onClick={openPaste}>Paste plan</button>}
         </span>
       </div>
+      {pasteMsg && <div style={{ color:theme.textMuted, fontSize:"0.85rem", fontStyle:"italic", marginTop:"0.3rem" }}>{pasteMsg}</div>}
     </div>
   );
-
-  const quiet = { background:"none", border:`1px solid ${theme.line}`, color:ink, cursor:"pointer", padding:"0.4rem 0.8rem", fontSize:"0.9rem" };
 
   return (
     <div id="this-block" style={{ ...panelStyle, padding:"1rem 1.5rem 1.1rem" }}>
@@ -145,7 +169,10 @@ export default function FocusPlan({ theme, panelStyle, btnStyle, onBegin, onDone
         </>)}
 
         {nextLine && <div style={{ marginTop:"0.8rem" }}>{nextLine}</div>}
-        {plan?.updated && <div style={{ marginTop:"0.3rem", color:theme.textMuted, fontSize:"0.78rem", fontStyle:"italic", opacity:0.8 }}>Plan from {fmtDay(plan.updated)}</div>}
+        <div style={{ marginTop:"0.3rem", color:theme.textMuted, fontSize:"0.78rem", fontStyle:"italic" }}>
+          {pasteMsg ? `${pasteMsg} ` : plan?.updated ? `Plan from ${fmtDay(plan.updated)} · ` : ""}
+          <button style={linkBtn} onClick={openPaste}>Paste a new plan</button>
+        </div>
       </div>
     </div>
   );
